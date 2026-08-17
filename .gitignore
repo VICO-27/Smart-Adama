@@ -1,0 +1,40 @@
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Secrets — NEVER commit these
+*.env
+!*.env.example
+.env.*
+!.env.example
+
+# Backend (Laravel)
+backend/vendor/
+backend/node_modules/
+backend/storage/app/public
+backend/storage/framework/cache/
+backend/storage/framework/sessions/
+backend/storage/framework/testing/
+backend/storage/framework/views/
+backend/storage/logs/
+backend/bootstrap/cache/
+backend/.phpunit.result.cache
+backend/public/storage
+
+# Frontend (Vue/Vite)
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/coverage/
+frontend/playwright-report/
+frontend/test-results/
+
+# Docker volumes
+postgres_data/
+redis_data/

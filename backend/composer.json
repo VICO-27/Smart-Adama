@@ -16,6 +16,7 @@
         "laravel/tinker": "^3.0",
         "predis/predis": "*",
         "smalot/pdfparser": "^2.12",
+        "socialiteproviders/apple": "^5.10",
         "spatie/pdf-to-text": "^1.54"
     },
     "require-dev": {

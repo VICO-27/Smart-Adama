@@ -19,6 +19,7 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
+        'phone_number',
         'password',
         'role',
         'avatar_url',
@@ -70,5 +71,25 @@ class User extends Authenticatable
     public function streak(): HasOne
     {
         return $this->hasOne(UserStreak::class);
+    }
+
+    public function getMaskedEmailAttribute(): ?string
+    {
+        if (!$this->email) {
+            return null;
+        }
+
+        $parts = explode('@', $this->email);
+        if (count($parts) !== 2) {
+            return null;
+        }
+
+        $username = $parts[0];
+        $domain = $parts[1];
+
+        // Ensure we reveal at most the first character for privacy
+        $maskedUsername = substr($username, 0, 1) . str_repeat('•', 7);
+
+        return $maskedUsername . '@' . $domain;
     }
 }

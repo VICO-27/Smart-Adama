@@ -10,6 +10,7 @@ use App\Services\AI\OpenAIEmbeddingProvider;
 use App\Services\AI\VoyageEmbeddingProvider;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\Event;
 use Laravel\Sanctum\Sanctum;
 
 class AppServiceProvider extends ServiceProvider
@@ -52,5 +53,13 @@ class AppServiceProvider extends ServiceProvider
                 return $isValid && ! $token->tokenable->trashed();
             }
         );
+
+        // Apple Socialite Provider Event Listener
+        if (class_exists(\SocialiteProviders\Manager\SocialiteWasCalled::class) && class_exists(\SocialiteProviders\Apple\AppleExtendSocialite::class)) {
+            Event::listen(
+                \SocialiteProviders\Manager\SocialiteWasCalled::class,
+                \SocialiteProviders\Apple\AppleExtendSocialite::class . '@handle'
+            );
+        }
     }
 }

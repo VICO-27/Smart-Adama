@@ -26,6 +26,12 @@ return [
         'client_secret' => env('FACEBOOK_CLIENT_SECRET'),
         'redirect' => env('FACEBOOK_REDIRECT_URI', 'http://localhost:8000/api/v1/auth/facebook/callback'),
     ],
+
+    'apple' => [
+        'client_id' => env('APPLE_CLIENT_ID'),
+        'client_secret' => env('APPLE_CLIENT_SECRET'),
+        'redirect' => env('APPLE_REDIRECT_URI', 'http://localhost:8000/api/v1/auth/apple/callback'),
+    ],
     'postmark' => [
         'key' => env('POSTMARK_API_KEY'),
     ],

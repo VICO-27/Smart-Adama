@@ -21,8 +21,10 @@ onMounted(async () => {
     // 3. Redirect to the dashboard
     router.push('/dashboard')
   } else {
-    // If it fails, send them back to login
-    router.push('/login?error=oauth_failed')
+    // If it fails, send them back to landing and open the modal
+    auth.error = 'Social login failed. Please try again.'
+    auth.openAuthModal('login')
+    router.push('/')
   }
 })
 </script>

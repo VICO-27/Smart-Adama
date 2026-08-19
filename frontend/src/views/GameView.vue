@@ -1,5 +1,5 @@
-    <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+<script setup lang="ts">
+import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useProgressStore } from '@/stores/progress'
@@ -8,32 +8,22 @@ import AppShell from '@/components/layout/AppShell.vue'
 const auth = useAuthStore()
 const progress = useProgressStore()
 
-// Theme synchronization
-const isDark = ref(false)
-let observer: MutationObserver | null = null
-
-// Data Sources
 const d = computed(() => progress.dashboard)
 const badges = computed(() => progress.badges || [])
-const firstName = computed(() => auth.user?.name?.split(' ')[0] || 'Scholar')
+const firstName = computed(() => auth.user?.name?.trim().split(/\s+/)[0] || 'Scholar')
 
-// --- Derived Progression System ---
-// Since the backend doesn't currently provide raw XP or Levels, we derive it gracefully 
-// from real, existing user metrics to avoid faking data.
+/* Derived progression until the backend exposes a native XP service. */
 const currentXP = computed(() => {
   if (!d.value) return 0
-  const chapterXP = (d.value.completed_chapters || 0) * 150
-  const quizXP = (d.value.quizzes_passed || 0) * 100
-  const streakXP = (d.value.current_streak || 0) * 20
-  return chapterXP + quizXP + streakXP
+  return ((d.value.completed_chapters || 0) * 150)
+    + ((d.value.quizzes_passed || 0) * 100)
+    + ((d.value.current_streak || 0) * 20)
 })
-
 const currentLevel = computed(() => Math.floor(currentXP.value / 1000) + 1)
-const nextLevelXP = computed(() => currentLevel.value * 1000)
 const currentLevelXP = computed(() => currentXP.value % 1000)
-const xpProgressPct = computed(() => Math.min(100, (currentLevelXP.value / 1000) * 100))
+const xpProgressPct = computed(() => Math.min(100, currentLevelXP.value / 10))
+const nextLevelRemainingXP = computed(() => 1000 - currentLevelXP.value)
 
-// --- Game Modes Architecture ---
 interface GameMode {
   id: string
   title: string
@@ -49,32 +39,32 @@ const gameModes = ref<GameMode[]>([
   {
     id: 'quick-quiz',
     title: 'Quick Quiz',
-    description: 'Test your retention on recent chapters with rapid-fire questions.',
+    description: 'Test your retention with focused questions from your recent learning.',
     difficulty: 'Medium',
     xpReward: 100,
     duration: '5 min',
     available: true,
-    route: '/quizzes'
+    route: '/quizzes',
   },
   {
     id: 'chapter-challenge',
     title: 'Chapter Challenge',
-    description: 'Select a specific chapter and master its core concepts deeply.',
+    description: 'Go deeper into a chapter and master its core concepts.',
     difficulty: 'Hard',
     xpReward: 150,
     duration: '15 min',
     available: true,
-    route: '/study'
+    route: '/study',
   },
   {
     id: 'speed-round',
     title: 'Speed Round',
-    description: 'Answer as many Smart City questions as possible before time runs out.',
+    description: 'Answer as many Smart City questions as possible against the clock.',
     difficulty: 'Expert',
     xpReward: 250,
     duration: '3 min',
     available: false,
-    route: '#'
+    route: '#',
   },
   {
     id: 'memory-match',
@@ -84,367 +74,541 @@ const gameModes = ref<GameMode[]>([
     xpReward: 50,
     duration: '5 min',
     available: false,
-    route: '#'
-  }
+    route: '#',
+  },
 ])
 
-onMounted(() => {
-  if (!d.value) progress.loadAll()
-  
-  isDark.value = document.documentElement.classList.contains('dark')
-  observer = new MutationObserver(() => {
-    isDark.value = document.documentElement.classList.contains('dark')
-  })
-  observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
-})
+function badgeIcon(name: string) {
+  const value = name.toLowerCase()
+  if (value.includes('step')) return 'book'
+  if (value.includes('learner')) return 'user'
+  if (value.includes('perfect')) return 'check'
+  if (value.includes('roll') || value.includes('week')) return 'flame'
+  return 'bolt'
+}
 
-onUnmounted(() => {
-  if (observer) observer.disconnect()
+onMounted(() => {
+  if (!progress.dashboard) progress.loadAll()
 })
 </script>
 
 <template>
   <AppShell>
-    <!-- SKELETON LOADER -->
-    <div v-if="!d" class="max-w-7xl mx-auto px-6 md:px-12 pt-16 pb-20 space-y-12 animate-pulse min-h-screen" :class="isDark ? 'bg-[#0B0F19]' : 'bg-[#F0F3FA]'">
-      <div class="w-full h-64 md:h-80 rounded-[2.5rem]" :class="isDark ? 'bg-slate-800' : 'bg-[#D5DEEF]'"></div>
-      <div class="w-full h-32 rounded-3xl" :class="isDark ? 'bg-slate-800' : 'bg-[#D5DEEF]'"></div>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div class="h-48 rounded-3xl" :class="isDark ? 'bg-slate-800' : 'bg-[#D5DEEF]'"></div>
-        <div class="h-48 rounded-3xl" :class="isDark ? 'bg-slate-800' : 'bg-[#D5DEEF]'"></div>
+    <main class="game-page">
+      <!-- DIAGONAL VIDEO BACKGROUND -->
+      <div class="global-bg-video">
+        <video 
+          autoplay 
+          loop 
+          muted 
+          playsinline 
+          poster="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1'%3E%3C/svg%3E"
+          src="/videos/smart-adama-book.mp4"
+        ></video>
+        <div class="global-bg-overlay-fade"></div>
       </div>
-    </div>
 
-    <!-- MAIN GAME HUB -->
-    <div v-else class="w-full min-h-screen flex flex-col font-sans transition-colors duration-300" :class="isDark ? 'bg-[#0B0F19]' : 'bg-[#F0F3FA]'">
-      
-      <!-- 1. HERO SECTION -->
-      <section class="relative w-full pt-16 pb-20 reveal-up border-b transition-colors duration-300 overflow-hidden" :class="isDark ? 'border-slate-800 bg-[#0B0F19]' : 'border-[#D5DEEF] bg-[#F0F3FA]'">
-        <!-- Cinematic Orbs -->
-        <div class="absolute top-0 right-[10%] w-[400px] h-[400px] blur-[120px] rounded-full pointer-events-none animate-float transition-colors duration-500" :class="isDark ? 'bg-blue-600/10' : 'bg-blue-400/20'"></div>
-        <div class="absolute bottom-0 left-[5%] w-[300px] h-[300px] blur-[100px] rounded-full pointer-events-none animate-float transition-colors duration-500" style="animation-delay: 2s;" :class="isDark ? 'bg-emerald-500/10' : 'bg-emerald-400/10'"></div>
-
-        <div class="relative z-10 max-w-7xl mx-auto px-6 md:px-12 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-          <div class="lg:col-span-7 flex flex-col">
-            <p class="font-bold tracking-widest uppercase text-xs mb-4 text-[#10b981] flex items-center gap-2">
-              <span class="w-1.5 h-1.5 rounded-full bg-[#10b981]"></span>
-              Smart Adama Interactive
-            </p>
-            <h1 class="text-4xl md:text-6xl lg:text-7xl font-display font-extrabold mb-4 leading-tight text-balance transition-colors duration-300" :class="isDark ? 'text-white' : 'text-[#395886]'">
-              Learn. Challenge.<br>Master.
+      <section class="game-hero">
+        <div class="hero-grid">
+          <div class="hero-copy">
+            <span class="eyebrow">Smart Adama Interactive</span>
+            <h1>
+              Learn.
+              <span>Challenge.</span>
+              Master.
             </h1>
-            <p class="text-lg mb-8 max-w-xl leading-relaxed transition-colors duration-300" :class="isDark ? 'text-slate-400' : 'text-[#638ECB]'">
-              Turn what you've learned into challenges, earn points, and build your Smart Adama streak. Knowledge becomes progress.
+            <p>
+              Turn what you've learned into challenges, build your streak,
+              and make measurable progress through the Smart Adama learning experience.
             </p>
-          </div>
-
-          <!-- Hero Visual: Abstract Gamification Object -->
-          <div class="lg:col-span-5 flex justify-center lg:justify-end">
-            <div class="relative flex items-center justify-center w-64 h-64 md:w-80 md:h-80 group">
-              <div class="absolute inset-0 rounded-full scale-75 blur-3xl transition-all duration-700" :class="isDark ? 'bg-emerald-500/10 group-hover:bg-emerald-500/20' : 'bg-emerald-400/10 group-hover:bg-emerald-400/30'"></div>
-              <div class="relative z-10 w-48 h-48 md:w-56 md:h-56 rounded-3xl rotate-12 transition-transform duration-700 ease-out group-hover:rotate-0 group-hover:scale-105 border flex items-center justify-center shadow-2xl backdrop-blur-md" :class="isDark ? 'bg-slate-800/40 border-slate-700' : 'bg-white/40 border-white'">
-                 <svg class="w-20 h-20 transition-colors duration-300" :class="isDark ? 'text-emerald-400' : 'text-[#10b981]'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-              </div>
+            <div class="hero-actions">
+              <RouterLink to="/quizzes" class="hero-primary">
+                Start a challenge
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M5 12h14" stroke-linecap="round"/>
+                  <path d="m13 6 6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </RouterLink>
+              <RouterLink to="/study" class="hero-secondary">Continue studying</RouterLink>
             </div>
           </div>
-        </div>
-      </section>
 
-      <!-- 2. PLAYER PROGRESS RIBBON -->
-      <section class="w-full reveal-up delay-100 border-b transition-colors duration-300 z-20 relative" :class="isDark ? 'bg-[#1E293B] border-slate-800' : 'bg-white border-[#D5DEEF]'">
-        <div class="max-w-7xl mx-auto px-6 md:px-12 py-8">
-          <div class="flex flex-col md:flex-row items-center justify-between gap-8">
-            
-            <!-- Level & XP -->
-            <div class="flex items-center gap-6 w-full md:w-auto">
-              <div class="w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 border-2 transition-colors duration-300" :class="isDark ? 'bg-slate-900 border-emerald-500/30 text-emerald-400' : 'bg-[#F0F3FA] border-emerald-200 text-[#10b981]'">
-                <span class="font-display font-bold text-2xl">{{ currentLevel }}</span>
-              </div>
-              <div class="flex-grow md:w-64">
-                <div class="flex justify-between items-end mb-2">
-                  <span class="text-xs font-bold uppercase tracking-widest transition-colors duration-300" :class="isDark ? 'text-slate-400' : 'text-[#8AAEE0]'">Level {{ currentLevel }}</span>
-                  <span class="text-xs font-bold transition-colors duration-300" :class="isDark ? 'text-white' : 'text-[#395886]'">{{ currentXP.toLocaleString() }} XP</span>
-                </div>
-                <div class="h-2.5 w-full rounded-full overflow-hidden transition-colors duration-300" :class="isDark ? 'bg-slate-800' : 'bg-[#F0F3FA]'">
-                  <div class="h-full rounded-full transition-all duration-1000 ease-out bg-[#10b981]" :style="`width: ${xpProgressPct}%`"></div>
-                </div>
-                <p class="text-[10px] mt-2 font-medium transition-colors duration-300" :class="isDark ? 'text-slate-500' : 'text-[#638ECB]'">{{ (1000 - currentLevelXP).toLocaleString() }} XP to Level {{ currentLevel + 1 }}</p>
-              </div>
+          <div class="hero-visual" aria-hidden="true">
+            <div class="hero-orbit orbit-one"></div>
+            <div class="hero-orbit orbit-two"></div>
+            <div class="hero-orbit orbit-three"></div>
+            <div class="hero-core">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                <path d="M12 3v5M7.5 5.5 10 8M16.5 5.5 14 8" stroke-linecap="round"/>
+                <circle cx="12" cy="12" r="4.5"/>
+                <path d="M12 16.5v4.5M8.5 18.5h7" stroke-linecap="round"/>
+              </svg>
             </div>
-
-            <!-- Stats -->
-            <div class="flex items-center gap-12 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 pt-6 md:pt-0" :class="isDark ? 'border-slate-800' : 'border-[#D5DEEF]'">
-              <div>
-                <p class="text-[10px] font-bold uppercase tracking-widest mb-1 transition-colors duration-300" :class="isDark ? 'text-slate-500' : 'text-[#8AAEE0]'">Streak</p>
-                <div class="flex items-baseline gap-1">
-                  <span class="text-2xl font-display font-bold transition-colors duration-300" :class="isDark ? 'text-white' : 'text-[#395886]'">{{ d?.current_streak || 0 }}</span>
-                  <span class="text-xs font-medium transition-colors duration-300" :class="isDark ? 'text-slate-400' : 'text-[#638ECB]'">🔥</span>
-                </div>
-              </div>
-              <div>
-                <p class="text-[10px] font-bold uppercase tracking-widest mb-1 transition-colors duration-300" :class="isDark ? 'text-slate-500' : 'text-[#8AAEE0]'">Badges</p>
-                <div class="flex items-baseline gap-1">
-                  <span class="text-2xl font-display font-bold transition-colors duration-300" :class="isDark ? 'text-white' : 'text-[#395886]'">{{ d?.earned_badge_count || 0 }}</span>
-                  <span class="text-xs font-medium transition-colors duration-300" :class="isDark ? 'text-slate-400' : 'text-[#638ECB]'">🎖️</span>
-                </div>
-              </div>
-              <div>
-                <p class="text-[10px] font-bold uppercase tracking-widest mb-1 transition-colors duration-300" :class="isDark ? 'text-slate-500' : 'text-[#8AAEE0]'">Quizzes</p>
-                <div class="flex items-baseline gap-1">
-                  <span class="text-2xl font-display font-bold transition-colors duration-300" :class="isDark ? 'text-white' : 'text-[#395886]'">{{ d?.quizzes_passed || 0 }}</span>
-                  <span class="text-xs font-medium transition-colors duration-300" :class="isDark ? 'text-slate-400' : 'text-[#638ECB]'">✓</span>
-                </div>
-              </div>
-            </div>
-
+            <span class="hero-orbit-label label-one">XP</span>
+            <span class="hero-orbit-label label-two">QUIZ</span>
+            <span class="hero-orbit-label label-three">STREAK</span>
           </div>
         </div>
       </section>
 
-      <div class="max-w-7xl mx-auto px-6 md:px-12 py-16 grid grid-cols-1 lg:grid-cols-12 gap-12 flex-grow">
-        
-        <!-- LEFT COLUMN: GAMES -->
-        <div class="lg:col-span-8 space-y-12">
-          
-          <!-- Daily Challenge Special Treatment -->
-          <section class="reveal-up delay-200">
-            <h2 class="text-2xl font-display font-bold mb-6 transition-colors duration-300" :class="isDark ? 'text-white' : 'text-[#395886]'">Today's Priority</h2>
-            
-            <div class="relative overflow-hidden rounded-[2rem] p-8 md:p-10 border transition-all duration-300 hover:shadow-lg group" :class="isDark ? 'bg-gradient-to-br from-slate-900 to-slate-800 border-slate-700' : 'bg-gradient-to-br from-white to-[#F0F3FA] border-[#D5DEEF]'">
-              <div class="absolute top-0 right-0 w-64 h-64 bg-[#10b981] opacity-5 blur-[80px] rounded-full pointer-events-none group-hover:opacity-10 transition-opacity duration-500"></div>
-              
-              <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-                <div>
-                  <div class="flex items-center gap-3 mb-3">
-                    <span class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-colors duration-300" :class="isDark ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-800' : 'bg-emerald-50 text-[#10b981] border border-emerald-100'">Daily Challenge</span>
-                    <span class="text-sm font-bold transition-colors duration-300" :class="isDark ? 'text-white' : 'text-[#395886]'">+150 XP</span>
-                  </div>
-                  <h3 class="text-xl md:text-2xl font-bold mb-2 transition-colors duration-300" :class="isDark ? 'text-white' : 'text-[#395886]'">The Smart City Quiz</h3>
-                  <p class="text-sm max-w-md transition-colors duration-300" :class="isDark ? 'text-slate-400' : 'text-[#638ECB]'">Test your knowledge on the core pillars of e-Governance and Enterprise.</p>
+      <section class="progress-ribbon">
+        <div class="progress-inner">
+          <div class="level-block">
+            <div class="level-badge">{{ currentLevel }}</div>
+            <div class="level-copy">
+              <div class="level-title-row">
+                <span>Level {{ currentLevel }}</span>
+                <strong>{{ currentXP.toLocaleString() }} XP</strong>
+              </div>
+              <div class="xp-track">
+                <div class="xp-value" :style="{ width: `${xpProgressPct}%` }"></div>
+              </div>
+              <p>{{ nextLevelRemainingXP.toLocaleString() }} XP to Level {{ currentLevel + 1 }}</p>
+            </div>
+          </div>
+
+          <div class="stat-group">
+            <div class="game-stat"><span>Streak</span><strong>{{ d?.current_streak || 0 }}</strong><small>days</small></div>
+            <div class="stat-separator"></div>
+            <div class="game-stat"><span>Badges</span><strong>{{ d?.earned_badge_count || 0 }}</strong><small>earned</small></div>
+            <div class="stat-separator"></div>
+            <div class="game-stat"><span>Quizzes</span><strong>{{ d?.quizzes_passed || 0 }}</strong><small>passed</small></div>
+          </div>
+        </div>
+      </section>
+
+      <div class="game-container">
+        <div class="game-main-column">
+          <section class="content-section">
+            <div class="section-heading">
+              <div>
+                <span class="section-label">Today's priority</span>
+                <h2>Daily challenge</h2>
+              </div>
+              <span class="reward-pill">+150 XP</span>
+            </div>
+
+            <article class="daily-challenge">
+              <div class="daily-content">
+                <span class="challenge-kicker">Smart Adama Challenge</span>
+                <h3>The Smart City Quiz</h3>
+                <p>
+                  Test your knowledge of e-Governance, Enterprise, Innovation,
+                  and the core ideas behind Adama's smart city ecosystem.
+                </p>
+                <div class="challenge-meta">
+                  <span>10 questions</span>
+                  <span>~5 minutes</span>
+                  <span>Mixed difficulty</span>
                 </div>
-                
-                <RouterLink to="/quizzes" class="inline-flex items-center justify-center gap-2 rounded-2xl px-6 py-4 font-bold text-sm text-white transition-all duration-300 shadow-md hover:-translate-y-1 hover:shadow-xl w-full md:w-auto text-center" :class="isDark ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-[#10b981] hover:bg-emerald-500'">
-                  Start Challenge
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+              </div>
+              <div class="daily-action">
+                <div class="challenge-ring"><div class="challenge-ring-inner">5m</div></div>
+                <RouterLink to="/quizzes" class="challenge-button">
+                  Start challenge
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M5 12h14" stroke-linecap="round"/>
+                    <path d="m13 6 6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
                 </RouterLink>
               </div>
-            </div>
+            </article>
           </section>
 
-          <!-- Choose Your Challenge Grid -->
-          <section class="reveal-up delay-300">
-            <h2 class="text-2xl font-display font-bold mb-6 transition-colors duration-300" :class="isDark ? 'text-white' : 'text-[#395886]'">Choose your challenge</h2>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <section class="content-section">
+            <div class="section-heading">
+              <div>
+                <span class="section-label">Game room</span>
+                <h2>Choose your challenge</h2>
+              </div>
+              <span class="section-note">2 available</span>
+            </div>
+
+            <div class="game-mode-grid">
               <template v-for="mode in gameModes" :key="mode.id">
-                
-                <!-- Game Card -->
-                <RouterLink v-if="mode.available" :to="mode.route" class="group relative bg-white dark:bg-slate-900 rounded-[2rem] p-6 border transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_10px_40px_rgba(0,0,0,0.05)] dark:hover:shadow-[0_10px_40px_rgba(0,0,0,0.3)] flex flex-col h-full" :class="isDark ? 'border-slate-800 hover:border-slate-600' : 'border-[#D5DEEF] hover:border-[#8AAEE0]'">
-                  
-                  <div class="flex justify-between items-start mb-6">
-                    <div class="w-12 h-12 rounded-xl flex items-center justify-center transition-colors duration-300 group-hover:scale-110" :class="isDark ? 'bg-blue-900/30 text-blue-400' : 'bg-[#F0F3FA] text-[#395886]'">
-                      <!-- Dynamic Icons based on ID -->
-                      <svg v-if="mode.id === 'quick-quiz'" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                      <svg v-else-if="mode.id === 'chapter-challenge'" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                <RouterLink v-if="mode.available" :to="mode.route" class="mode-card available">
+                  <div class="mode-top">
+                    <div class="mode-icon">
+                      <svg v-if="mode.id === 'quick-quiz'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                        <path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z" stroke-linejoin="round"/>
+                      </svg>
+                      <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                        <path d="M5 4h14v16H5V4Z"/>
+                        <path d="M9 8h6M9 12h6M9 16h4"/>
+                      </svg>
                     </div>
-                    <span class="text-xs font-bold px-2 py-1 rounded-md transition-colors duration-300" :class="isDark ? 'bg-emerald-900/30 text-emerald-400' : 'bg-emerald-50 text-[#10b981]'">+{{ mode.xpReward }} XP</span>
+                    <span class="xp-pill">+{{ mode.xpReward }} XP</span>
                   </div>
 
-                  <h3 class="font-bold text-lg mb-2 transition-colors duration-300" :class="isDark ? 'text-white' : 'text-[#395886]'">{{ mode.title }}</h3>
-                  <p class="text-sm mb-6 leading-relaxed transition-colors duration-300 flex-grow" :class="isDark ? 'text-slate-400' : 'text-[#638ECB]'">{{ mode.description }}</p>
+                  <div class="mode-content">
+                    <h3>{{ mode.title }}</h3>
+                    <p>{{ mode.description }}</p>
+                  </div>
 
-                  <div class="flex items-center justify-between pt-4 border-t transition-colors duration-300" :class="isDark ? 'border-slate-800' : 'border-[#F0F3FA]'">
-                    <div class="flex items-center gap-4 text-xs font-medium transition-colors duration-300" :class="isDark ? 'text-slate-500' : 'text-[#8AAEE0]'">
-                      <span class="flex items-center gap-1"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> {{ mode.duration }}</span>
-                      <span class="flex items-center gap-1"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg> {{ mode.difficulty }}</span>
+                  <div class="mode-footer">
+                    <div class="mode-meta">
+                      <span>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                          <circle cx="12" cy="12" r="9"/>
+                          <path d="M12 7v5l3 2" stroke-linecap="round"/>
+                        </svg>
+                        {{ mode.duration }}
+                      </span>
+                      <span>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                          <path d="M7 20V10M12 20V5M17 20v-7" stroke-linecap="round"/>
+                        </svg>
+                        {{ mode.difficulty }}
+                      </span>
                     </div>
-                    <span class="text-[#10b981] opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300">
-                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                    <span class="mode-arrow">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M5 12h14" stroke-linecap="round"/>
+                        <path d="m13 6 6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>
                     </span>
                   </div>
                 </RouterLink>
 
-                <!-- Disabled / Coming Soon Card -->
-                <div v-else class="relative rounded-[2rem] p-6 border flex flex-col h-full opacity-60 cursor-not-allowed transition-colors duration-300" :class="isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-[#D5DEEF]'">
-                  <div class="flex justify-between items-start mb-6 grayscale">
-                    <div class="w-12 h-12 rounded-xl flex items-center justify-center transition-colors duration-300" :class="isDark ? 'bg-slate-800 text-slate-600' : 'bg-[#F0F3FA] text-[#8AAEE0]'">
-                      <svg v-if="mode.id === 'speed-round'" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                      <svg v-else class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                <article v-else class="mode-card disabled">
+                  <div class="mode-top">
+                    <div class="mode-icon">
+                      <svg v-if="mode.id === 'speed-round'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                        <circle cx="12" cy="12" r="9"/>
+                        <path d="M12 7v5l3 2" stroke-linecap="round"/>
+                      </svg>
+                      <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                        <rect x="4" y="7" width="16" height="12" rx="2"/>
+                        <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                      </svg>
                     </div>
-                    <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md transition-colors duration-300" :class="isDark ? 'bg-slate-800 text-slate-500' : 'bg-[#F0F3FA] text-[#8AAEE0]'">Coming Soon</span>
+                    <span class="coming-soon">Coming soon</span>
                   </div>
-
-                  <h3 class="font-bold text-lg mb-2 transition-colors duration-300" :class="isDark ? 'text-slate-400' : 'text-[#638ECB]'">{{ mode.title }}</h3>
-                  <p class="text-sm mb-6 leading-relaxed transition-colors duration-300 flex-grow" :class="isDark ? 'text-slate-500' : 'text-[#8AAEE0]'">{{ mode.description }}</p>
-
-                  <div class="flex items-center justify-between pt-4 border-t transition-colors duration-300" :class="isDark ? 'border-slate-800' : 'border-[#F0F3FA]'">
-                    <span class="text-xs font-medium transition-colors duration-300" :class="isDark ? 'text-slate-600' : 'text-[#B1C9EF]'">In development</span>
+                  <div class="mode-content">
+                    <h3>{{ mode.title }}</h3>
+                    <p>{{ mode.description }}</p>
                   </div>
-                </div>
-
+                  <div class="mode-footer"><span class="development-note">In development</span></div>
+                </article>
               </template>
             </div>
           </section>
-
         </div>
 
-        <!-- RIGHT COLUMN: LEADERBOARD & ACHIEVEMENTS -->
-        <div class="lg:col-span-4 space-y-12">
-          
-          <!-- Leaderboard (Fallback UI) -->
-          <section class="reveal-up delay-300">
-            <div class="flex items-center justify-between mb-6">
-               <h2 class="text-2xl font-display font-bold transition-colors duration-300" :class="isDark ? 'text-white' : 'text-[#395886]'">Leaderboard</h2>
+        <aside class="game-side-column">
+          <section class="side-section">
+            <div class="section-heading compact">
+              <div><span class="section-label">Competition</span><h2>Leaderboard</h2></div>
             </div>
-            
-            <div class="rounded-[2rem] p-6 border transition-colors duration-300" :class="isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-[#D5DEEF]'">
-              <p class="text-xs font-bold uppercase tracking-widest mb-6 transition-colors duration-300" :class="isDark ? 'text-slate-500' : 'text-[#8AAEE0]'">Global Ranking</p>
-              
-              <div class="space-y-4">
-                <!-- Clean Empty State for Backend Unavailability -->
-                <div class="flex items-center gap-4 p-4 rounded-2xl border border-dashed transition-colors duration-300" :class="isDark ? 'border-slate-700 bg-slate-800/50' : 'border-[#D5DEEF] bg-[#F0F3FA]'">
-                  <div class="w-10 h-10 rounded-full flex items-center justify-center transition-colors duration-300" :class="isDark ? 'bg-slate-800 text-slate-500' : 'bg-white text-[#B1C9EF]'">
-                    <svg class="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-                  </div>
-                  <div>
-                    <p class="text-sm font-bold transition-colors duration-300" :class="isDark ? 'text-slate-300' : 'text-[#395886]'">Syncing ranks...</p>
-                    <p class="text-xs transition-colors duration-300" :class="isDark ? 'text-slate-500' : 'text-[#8AAEE0]'">Multiplayer data pending.</p>
-                  </div>
-                </div>
 
-                <!-- Current User Context -->
-                <div class="flex items-center justify-between p-4 rounded-2xl transition-colors duration-300" :class="isDark ? 'bg-slate-800' : 'bg-[#F0F3FA]'">
-                  <div class="flex items-center gap-3">
-                    <span class="text-sm font-bold w-6 text-center transition-colors duration-300" :class="isDark ? 'text-emerald-400' : 'text-[#10b981]'">--</span>
-                    <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white" :class="isDark ? 'bg-blue-600' : 'bg-[#395886]'">
-                      {{ firstName.charAt(0) }}
-                    </div>
-                    <span class="text-sm font-bold transition-colors duration-300" :class="isDark ? 'text-white' : 'text-[#395886]'">You</span>
-                  </div>
-                  <span class="text-sm font-bold transition-colors duration-300" :class="isDark ? 'text-slate-400' : 'text-[#638ECB]'">{{ currentXP.toLocaleString() }} XP</span>
-                </div>
+            <article class="leaderboard-card">
+              <div class="leaderboard-header">
+                <span>Global ranking</span>
+                <span class="status-label">Coming soon</span>
               </div>
-            </div>
+
+              <div class="leaderboard-empty">
+                <div class="sync-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                    <path d="M20 11a8.1 8.1 0 0 0-14.9-4M4 5v4h4" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M4 13a8.1 8.1 0 0 0 14.9 4M20 19v-4h-4" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </div>
+                <strong>Multiplayer rankings are coming.</strong>
+                <p>Your progression is already tracked. Competitive rankings will appear here when the multiplayer service is connected.</p>
+              </div>
+
+              <div class="current-player">
+                <div class="player-identity">
+                  <span class="player-rank">—</span>
+                  <span class="player-avatar">{{ firstName.charAt(0) }}</span>
+                  <div><strong>{{ firstName }}</strong><span>Level {{ currentLevel }}</span></div>
+                </div>
+                <strong class="player-xp">{{ currentXP.toLocaleString() }} XP</strong>
+              </div>
+            </article>
           </section>
 
-          <!-- Badges -->
-          <section class="reveal-up delay-400">
-            <div class="flex items-center justify-between mb-6">
-               <h2 class="text-2xl font-display font-bold transition-colors duration-300" :class="isDark ? 'text-white' : 'text-[#395886]'">Achievements</h2>
-               <RouterLink to="/dashboard" class="text-xs font-bold uppercase tracking-wider transition-colors duration-300 hover:text-emerald-500" :class="isDark ? 'text-slate-500' : 'text-[#8AAEE0]'">View All</RouterLink>
+          <section class="side-section">
+            <div class="section-heading compact">
+              <div><span class="section-label">Collection</span><h2>Achievements</h2></div>
+              <RouterLink to="/dashboard" class="view-all">View all</RouterLink>
             </div>
-            
-            <div class="rounded-[2rem] p-6 border transition-colors duration-300" :class="isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-[#D5DEEF]'">
-              <div class="grid grid-cols-4 gap-3">
-                <div v-for="(b, i) in badges.slice(0, 8)" :key="i" class="aspect-square rounded-2xl flex items-center justify-center transition-all duration-300 group relative"
-                     :class="isDark ? (b.earned ? 'bg-emerald-900/20 border border-emerald-800/50 hover:bg-emerald-900/40' : 'bg-slate-800 opacity-50') : (b.earned ? 'bg-emerald-50 border border-emerald-100 hover:bg-emerald-100' : 'bg-[#F0F3FA] opacity-50')">
-                  
-                  <span class="text-xl transition-transform duration-300 group-hover:scale-110" :class="isDark ? (b.earned ? 'text-emerald-400' : 'text-slate-600') : (b.earned ? 'text-[#10b981]' : 'text-[#B1C9EF]')">
-                    <svg v-if="b.name.includes('Step')" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
-                    <svg v-else-if="b.name.includes('Learner')" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
-                    <svg v-else-if="b.name.includes('Perfectionist')" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"></path></svg>
-                    <svg v-else class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+
+            <article class="achievement-card">
+              <div v-if="badges.length" class="achievement-grid">
+                <div v-for="badge in badges.slice(0, 8)" :key="badge.id || badge.name" class="achievement" :class="{ earned: badge.earned }">
+                  <span class="achievement-icon">
+                    <svg v-if="badgeIcon(badge.name) === 'book'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                      <path d="M5 4h14v16H5V4Z"/><path d="M9 8h6M9 12h6M9 16h4"/>
+                    </svg>
+                    <svg v-else-if="badgeIcon(badge.name) === 'user'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                      <circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/>
+                    </svg>
+                    <svg v-else-if="badgeIcon(badge.name) === 'check'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                      <circle cx="12" cy="12" r="8.5"/><path d="m8 12 2.5 2.5L16 9" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <svg v-else-if="badgeIcon(badge.name) === 'flame'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                      <path d="M13.5 2.5c.4 3.5-1.4 5.5-3.3 7.1C8.7 10.9 8 12.2 8 14a4 4 0 0 0 4 4c1.6 0 2.9-.9 3.6-2.2.4 1.2.2 3-1.4 4.7 3.5-.9 5.8-3.6 5.8-7.2 0-4.2-2.7-8-6.5-10.8Z"/>
+                    </svg>
+                    <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                      <path d="M13 3 4 14h7l-1 7 9-11h-7l1-7Z" stroke-linejoin="round"/>
+                    </svg>
                   </span>
-                  
-                  <!-- Tooltip -->
-                  <div class="absolute bottom-full mb-2 w-48 p-3 rounded-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-300 z-30 shadow-xl" :class="isDark ? 'bg-slate-800 border border-slate-700' : 'bg-[#395886] text-white'">
-                    <p class="text-xs font-bold mb-1">{{ b.name }}</p>
-                    <p class="text-[10px] leading-snug" :class="isDark ? 'text-slate-400' : 'text-[#B1C9EF]'">{{ b.description }}</p>
-                  </div>
+                  <span class="achievement-tooltip">
+                    <strong>{{ badge.name }}</strong>
+                    <small>{{ badge.description || 'Learning milestone' }}</small>
+                  </span>
                 </div>
               </div>
-            </div>
+
+              <div v-else class="achievement-empty">
+                <div class="achievement-empty-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                    <circle cx="12" cy="8" r="4"/><path d="m9 12-2 8 5-3 5 3-2-8"/>
+                  </svg>
+                </div>
+                <strong>Your first badge is waiting.</strong>
+                <p>Complete learning milestones to unlock achievements.</p>
+              </div>
+            </article>
           </section>
-
-        </div>
+        </aside>
       </div>
-      
-      <!-- FOOTER -->
-      <footer class="w-full mt-auto pt-16 pb-8 transition-colors duration-300" :class="isDark ? 'bg-slate-900 border-t border-slate-800' : 'bg-[#395886] border-t border-[#2A4265]'">
-        <div class="max-w-7xl mx-auto px-6 md:px-12">
-          
-          <div class="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
-            <div class="md:col-span-2">
-              <h3 class="text-xl font-display font-bold text-white mb-4">Smart Adama</h3>
-              <p class="text-sm leading-relaxed max-w-sm transition-colors duration-300" :class="isDark ? 'text-slate-400' : 'text-[#B1C9EF]'">
-                Empowering the next generation of citizens with AI-driven education and smart city infrastructure.
-              </p>
-            </div>
 
-            <div>
-              <h4 class="font-bold text-white mb-4">Ecosystem</h4>
-              <ul class="space-y-3">
-                <li><a href="#" class="text-sm transition-colors duration-300 hover:text-white" :class="isDark ? 'text-slate-400' : 'text-[#B1C9EF]'">AI Study Companion</a></li>
-                <li><a href="#" class="text-sm transition-colors duration-300 hover:text-white" :class="isDark ? 'text-slate-400' : 'text-[#B1C9EF]'">Gamification & Badges</a></li>
-                <li><a href="#" class="text-sm transition-colors duration-300 hover:text-white" :class="isDark ? 'text-slate-400' : 'text-[#B1C9EF]'">Language Center</a></li>
-                <li><a href="/books/SA-Book.pdf" target="_blank" class="text-sm transition-colors duration-300 hover:text-white" :class="isDark ? 'text-slate-400' : 'text-[#B1C9EF]'">Download PDF</a></li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 class="font-bold text-white mb-4">Legal & Community</h4>
-              <ul class="space-y-3">
-                <li><a href="#" class="text-sm transition-colors duration-300 hover:text-white" :class="isDark ? 'text-slate-400' : 'text-[#B1C9EF]'">About the Developers</a></li>
-                <li><a href="#" class="text-sm transition-colors duration-300 hover:text-white" :class="isDark ? 'text-slate-400' : 'text-[#B1C9EF]'">Privacy Policy</a></li>
-                <li><a href="#" class="text-sm transition-colors duration-300 hover:text-white" :class="isDark ? 'text-slate-400' : 'text-[#B1C9EF]'">Terms of Service</a></li>
-                <li><a href="#" class="text-sm transition-colors duration-300 hover:text-white" :class="isDark ? 'text-slate-400' : 'text-[#B1C9EF]'">Contact Us</a></li>
-              </ul>
-            </div>
+      <!-- ======================================================
+           CITY FOOTER
+      ======================================================= -->
+      <footer class="city-footer">
+        <div class="city-footer-main">
+          <div class="footer-brand">
+            <div class="footer-logo"><img src="/logo.png" alt="Smart Adama" /></div>
+            <div><strong>Smart Adama</strong><span>Smart City Learning Platform</span></div>
           </div>
 
-          <div class="flex flex-col md:flex-row items-center justify-between gap-4 pt-8 border-t transition-colors duration-300" :class="isDark ? 'border-slate-800' : 'border-[#2A4265]'">
-            <p class="text-sm font-medium transition-colors duration-300" :class="isDark ? 'text-slate-500' : 'text-[#8AAEE0]'">
-              &copy; {{ new Date().getFullYear() }} Adama Smart City Ecosystem. All rights reserved.
-            </p>
-            <div class="flex items-center gap-4">
-              <span class="text-sm font-medium transition-colors duration-300" :class="isDark ? 'text-slate-500' : 'text-[#8AAEE0]'">English / Afaan Oromoo / Amharic</span>
-            </div>
+          <p class="footer-description">
+            A digital learning platform for understanding Adama's smart city vision,
+            initiatives, services, and civic development.
+          </p>
+
+          <div class="footer-column">
+            <h3>Platform</h3>
+            <RouterLink to="/dashboard">Dashboard</RouterLink>
+            <RouterLink to="/study">Study</RouterLink>
+            <RouterLink to="/game">Game</RouterLink>
+            <RouterLink to="/profile">Profile</RouterLink>
           </div>
+
+          <div class="footer-column">
+            <h3>Resources</h3>
+            <a href="/books/SA-Book.pdf" target="_blank" rel="noopener noreferrer">Smart Adama Book</a>
+            <RouterLink to="/quizzes">Challenges</RouterLink>
+            <RouterLink to="/study">Learning Center</RouterLink>
+            <RouterLink to="/profile">Account Settings</RouterLink>
+          </div>
+
+          <div class="footer-column">
+            <h3>Smart Adama City</h3>
+            <span>Learning</span>
+            <span>Technology</span>
+            <span>Innovation</span>
+            <span>Community</span>
+          </div>
+        </div>
+
+        <div class="city-government-bar">
+          <div class="city-government-inner">
+            <div class="government-identity">
+              <span class="government-line"></span>
+              <span>Smart Adama City</span>
+              <span class="government-separator">/</span>
+              <span>Digital Learning Platform</span>
+            </div>
+            <span class="government-message">Public Service · Learning · Innovation</span>
+          </div>
+        </div>
+
+        <div class="city-footer-bottom">
+          <span>© {{ new Date().getFullYear() }} Smart Adama City</span>
+          <span>English · Afaan Oromoo · Amharic</span>
         </div>
       </footer>
-
-    </div>
+    </main>
   </AppShell>
 </template>
 
 <style scoped>
-@keyframes revealUp {
-  0% { opacity: 0; transform: translateY(30px); }
-  100% { opacity: 1; transform: translateY(0); }
+.game-page {
+  --page-bg: var(--sa-page-bg, #F0F3FA);
+  --surface: var(--sa-surface, #FFFFFF);
+  --surface-soft: var(--sa-surface-soft, #F8FAFC);
+  --surface-muted: var(--sa-surface-muted, #EEF2F8);
+  --border: var(--sa-border, #D5DEEF);
+  --border-strong: var(--sa-border-strong, #B1C9EF);
+  --text: var(--sa-text, #0F172A);
+  --text-muted: var(--sa-text-muted, #64748B);
+  --track: var(--sa-track, #D5DEEF);
+  --brand: #395886;
+  --brand-mid: #638ECB;
+  --brand-soft: #8AAEE0;
+  min-height: 100vh;
+  background: var(--page-bg);
+  color: var(--text);
 }
 
-@keyframes float {
-  0%, 100% { transform: translateY(0) scale(1); }
-  50% { transform: translateY(-20px) scale(1.05); }
+:global(html.dark) .game-page {
+  --page-bg: #030712;
+  --surface: #0B1220;
+  --surface-soft: #111827;
+  --surface-muted: #162033;
+  --border: rgba(177, 201, 239, 0.13);
+  --border-strong: rgba(177, 201, 239, 0.25);
+  --text: #F8FAFC;
+  --text-muted: #94A3B8;
+  --track: #24344F;
 }
 
-@keyframes shimmer {
-  100% { transform: translateX(100%); }
+.game-hero {
+  position: relative;
+  overflow: hidden;
+  padding: 7rem 1rem 4rem;
+  background: var(--page-bg);
 }
 
-.reveal-up {
-  opacity: 0;
-  animation: revealUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+.hero-grid {
+  width: min(100%, 1160px);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1.15fr .85fr;
+  align-items: center;
+  gap: 4rem;
 }
 
-.animate-float {
-  animation: float 8s ease-in-out infinite;
+.eyebrow {
+  display: inline-flex;
+  padding: .38rem .62rem;
+  border: 1px solid rgba(99,142,203,.22);
+  border-radius: 999px;
+  background: rgba(99,142,203,.06);
+  color: var(--brand-mid);
+  font-size: .5rem;
+  font-weight: 800;
+  letter-spacing: .14em;
+  text-transform: uppercase;
 }
 
-.animate-shimmer {
-  animation: shimmer 2.5s infinite;
+.hero-copy h1 {
+  margin-top: .8rem;
+  color: var(--text);
+  font-size: clamp(3rem,7vw,5.5rem);
+  line-height: .98;
+  font-weight: 800;
+  letter-spacing: -.06em;
 }
 
-.delay-100 { animation-delay: 100ms; }
-.delay-200 { animation-delay: 200ms; }
-.delay-300 { animation-delay: 300ms; }
-.delay-400 { animation-delay: 400ms; }
+.hero-copy h1 span { color: var(--brand-mid); }
 
-.hide-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+.hero-copy p {
+  max-width: 650px;
+  margin-top: 1rem;
+  color: var(--text-muted);
+  font-size: .95rem;
+  line-height: 1.7;
 }
-.hide-scrollbar::-webkit-scrollbar {
-  display: none;
+
+.hero-actions { display:flex; gap:.65rem; margin-top:1.5rem; flex-wrap:wrap; }
+.hero-primary,.hero-secondary {
+  display:inline-flex; align-items:center; justify-content:center; gap:.4rem;
+  min-height:3rem; padding:.75rem 1rem; border-radius:.8rem; font-size:.62rem; font-weight:800;
+  text-decoration:none; transition:.25s ease;
 }
+.hero-primary { color:#fff; background:var(--brand); border:1px solid var(--brand); box-shadow:0 12px 28px rgba(57,88,134,.22); }
+.hero-primary:hover { transform:translateY(-2px); background:var(--brand-mid); }
+.hero-secondary { color:var(--text); background:var(--surface); border:1px solid var(--border-strong); }
+.hero-secondary:hover { transform:translateY(-2px); border-color:var(--brand-mid); color:var(--brand); }
+.hero-primary svg { width:.9rem; height:.9rem; }
+
+.hero-visual { position:relative; width:min(100%,390px); aspect-ratio:1; margin:0 auto; }
+.hero-orbit { position:absolute; left:50%; top:50%; border:1px solid rgba(99,142,203,.24); border-radius:50%; transform:translate(-50%,-50%); }
+.orbit-one { width:96%; height:96%; }
+.orbit-two { width:70%; height:70%; }
+.orbit-three { width:44%; height:44%; border-color:rgba(177,201,239,.34); }
+.hero-core {
+  position:absolute; left:50%; top:50%; width:11rem; height:11rem; display:flex; align-items:center; justify-content:center;
+  border:1px solid rgba(99,142,203,.27); border-radius:2rem;
+  background:linear-gradient(135deg,rgba(255,255,255,.9),rgba(213,222,239,.55));
+  color:var(--brand); box-shadow:0 25px 70px rgba(57,88,134,.14); transform:translate(-50%,-50%) rotate(12deg);
+  transition:transform .5s cubic-bezier(.16,1,.3,1);
+}
+:global(html.dark) .hero-core { background:linear-gradient(135deg,rgba(15,23,42,.95),rgba(30,41,59,.78)); color:#B1C9EF; box-shadow:0 25px 70px rgba(0,0,0,.32); }
+.hero-visual:hover .hero-core { transform:translate(-50%,-50%) rotate(0) scale(1.04); }
+.hero-core svg { width:4.1rem; height:4.1rem; }
+.hero-orbit-label {
+  position:absolute; display:inline-flex; align-items:center; justify-content:center; min-width:3.2rem; min-height:1.55rem;
+  padding:.25rem .45rem; border:1px solid rgba(99,142,203,.2); border-radius:999px; background:var(--surface); color:var(--brand);
+  box-shadow:0 10px 22px rgba(15,23,42,.08); font-size:.44rem; font-weight:800; letter-spacing:.1em;
+}
+.label-one{left:7%;top:28%}.label-two{right:3%;top:48%}.label-three{left:23%;bottom:9%}
+
+.progress-ribbon { border-top:1px solid var(--border); border-bottom:1px solid var(--border); background:var(--surface); }
+.progress-inner { width:min(100%,1160px); margin:0 auto; padding:1.15rem 1rem; display:flex; align-items:center; justify-content:space-between; gap:2rem; }
+.level-block { display:flex; align-items:center; gap:.75rem; min-width:0; flex:1; }
+.level-badge { width:3.7rem; height:3.7rem; display:flex; align-items:center; justify-content:center; flex-shrink:0; border:2px solid rgba(99,142,203,.25); border-radius:1rem; background:rgba(99,142,203,.08); color:var(--brand); font-size:1.35rem; font-weight:800; }
+:global(html.dark) .level-badge { color:#B1C9EF; background:rgba(99,142,203,.11); }
+.level-copy { width:min(100%,360px); min-width:0; }
+.level-title-row { display:flex; justify-content:space-between; gap:1rem; margin-bottom:.38rem; color:var(--text-muted); font-size:.5rem; font-weight:800; text-transform:uppercase; letter-spacing:.08em; }
+.level-title-row strong { color:var(--text); font-size:.55rem; letter-spacing:0; }
+.xp-track { height:.45rem; overflow:hidden; border-radius:999px; background:var(--track); }
+.xp-value { height:100%; border-radius:inherit; background:linear-gradient(90deg,var(--brand),var(--brand-mid)); transition:width .7s cubic-bezier(.16,1,.3,1); }
+.level-copy p { margin-top:.3rem; color:var(--text-muted); font-size:.45rem; }
+.stat-group { display:flex; align-items:center; gap:1.4rem; }
+.game-stat { min-width:4.1rem; }
+.game-stat span { display:block; color:var(--text-muted); font-size:.44rem; font-weight:800; letter-spacing:.09em; text-transform:uppercase; }
+.game-stat strong { color:var(--text); font-size:1.15rem; line-height:1; font-weight:800; }
+.game-stat small { color:var(--text-muted); font-size:.43rem; }
+.stat-separator { width:1px; height:2rem; background:var(--border); }
+
+.game-container { width:min(100%,1160px); margin:0 auto; padding:3rem 1rem 4rem; display:grid; grid-template-columns:minmax(0,1.65fr) minmax(300px,.85fr); gap:3rem; }
+.game-main-column,.game-side-column { min-width:0; }
+.game-main-column,.game-side-column { display:flex; flex-direction:column; gap:3rem; }
+.content-section,.side-section{min-width:0}
+.section-heading { display:flex; align-items:flex-end; justify-content:space-between; gap:1rem; margin-bottom:.85rem; }
+.section-heading.compact{margin-bottom:.7rem}
+.section-label { display:block; color:var(--text-muted); font-size:.48rem; font-weight:800; letter-spacing:.14em; text-transform:uppercase; }
+.section-heading h2 { margin-top:.2rem; color:var(--text); font-size:1.22rem; line-height:1.1; font-weight:800; letter-spacing:-.03em; }
+.section-note { color:var(--text-muted); font-size:.45rem; font-weight:800; letter-spacing:.1em; text-transform:uppercase; }
+.reward-pill,.xp-pill { display:inline-flex; align-items:center; padding:.34rem .52rem; border:1px solid rgba(99,142,203,.2); border-radius:999px; background:rgba(99,142,203,.07); color:var(--brand-mid); font-size:.48rem; font-weight:800; }
+
+.daily-challenge { position:relative; overflow:hidden; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:1.5rem; padding:1.35rem; border:1px solid var(--border); border-radius:1.35rem; background:linear-gradient(135deg,var(--surface),var(--surface-soft)); box-shadow:0 12px 30px rgba(15,23,42,.04); transition:.25s ease; }
+.daily-challenge:hover { transform:translateY(-2px); box-shadow:0 18px 40px rgba(15,23,42,.07); border-color:var(--border-strong); }
+.daily-challenge::after { content:''; position:absolute; width:16rem; height:16rem; right:-7rem; top:-8rem; border-radius:50%; background:rgba(99,142,203,.1); filter:blur(4rem); pointer-events:none; }
+.daily-content{position:relative;z-index:2}.challenge-kicker{display:inline-flex;color:var(--brand-mid);font-size:.48rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
+.daily-content h3{margin-top:.5rem;color:var(--text);font-size:1.35rem;font-weight:800;letter-spacing:-.03em}.daily-content p{max-width:620px;margin-top:.45rem;color:var(--text-muted);font-size:.6rem;line-height:1.65}
+.challenge-meta{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.8rem}.challenge-meta span{padding:.3rem .48rem;border:1px solid var(--border);border-radius:999px;color:var(--text-muted);font-size:.44rem;font-weight:700;background:var(--surface)}
+.daily-action{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.8rem;min-width:8.5rem}
+.challenge-ring{width:5.3rem;height:5.3rem;display:flex;align-items:center;justify-content:center;border:5px solid rgba(99,142,203,.12);border-top-color:var(--brand-mid);border-right-color:var(--brand);border-radius:50%;transform:rotate(-25deg)}
+.challenge-ring-inner{width:3.7rem;height:3.7rem;display:flex;align-items:center;justify-content:center;border-radius:50%;background:var(--surface);color:var(--brand);font-size:.72rem;font-weight:800;transform:rotate(25deg)}
+.challenge-button{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;width:100%;min-height:2.7rem;padding:.6rem .8rem;border-radius:.7rem;background:var(--brand);color:#fff;font-size:.58rem;font-weight:800;text-decoration:none;transition:.2s ease}.challenge-button:hover{transform:translateY(-2px);background:var(--brand-mid)}.challenge-button svg{width:.8rem;height:.8rem}
+
+.game-mode-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.7rem}.mode-card{position:relative;min-width:0;min-height:15.5rem;display:flex;flex-direction:column;padding:1rem;border:1px solid var(--border);border-radius:1.1rem;background:var(--surface);color:var(--text);text-decoration:none;transition:.25s ease}.mode-card.available:hover{transform:translateY(-4px);border-color:var(--border-strong);box-shadow:0 16px 34px rgba(15,23,42,.06)}.mode-card.disabled{opacity:.62;cursor:not-allowed}
+.mode-top{display:flex;align-items:flex-start;justify-content:space-between;gap:.6rem}.mode-icon{width:2.7rem;height:2.7rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid rgba(99,142,203,.13);border-radius:.75rem;background:rgba(99,142,203,.07);color:var(--brand-mid);transition:.25s cubic-bezier(.34,1.56,.64,1)}.mode-card.available:hover .mode-icon{transform:scale(1.08) rotate(3deg)}.mode-icon svg{width:1.25rem;height:1.25rem}.mode-card.disabled .mode-icon{color:var(--text-muted);background:var(--surface-muted)}
+.mode-content{flex:1;margin-top:1.3rem}.mode-content h3{color:var(--text);font-size:.92rem;font-weight:800}.mode-content p{margin-top:.42rem;color:var(--text-muted);font-size:.57rem;line-height:1.65}.mode-footer{display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin-top:1rem;padding-top:.7rem;border-top:1px solid var(--border)}.mode-meta{display:flex;align-items:center;flex-wrap:wrap;gap:.65rem}.mode-meta span{display:inline-flex;align-items:center;gap:.25rem;color:var(--text-muted);font-size:.44rem;font-weight:700}.mode-meta svg{width:.7rem;height:.7rem}.mode-arrow{display:flex;color:var(--brand-mid);opacity:0;transform:translateX(-3px);transition:.2s ease}.mode-card.available:hover .mode-arrow{opacity:1;transform:translateX(0)}.mode-arrow svg{width:1rem;height:1rem}.coming-soon{padding:.3rem .45rem;border:1px solid var(--border);border-radius:999px;background:var(--surface-muted);color:var(--text-muted);font-size:.42rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase}.development-note{color:var(--text-muted);font-size:.44rem;font-weight:700}
+
+.leaderboard-card{overflow:hidden;border:1px solid var(--border);border-radius:1.1rem;background:var(--surface);box-shadow:0 8px 26px rgba(15,23,42,.035)}
+.achievement-card{border:1px solid var(--border);border-radius:1.1rem;background:var(--surface);box-shadow:0 8px 26px rgba(15,23,42,.035)}
+.leaderboard-header{display:flex;align-items:center;justify-content:space-between;padding:.9rem;border-bottom:1px solid var(--border);color:var(--text-muted);font-size:.46rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase}.status-label{color:var(--brand-mid);font-size:.42rem;letter-spacing:.07em}
+.leaderboard-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem 1rem;text-align:center}.sync-icon{width:2.6rem;height:2.6rem;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:.8rem;background:var(--surface-soft);color:var(--brand-mid)}.sync-icon svg{width:1.1rem;height:1.1rem}.leaderboard-empty strong{margin-top:.7rem;color:var(--text);font-size:.66rem;font-weight:800}.leaderboard-empty p{max-width:235px;margin-top:.35rem;color:var(--text-muted);font-size:.5rem;line-height:1.6}
+.current-player{display:flex;align-items:center;justify-content:space-between;gap:.7rem;padding:.75rem .9rem;border-top:1px solid var(--border);background:var(--surface-soft)}.player-identity{display:flex;align-items:center;gap:.55rem}.player-rank{color:var(--text-muted);font-size:.55rem;font-weight:800}.player-avatar{width:2rem;height:2rem;display:flex;align-items:center;justify-content:center;border:1px solid rgba(99,142,203,.18);border-radius:50%;background:var(--brand);color:#fff;font-size:.58rem;font-weight:800}.player-identity strong{display:block;color:var(--text);font-size:.58rem;font-weight:800}.player-identity span{display:block;margin-top:.1rem;color:var(--text-muted);font-size:.42rem}.player-xp{color:var(--brand-mid);font-size:.58rem}
+
+.achievement-card{padding:.85rem}.achievement-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.45rem}.achievement{position:relative;aspect-ratio:1;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:.75rem;background:var(--surface-muted);color:var(--text-muted);opacity:.55;transition:.22s ease}.achievement.earned{opacity:1;color:var(--brand);background:rgba(99,142,203,.08);border-color:rgba(99,142,203,.2)}:global(html.dark) .achievement.earned{color:#B1C9EF;background:rgba(99,142,203,.12)}.achievement:hover{transform:translateY(-2px);border-color:var(--border-strong);opacity:1}.achievement-icon svg{width:1.25rem;height:1.25rem}
+.achievement-tooltip{position:absolute;left:50%;bottom:calc(100% + .5rem);width:12rem;padding:.65rem;border:1px solid var(--border-strong);border-radius:.7rem;background:var(--surface);color:var(--text);box-shadow:0 15px 35px rgba(15,23,42,.12);opacity:0;visibility:hidden;pointer-events:none;transform:translate(-50%,4px);transition:.18s ease}.achievement:hover .achievement-tooltip{opacity:1;visibility:visible;transform:translate(-50%,0)}.achievement-tooltip strong{display:block;color:var(--text);font-size:.55rem;font-weight:800}.achievement-tooltip small{display:block;margin-top:.22rem;color:var(--text-muted);font-size:.45rem;line-height:1.45}
+.view-all{color:var(--text-muted);font-size:.45rem;font-weight:800;text-decoration:none;letter-spacing:.07em;text-transform:uppercase}.view-all:hover{color:var(--brand-mid)}
+.achievement-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1.6rem 1rem;text-align:center}.achievement-empty-icon{width:2.6rem;height:2.6rem;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:.8rem;background:var(--surface-soft);color:var(--brand-mid)}.achievement-empty-icon svg{width:1.1rem;height:1.1rem}.achievement-empty strong{margin-top:.6rem;color:var(--text);font-size:.62rem;font-weight:800}.achievement-empty p{max-width:220px;margin-top:.35rem;color:var(--text-muted);font-size:.5rem;line-height:1.55}
+
+.city-footer{overflow:hidden;background:#243A5A;color:#D5DEEF;border-top:1px solid rgba(255,255,255,.08)}.city-footer-main{width:min(100%,1160px);margin:0 auto;padding:2.5rem 1rem 2rem;display:grid;grid-template-columns:1.45fr 1.3fr .9fr .9fr .9fr;gap:1.5rem}.footer-brand{display:flex;align-items:flex-start;gap:.65rem}.footer-logo{width:2.4rem;height:2.4rem;display:flex;align-items:center;justify-content:center;padding:.25rem;border-radius:.62rem;background:#fff}.footer-logo img{width:100%;height:100%;object-fit:contain}.footer-brand strong{display:block;color:#fff;font-size:.82rem;font-weight:800}.footer-brand span{display:block;margin-top:.12rem;color:#B1C9EF;font-size:.42rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase}.footer-description{max-width:270px;color:#B1C9EF;font-size:.49rem;line-height:1.7}.footer-column{display:flex;flex-direction:column;align-items:flex-start;gap:.45rem}.footer-column h3{margin-bottom:.15rem;color:#fff;font-size:.45rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase}.footer-column a,.footer-column span{color:#B1C9EF;font-size:.47rem;font-weight:600;text-decoration:none;transition:color .18s ease}.footer-column a:hover{color:#fff}.city-government-bar{border-top:1px solid rgba(255,255,255,.09);border-bottom:1px solid rgba(255,255,255,.09);background:#1F334F}.city-government-inner{width:min(100%,1160px);margin:0 auto;padding:.7rem 1rem;display:flex;align-items:center;justify-content:space-between;gap:1rem}.government-identity{display:flex;align-items:center;gap:.4rem;color:#D5DEEF;font-size:.43rem;font-weight:700}.government-line{width:3px;height:1rem;border-radius:2px;background:#638ECB}.government-separator{color:#638ECB}.government-message{color:#8AAEE0;font-size:.41rem;font-weight:600}.city-footer-bottom{width:min(100%,1160px);margin:0 auto;padding:.72rem 1rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;color:#8AAEE0;font-size:.4rem}
+
+@media (max-width:1050px){.hero-grid{grid-template-columns:1fr;gap:2rem}.hero-visual{max-width:320px}.game-container{grid-template-columns:1fr}.game-side-column{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:2rem}.city-footer-main{grid-template-columns:1.4fr 1.2fr .8fr}}
+@media (max-width:760px){.game-hero{padding:5.5rem 1rem 3rem}.hero-copy h1{font-size:3.2rem}.hero-actions{flex-direction:column;align-items:stretch}.hero-primary,.hero-secondary{width:100%}.hero-visual{max-width:280px}.progress-inner{align-items:stretch;flex-direction:column}.stat-group{justify-content:space-between}.game-container{padding:2rem 1rem 3rem}.daily-challenge{grid-template-columns:1fr}.daily-action{align-items:stretch;width:100%}.challenge-ring{margin:0 auto}.game-mode-grid{grid-template-columns:1fr}.game-side-column{grid-template-columns:1fr}.city-footer-main{grid-template-columns:1fr 1fr;padding:2rem 1rem 1.4rem}.footer-brand{grid-column:1/-1}.city-government-inner{align-items:flex-start;flex-direction:column}.city-footer-bottom{align-items:flex-start;flex-direction:column}}
+@media (max-width:500px){.hero-copy h1{font-size:2.65rem}.hero-orbit-label{display:none}.game-stat{min-width:auto}.stat-group{gap:.8rem}.stat-separator{height:1.5rem}.city-footer-main{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 </style>

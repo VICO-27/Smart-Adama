@@ -1,28 +1,22 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute, RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useTheme } from '@/composables/useTheme'
 import { authApi } from '@/api/auth'
 import SaInput  from '@/components/ui/SaInput.vue'
 import SaButton from '@/components/ui/SaButton.vue'
-import { useI18n } from 'vue-i18n'
 
 const auth   = useAuthStore()
-const { themePreference, setTheme, initializeTheme } = useTheme()
+const { themePreference, setTheme, initializeTheme, handleSystemThemeChange } = useTheme()
 const router = useRouter()
-const { t } = useI18n()
+const route  = useRoute()
 
 // Modes and flows
 type Mode = 'login' | 'register'
 type Flow = 'phone' | 'email' | 'forgot_pin_phone' | 'forgot_pin_code' | 'forgot_pin_reset' | 'help_center'
 
-// Use the mode from the store
-const mode = computed({
-  get: () => auth.authModalMode,
-  set: (val: 'login' | 'register') => auth.authModalMode = val
-})
-
+const mode = ref<Mode>((route.query.mode as Mode) || 'login')
 const flow = ref<Flow>('phone')
 
 const form = reactive({
@@ -73,9 +67,8 @@ async function submitAuth() {
       }
     }
     
-    // Success - close modal and redirect to intended or dashboard
-    const redirect = auth.authRedirectUrl || '/dashboard'
-    auth.closeAuthModal()
+    // Success - redirect to intended or dashboard
+    const redirect = route.query.redirect as string || '/dashboard'
     router.push(redirect)
   } catch (e) {
     // Errors handled by auth store
@@ -95,7 +88,7 @@ async function submitVerifyPhone() {
       flow.value = 'forgot_pin_code'
     }
   } catch (e: any) {
-    recoveryError.value = e.userMessage || t('auth.err_verify_phone')
+    recoveryError.value = e.userMessage || 'Could not verify phone number.'
   } finally {
     recoveryLoading.value = false
   }
@@ -109,7 +102,7 @@ async function submitVerifyCode() {
     form.signature = data.signature
     flow.value = 'forgot_pin_reset'
   } catch (e: any) {
-    recoveryError.value = e.userMessage || t('auth.err_verify_code')
+    recoveryError.value = e.userMessage || 'Invalid reset code.'
   } finally {
     recoveryLoading.value = false
   }
@@ -130,9 +123,9 @@ async function submitResetPin() {
     form.pinConfirm = ''
     mode.value = 'login'
     flow.value = 'phone'
-    auth.error = t('auth.pin_reset_success')
+    auth.error = 'Your PIN has been reset successfully. You can now sign in with your new PIN.'
   } catch (e: any) {
-    recoveryError.value = e.userMessage || t('auth.err_reset_pin')
+    recoveryError.value = e.userMessage || 'Could not reset PIN.'
   } finally {
     recoveryLoading.value = false
   }
@@ -157,8 +150,8 @@ function formatPin(e: Event, field: 'pin' | 'pinConfirm' | 'resetCode') {
 
 onMounted(() => {
   initializeTheme()
-  if (auth.authRedirectUrl) {
-    auth.error = t('auth.err_must_signin')
+  if (route.query.redirect) {
+    auth.error = 'You must sign in to access that page.'
   }
 })
 </script>
@@ -170,19 +163,19 @@ onMounted(() => {
     <!-- Wider Card Container with darker blue #273C5B color -->
     <div class="w-full max-w-md rounded-2xl shadow-2xl p-5 sm:p-6 text-white relative border border-white/10" style="background-color: #273C5B;">
       
-      <button @click="auth.closeAuthModal()" class="absolute top-4 right-4 text-blue-200 hover:text-white transition-colors bg-white/10 rounded-full p-1" title="Close">
+      <RouterLink to="/" class="absolute top-4 right-4 text-blue-200 hover:text-white transition-colors bg-white/10 rounded-full p-1" title="Close">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-      </button>
+      </RouterLink>
 
       <div class="flex flex-col items-center justify-center mb-6">
         <img src="/logo.png" alt="Smart Adama Logo" class="w-12 h-12 object-contain mb-2 drop-shadow-md" />
         <h1 class="text-xl font-bold tracking-tight text-white">
           <template v-if="flow === 'phone' || flow === 'email'">
-            {{ mode === 'login' ? $t('auth.welcome_back') : $t('auth.create_account') }}
+            {{ mode === 'login' ? 'Welcome back' : 'Create an account' }}
           </template>
-          <template v-else-if="flow === 'forgot_pin_phone' || flow === 'forgot_pin_code'">{{ $t('auth.reset_pin_title') }}</template>
-          <template v-else-if="flow === 'forgot_pin_reset'">{{ $t('auth.create_new_pin') }}</template>
-          <template v-else-if="flow === 'help_center'">{{ $t('auth.account_recovery') }}</template>
+          <template v-else-if="flow === 'forgot_pin_phone' || flow === 'forgot_pin_code'">Reset your PIN</template>
+          <template v-else-if="flow === 'forgot_pin_reset'">Create a new PIN</template>
+          <template v-else-if="flow === 'help_center'">Account Recovery</template>
         </h1>
       </div>
 
@@ -198,9 +191,9 @@ onMounted(() => {
 
       <!-- ================= FORGOT PIN: PHONE ================= -->
       <form v-if="flow === 'forgot_pin_phone'" @submit.prevent="submitVerifyPhone" novalidate class="flex flex-col gap-4">
-        <p class="text-sm text-blue-100 mb-2">{{ $t('auth.forgot_pin_desc') }}</p>
+        <p class="text-sm text-blue-100 mb-2">Enter the phone number associated with your Smart Adama account.</p>
         <div>
-          <label class="block text-sm font-semibold text-white mb-1.5">{{ $t('auth.phone_number') }}</label>
+          <label class="block text-sm font-semibold text-white mb-1.5">Phone number</label>
           <SaInput
             v-model="form.phone"
             type="tel"
@@ -209,19 +202,19 @@ onMounted(() => {
           />
         </div>
         <SaButton type="submit" :loading="recoveryLoading" class="w-full justify-center font-bold" style="background-color: #ffffff; color: #1e293b;">
-          {{ $t('auth.continue') }}
+          Continue
         </SaButton>
-        <button type="button" @click="goBackToAuth" class="text-sm text-blue-200 hover:text-white font-medium">{{ $t('auth.back_to_signin') }}</button>
+        <button type="button" @click="goBackToAuth" class="text-sm text-blue-200 hover:text-white font-medium transition-colors">← Back to sign in</button>
       </form>
 
       <!-- ================= FORGOT PIN: CODE ================= -->
       <form v-else-if="flow === 'forgot_pin_code'" @submit.prevent="submitVerifyCode" novalidate class="flex flex-col gap-4">
         <div class="text-sm text-blue-100 space-y-1 bg-black/10 p-3 rounded-lg mb-2">
-          <p>{{ $t('auth.reset_code_sent') }}</p>
-          <p class="font-bold text-white text-base">{{ maskedEmail }}</p>
+          <p>We've sent a reset code to:</p>
+          <p class="font-bold text-base text-white">{{ maskedEmail }}</p>
         </div>
         <div>
-          <label class="block text-sm font-semibold text-white mb-1.5">{{ $t('auth.reset_code') }}</label>
+          <label class="block text-sm font-semibold text-white mb-1.5">Reset Code</label>
           <SaInput
             v-model="form.resetCode"
             type="text"
@@ -233,16 +226,16 @@ onMounted(() => {
           />
         </div>
         <SaButton type="submit" :loading="recoveryLoading" class="w-full justify-center font-bold" style="background-color: #ffffff; color: #1e293b;">
-          {{ $t('auth.verify_code') }}
+          Verify Code
         </SaButton>
-        <button type="button" @click="flow = 'forgot_pin_phone'" class="text-sm text-blue-200 hover:text-white font-medium">← {{ $t('auth.back') }}</button>
+        <button type="button" @click="flow = 'forgot_pin_phone'" class="text-sm text-blue-200 hover:text-white font-medium">← Back</button>
       </form>
 
       <!-- ================= FORGOT PIN: RESET ================= -->
       <form v-else-if="flow === 'forgot_pin_reset'" @submit.prevent="submitResetPin" novalidate class="flex flex-col gap-4">
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block text-sm font-semibold text-white mb-1.5">{{ $t('auth.new_pin') }}</label>
+            <label class="block text-sm font-semibold text-white mb-1.5">New PIN</label>
             <SaInput
               v-model="form.pin"
               type="password"
@@ -254,7 +247,7 @@ onMounted(() => {
             />
           </div>
           <div>
-            <label class="block text-sm font-semibold text-white mb-1.5">{{ $t('auth.confirm_pin') }}</label>
+            <label class="block text-sm font-semibold text-white mb-1.5">Confirm PIN</label>
             <SaInput
               v-model="form.pinConfirm"
               type="password"
@@ -267,18 +260,18 @@ onMounted(() => {
           </div>
         </div>
         <SaButton type="submit" :loading="recoveryLoading" class="w-full justify-center font-bold mt-2" style="background-color: #ffffff; color: #1e293b;">
-          {{ $t('auth.reset_pin_btn') }}
+          Reset PIN
         </SaButton>
       </form>
 
       <form v-else-if="flow === 'help_center'" class="flex flex-col gap-4 text-center">
         <div class="w-12 h-12 mx-auto bg-white/10 rounded-full flex items-center justify-center text-xl">🛡️</div>
-        <p class="text-white text-sm font-bold">{{ $t('auth.manual_reset_req') }}</p>
-        <p class="text-sm text-blue-100">{{ $t('auth.manual_reset_desc') }}</p>
+        <p class="text-white text-sm font-bold">Manual Reset Required</p>
+        <p class="text-sm text-blue-100">You didn't add a recovery email to your account, so our Help Center will guide you through account recovery.</p>
         <a href="#" class="w-full inline-flex justify-center items-center px-4 py-2.5 font-bold rounded-lg shadow-sm" style="background-color: #ffffff; color: #1e293b;">
-          {{ $t('auth.visit_help_center') }}
+          Visit Help Center
         </a>
-        <button type="button" @click="goBackToAuth" class="text-sm text-blue-200 hover:text-white font-medium">{{ $t('auth.back_to_signin') }}</button>
+        <button type="button" @click="goBackToAuth" class="text-sm text-blue-200 hover:text-white font-medium transition-colors">← Back to sign in</button>
       </form>
 
       <!-- ================= MAIN AUTH FLOWS ================= -->
@@ -287,10 +280,10 @@ onMounted(() => {
         <form v-if="flow === 'phone'" @submit.prevent="submitAuth" novalidate class="flex flex-col gap-4">
           
           <div v-if="mode === 'register'">
-            <label class="block text-sm font-semibold text-white mb-1.5">{{ $t('auth.full_name') }}</label>
+            <label class="block text-sm font-semibold text-white mb-1.5">Full name</label>
             <SaInput
               v-model="form.name"
-              :placeholder="$t('auth.enter_full_name')"
+              placeholder="Enter your full name"
               autocomplete="name"
               :error="auth.fieldErrors?.name"
               required
@@ -298,7 +291,7 @@ onMounted(() => {
           </div>
 
           <div>
-            <label class="block text-sm font-semibold text-white mb-1.5">{{ $t('auth.phone_number') }}</label>
+            <label class="block text-sm font-semibold text-white mb-1.5">Phone number</label>
             <SaInput
               v-model="form.phone"
               type="tel"
@@ -312,7 +305,7 @@ onMounted(() => {
           <!-- Side-by-side PINs for Register to save height, Full width for Login -->
           <div :class="mode === 'register' ? 'grid grid-cols-2 gap-3' : ''">
             <div>
-              <label class="block text-sm font-semibold text-white mb-1.5">{{ mode === 'register' ? $t('auth.create_pin') : $t('auth.six_digit_pin') }}</label>
+              <label class="block text-sm font-semibold text-white mb-1.5">{{ mode === 'register' ? 'Create PIN' : '6-digit PIN' }}</label>
               <SaInput
                 v-model="form.pin"
                 type="password"
@@ -327,7 +320,7 @@ onMounted(() => {
             </div>
 
             <div v-if="mode === 'register'">
-              <label class="block text-sm font-semibold text-white mb-1.5">{{ $t('auth.confirm_pin') }}</label>
+              <label class="block text-sm font-semibold text-white mb-1.5">Confirm PIN</label>
               <SaInput
                 v-model="form.pinConfirm"
                 type="password"
@@ -342,34 +335,33 @@ onMounted(() => {
           </div>
 
           <div v-if="mode === 'register'">
-            <label class="block text-sm font-semibold text-white mb-1.5">{{ $t('auth.recovery_email') }}</label>
+            <label class="block text-sm font-semibold text-white mb-1.5">Recovery email (Optional)</label>
             <SaInput
               v-model="form.recoveryEmail"
               type="email"
-              :placeholder="$t('auth.for_pin_resets')"
+              placeholder="For PIN resets"
               :error="auth.fieldErrors?.email"
             />
           </div>
 
           <div v-if="mode === 'login'" class="flex items-center justify-end text-sm -mt-2">
             <button type="button" @click="flow = 'forgot_pin_phone'" class="text-blue-200 hover:text-white font-medium transition-colors">
-              {{ $t('auth.forgot_pin') }}
+              Forgot PIN?
             </button>
           </div>
 
-          <!-- Added hardcoded inline style to FORCE the text color to be dark on the white button -->
           <SaButton type="submit" :loading="auth.loading" class="w-full justify-center font-bold text-lg rounded-xl mt-1" style="background-color: #ffffff; color: #1e293b;">
-            {{ mode === 'register' ? $t('auth.create_account_btn') : $t('auth.sign_in') }}
+            {{ mode === 'register' ? 'Create Account' : 'Sign In' }}
           </SaButton>
         </form>
 
         <!-- EMAIL FLOW (ALTERNATIVE) -->
         <form v-else-if="flow === 'email'" @submit.prevent="submitAuth" novalidate class="flex flex-col gap-4">
           <div v-if="mode === 'register'">
-            <label class="block text-sm font-semibold text-white mb-1.5">{{ $t('auth.full_name') }}</label>
+            <label class="block text-sm font-semibold text-white mb-1.5">Full name</label>
             <SaInput
               v-model="form.name"
-              :placeholder="$t('auth.enter_full_name')"
+              placeholder="Enter your full name"
               autocomplete="name"
               :error="auth.fieldErrors?.name"
               required
@@ -377,7 +369,7 @@ onMounted(() => {
           </div>
 
           <div>
-            <label class="block text-sm font-semibold text-white mb-1.5">{{ $t('auth.email') }}</label>
+            <label class="block text-sm font-semibold text-white mb-1.5">Email</label>
             <SaInput
               v-model="form.email"
               type="email"
@@ -389,7 +381,7 @@ onMounted(() => {
           </div>
           
           <div>
-            <label class="block text-sm font-semibold text-white mb-1.5">{{ $t('auth.password') }}</label>
+            <label class="block text-sm font-semibold text-white mb-1.5">Password</label>
             <SaInput
               v-model="form.password"
               type="password"
@@ -402,20 +394,19 @@ onMounted(() => {
 
           <div v-if="mode === 'login'" class="flex items-center justify-end text-sm -mt-2">
             <button type="button" class="text-blue-200/50 cursor-not-allowed font-medium" title="Not available in alternative flow">
-              {{ $t('auth.forgot_password') }}
+              Forgot password?
             </button>
           </div>
 
-          <!-- Added hardcoded inline style here too -->
           <SaButton type="submit" :loading="auth.loading" class="w-full justify-center font-bold text-lg rounded-xl mt-1" style="background-color: #ffffff; color: #1e293b;">
-            {{ mode === 'register' ? $t('auth.register') : $t('auth.sign_in') }}
+            {{ mode === 'register' ? 'Register' : 'Sign In' }}
           </SaButton>
         </form>
 
         <!-- DIVIDER -->
         <div class="relative flex items-center py-4">
           <div class="flex-grow border-t border-white/20"></div>
-          <span class="flex-shrink-0 mx-4 text-xs font-semibold text-white/70 uppercase tracking-wider">{{ $t('auth.or') }}</span>
+          <span class="flex-shrink-0 mx-4 text-xs font-semibold uppercase tracking-wider text-white/70">OR</span>
           <div class="flex-grow border-t border-white/20"></div>
         </div>
         
@@ -424,15 +415,15 @@ onMounted(() => {
           <!-- Main alternatives inline to save space -->
           <div class="grid grid-cols-2 gap-2 mb-1">
             <button v-if="flow === 'phone'" @click="flow = 'email'" type="button" class="w-full flex items-center justify-center gap-2 bg-white/10 border border-white/20 text-xs font-semibold text-white px-2 py-2.5 rounded-lg hover:bg-white/20 transition-colors">
-              {{ $t('auth.email_login') }}
+              📧 Email Login
             </button>
             <button v-if="flow === 'email'" @click="flow = 'phone'" type="button" class="w-full flex items-center justify-center gap-2 bg-black/20 border border-black/30 text-xs font-semibold text-white px-2 py-2.5 rounded-lg hover:bg-black/40 transition-colors">
-              {{ $t('auth.phone_login') }}
+              📱 Phone Login
             </button>
 
             <!-- Socials bundled into the grid -->
             <div class="flex justify-center items-center gap-2">
-              <button @click="loginWith('google')" type="button" title="Google" class="w-10 h-10 flex items-center justify-center bg-white/10 border border-white/20 rounded-full hover:bg-white/20 transition-colors shadow-sm active:scale-95">
+              <button @click="loginWith('google')" type="button" title="Google" class="w-10 h-10 flex items-center justify-center bg-white border border-gray-200 rounded-full hover:bg-gray-100 transition-colors shadow-sm active:scale-95">
                 <svg class="w-5 h-5" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                   <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
@@ -441,14 +432,14 @@ onMounted(() => {
                 </svg>
               </button>
               
-              <button @click="loginWith('facebook')" type="button" title="Facebook" class="w-10 h-10 flex items-center justify-center bg-white/10 border border-white/20 rounded-full hover:bg-white/20 transition-colors shadow-sm active:scale-95">
+              <button @click="loginWith('facebook')" type="button" title="Facebook" class="w-10 h-10 flex items-center justify-center bg-white border border-gray-200 rounded-full hover:bg-gray-100 transition-colors shadow-sm active:scale-95">
                 <svg class="w-5 h-5 text-[#1877F2]" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.469h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.469h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
                 </svg>
               </button>
 
-              <button @click="loginWith('apple')" type="button" title="Apple" class="w-10 h-10 flex items-center justify-center bg-white/10 border border-white/20 rounded-full hover:bg-white/20 transition-colors shadow-sm active:scale-95 text-white">
-                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 384 512">
+              <button @click="loginWith('apple')" type="button" title="Apple" class="w-10 h-10 flex items-center justify-center bg-white border border-gray-200 rounded-full hover:bg-gray-100 transition-colors shadow-sm active:scale-95">
+                <svg class="w-5 h-5 text-black" fill="currentColor" viewBox="0 0 384 512">
                   <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/>
                 </svg>
               </button>
@@ -460,15 +451,14 @@ onMounted(() => {
       <!-- Toggle between Login and Register -->
       <p v-if="flow === 'phone' || flow === 'email'" class="mt-6 text-center text-sm text-blue-100">
         <template v-if="mode === 'login'">
-          {{ $t('auth.new_user') }}
-          <button @click="toggleMode" type="button" class="font-bold text-white hover:underline ml-1">{{ $t('auth.sign_up_here') }}</button>
+          New user?
+          <button @click="toggleMode" type="button" class="font-bold text-white hover:underline ml-1">Sign up here</button>
         </template>
         <template v-else>
-          {{ $t('auth.already_have_account') }}
-          <button @click="toggleMode" type="button" class="font-bold text-white hover:underline ml-1">{{ $t('auth.sign_in_here') }}</button>
+          Already have an account?
+          <button @click="toggleMode" type="button" class="font-bold text-white hover:underline ml-1">Sign in here</button>
         </template>
       </p>
-
     </div>
   </div>
 </template>

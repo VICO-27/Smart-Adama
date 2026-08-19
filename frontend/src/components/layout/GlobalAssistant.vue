@@ -1,530 +1,2558 @@
 <template>
-  <div class="z-[100] font-sans">
-    
-    <!-- THE ASSISTANCE PANEL -->
-    <Transition name="panel">
-      <div 
-        v-if="isOpen" 
-        class="fixed z-[100] w-[calc(100vw-3rem)] md:w-[400px] h-[600px] max-h-[calc(100vh-8rem)] bg-white/95 backdrop-blur-2xl border border-brand-200 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] rounded-[2rem] overflow-hidden flex flex-col"
-        :style="{
-          top: pos.y > windowHeight / 2 ? 'auto' : `${pos.y + 70}px`,
-          bottom: pos.y > windowHeight / 2 ? `${windowHeight - pos.y + 10}px` : 'auto',
-          left: pos.x < windowWidth / 2 ? '24px' : 'auto',
-          right: pos.x >= windowWidth / 2 ? '24px' : 'auto',
-          transformOrigin: pos.x < windowWidth / 2 ? (pos.y > windowHeight / 2 ? 'bottom left' : 'top left') : (pos.y > windowHeight / 2 ? 'bottom right' : 'top right')
-        }"
+  <div class="global-assistant" :class="{ 'assistant-open': isOpen }">
+    <!-- =====================================================
+         ASSISTANT PANEL
+    ====================================================== -->
+    <Transition name="assistant-panel">
+      <section
+        v-if="isOpen"
+        ref="panelRef"
+        class="assistant-panel"
+        :class="[
+          `assistant-panel--${panelPlacement}`,
+          { 'assistant-panel--mobile': isMobile }
+        ]"
+        role="dialog"
+        aria-modal="false"
+        aria-label="Smart Adama Assistant"
       >
-        
-        <!-- MODE 1: THE HUB (Default) -->
-        <div v-if="mode === 'hub'" class="flex flex-col h-full">
-          <div class="p-8 pb-4">
-            <div class="w-12 h-12 rounded-2xl bg-brand-50 border border-brand-100 flex items-center justify-center text-xl mb-6 shadow-sm">
-              ✨
+        <!-- HEADER -->
+        <header class="assistant-header">
+          <div class="assistant-header-main">
+            <button
+              v-if="mode !== 'hub'"
+              type="button"
+              class="icon-button"
+              aria-label="Go back"
+              @click="goBack"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
+                <path d="M15 18l-6-6 6-6" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </button>
+
+            <div class="assistant-brand-mark" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65">
+                <circle cx="12" cy="12" r="3" />
+                <circle cx="5.5" cy="7.5" r="1.15" />
+                <circle cx="18.5" cy="7.5" r="1.15" />
+                <circle cx="5.5" cy="16.5" r="1.15" />
+                <circle cx="18.5" cy="16.5" r="1.15" />
+                <path d="M9.5 10 6.5 8.35M14.5 10l3-1.65M9.5 14l-3 1.65M14.5 14l3 1.65" />
+              </svg>
             </div>
-            <h3 class="text-2xl font-display font-bold text-slate-900 mb-2">How can we help?</h3>
-            <p class="text-slate-500 text-sm leading-relaxed">Choose an option below or ask the AI assistant for contextual guidance.</p>
+
+            <div class="assistant-title-wrap">
+              <div class="assistant-title-row">
+                <h2>
+                  {{ mode === 'hub' ? 'Smart Adama' : mode === 'help' ? 'Quick Help' : 'Learning Assistant' }}
+                </h2>
+
+                <span v-if="mode === 'ai'" class="context-badge">
+                  {{ contextLabel }}
+                </span>
+              </div>
+
+              <p v-if="mode === 'hub'">Your guide across the Smart Adama platform.</p>
+              <p v-else-if="mode === 'help'">Useful answers for the page you are viewing.</p>
+              <p v-else>Ask, explore, and continue the conversation.</p>
+            </div>
           </div>
 
-          <div class="flex flex-col px-4 pb-4 gap-2 flex-grow">
-            <button @click="navigateToAbout" class="group flex items-center gap-4 p-4 rounded-2xl hover:bg-brand-50 transition-colors text-left border border-transparent hover:border-brand-100">
-              <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">👨‍💻</div>
-              <div>
-                <h4 class="font-bold text-slate-900 text-sm">Meet the developers</h4>
-                <p class="text-xs text-slate-500 mt-0.5">The story behind Smart Adama.</p>
-              </div>
+          <div class="assistant-header-actions">
+            <button
+              v-if="mode === 'ai' && messages.length"
+              type="button"
+              class="header-action"
+              @click="resetConversation"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                <path d="M4 7h16M9 7v-2h6v2M7 7l1 13h8l1-13M10 11v6M14 11v6" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              New
             </button>
 
-            <button @click="mode = 'help'" class="group flex items-center gap-4 p-4 rounded-2xl hover:bg-brand-50 transition-colors text-left border border-transparent hover:border-brand-100">
-              <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-              </div>
-              <div>
-                <h4 class="font-bold text-slate-900 text-sm">Help & Guidance</h4>
-                <p class="text-xs text-slate-500 mt-0.5">Contextual tips for this page.</p>
-              </div>
+            <button
+              type="button"
+              class="icon-button"
+              aria-label="Close assistant"
+              @click="closeAssistant"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
+                <path d="M6 6l12 12M18 6 6 18" stroke-linecap="round" />
+              </svg>
+            </button>
+          </div>
+        </header>
+
+        <!-- ===================================================
+             HUB
+        ==================================================== -->
+        <div v-if="mode === 'hub'" class="assistant-body hub-body">
+          <div class="hub-hero">
+            <div class="hub-visual" aria-hidden="true">
+              <span class="hub-orbit hub-orbit--one"></span>
+              <span class="hub-orbit hub-orbit--two"></span>
+              <span class="hub-core">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                  <circle cx="12" cy="12" r="3" />
+                  <path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.64 5.64l2.83 2.83M15.53 15.53l2.83 2.83M18.36 5.64l-2.83 2.83M8.47 15.53l-2.83 2.83" />
+                </svg>
+              </span>
+            </div>
+
+            <div class="hub-copy">
+              <span class="section-kicker">Smart Adama Assistant</span>
+              <h3>What do you need help with?</h3>
+              <p>
+                Move between guidance, help, and a full AI conversation without leaving the page.
+              </p>
+            </div>
+          </div>
+
+          <div class="hub-actions">
+            <button type="button" class="hub-option" @click="navigateToAbout">
+              <span class="option-icon option-icon--blue">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                  <circle cx="12" cy="8" r="3.25" />
+                  <path d="M5.5 20a6.5 6.5 0 0 1 13 0" />
+                </svg>
+              </span>
+              <span class="option-copy">
+                <strong>Meet the developers</strong>
+                <span>See the story behind Smart Adama.</span>
+              </span>
+              <svg class="option-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                <path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
             </button>
 
-            <button @click="mode = 'ai'" class="group flex items-center gap-4 p-4 rounded-2xl bg-slate-900 text-white hover:bg-slate-800 transition-colors text-left mt-2 shadow-md hover:shadow-xl hover:-translate-y-0.5">
-              <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">🤖</div>
-              <div>
-                <h4 class="font-bold text-white text-sm">Ask AI Assistant</h4>
-                <p class="text-xs text-slate-300 mt-0.5">Smart, context-aware answers.</p>
+            <button type="button" class="hub-option" @click="mode = 'help'">
+              <span class="option-icon option-icon--soft">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                  <circle cx="12" cy="12" r="8.75" />
+                  <path d="M9.8 9a2.35 2.35 0 1 1 4.2 1.45c-.7.9-2 1.1-2 2.55" stroke-linecap="round" />
+                  <path d="M12 16.5h.01" stroke-linecap="round" />
+                </svg>
+              </span>
+              <span class="option-copy">
+                <strong>Quick help</strong>
+                <span>Get answers based on this page.</span>
+              </span>
+              <svg class="option-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                <path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </button>
+
+            <button type="button" class="ai-entry" @click="openAi">
+              <span class="ai-entry-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                  <circle cx="12" cy="12" r="3" />
+                  <circle cx="6" cy="7" r="1.1" />
+                  <circle cx="18" cy="7" r="1.1" />
+                  <circle cx="6" cy="17" r="1.1" />
+                  <circle cx="18" cy="17" r="1.1" />
+                  <path d="M9.5 10 7 8.7M14.5 10 17 8.7M9.5 14 7 15.3M14.5 14l2.5 1.3" />
+                </svg>
+              </span>
+              <span class="ai-entry-copy">
+                <strong>Open learning assistant</strong>
+                <span>Ask follow-up questions and keep the conversation going.</span>
+              </span>
+              <span class="ai-entry-key">⌘</span>
+            </button>
+          </div>
+
+          <!-- THEME TOGGLES -->
+          <div class="theme-switcher" aria-label="Theme switcher">
+            <button 
+              @click="setTheme('light')" 
+              class="theme-btn" 
+              :class="{ 'theme-btn--active': themePreference === 'light' }"
+            >Light</button>
+            <button 
+              @click="setTheme('dark')" 
+              class="theme-btn" 
+              :class="{ 'theme-btn--active': themePreference === 'dark' }"
+            >Dark</button>
+            <button 
+              @click="setTheme('system')" 
+              class="theme-btn" 
+              :class="{ 'theme-btn--active': themePreference === 'system' }"
+            >System</button>
+          </div>
+        </div>
+
+        <!-- ===================================================
+             HELP
+        ==================================================== -->
+        <div v-else-if="mode === 'help'" class="assistant-body help-body">
+          <div class="help-intro">
+            <span class="section-kicker">Relevant to this page</span>
+            <h3>Quick answers before you ask AI.</h3>
+          </div>
+
+          <div class="faq-list">
+            <details
+              v-for="(item, idx) in contextualFaqs"
+              :key="idx"
+              class="faq-item"
+            >
+              <summary>
+                <span>{{ item.q }}</span>
+                <span class="faq-plus">+</span>
+              </summary>
+              <div class="faq-answer">
+                {{ item.a }}
               </div>
+            </details>
+          </div>
+
+          <div class="help-footer">
+            <span>Still need a deeper answer?</span>
+            <button type="button" class="help-ai-button" @click="openAi">
+              Ask the learning assistant
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
             </button>
           </div>
         </div>
 
-        <!-- MODE 2: CONTEXTUAL HELP -->
-        <div v-else-if="mode === 'help'" class="flex flex-col h-full bg-slate-50/50">
-          <div class="px-6 py-4 flex items-center gap-3 border-b border-brand-100 bg-white">
-            <button @click="mode = 'hub'" class="w-8 h-8 rounded-full flex items-center justify-center hover:bg-brand-50 text-slate-500 transition-colors">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"></path></svg>
-            </button>
-            <h3 class="font-bold text-slate-900">Quick Help</h3>
-          </div>
-          
-          <div class="flex-grow overflow-y-auto p-6 space-y-6">
-            <div>
-              <span class="text-[10px] font-bold tracking-widest uppercase text-brand-500 mb-3 block">Relevant to your current page</span>
-              <div class="space-y-3">
-                <details v-for="(item, idx) in contextualFaqs" :key="idx" class="group bg-white rounded-xl border border-brand-100 shadow-sm overflow-hidden open:border-brand-300 transition-colors">
-                  <summary class="px-4 py-3 font-bold text-sm text-slate-900 cursor-pointer list-none flex justify-between items-center group-open:bg-brand-50/50 transition-colors select-none">
-                    {{ item.q }}
-                    <span class="text-brand-300 group-open:rotate-45 transition-transform">+</span>
-                  </summary>
-                  <div class="px-4 pb-4 pt-1 text-sm text-slate-500 leading-relaxed border-t border-brand-50">
-                    {{ item.a }}
-                  </div>
-                </details>
+        <!-- ===================================================
+             AI CHAT
+        ==================================================== -->
+        <div v-else class="assistant-body chat-body">
+          <div ref="chatContainer" class="chat-scroll">
+            <div v-if="messages.length === 0" class="chat-empty">
+              <div class="chat-empty-mark" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <circle cx="12" cy="12" r="3" />
+                  <circle cx="5.5" cy="7.5" r="1.1" />
+                  <circle cx="18.5" cy="7.5" r="1.1" />
+                  <circle cx="5.5" cy="16.5" r="1.1" />
+                  <circle cx="18.5" cy="16.5" r="1.1" />
+                  <path d="m9.5 10-3-1.6M14.5 10l3-1.6M9.5 14l-3 1.6M14.5 14l3 1.6" />
+                </svg>
               </div>
-            </div>
-          </div>
 
-          <div class="p-6 bg-white border-t border-brand-100 mt-auto">
-            <p class="text-xs text-slate-500 mb-3 font-medium text-center">Didn't find what you need?</p>
-            <button @click="mode = 'ai'" class="w-full py-3 rounded-xl bg-brand-100 text-brand-600 hover:bg-brand-200 hover:text-brand-700 font-bold text-sm transition-colors flex justify-center items-center gap-2">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-              Ask AI about this page
-            </button>
-          </div>
-        </div>
+              <span class="section-kicker">Ready when you are</span>
+              <h3>What would you like to understand?</h3>
+              <p>
+                I can explain concepts, summarize content, guide you through the platform, or answer a follow-up question.
+              </p>
 
-        <!-- MODE 3: AI ASSISTANT -->
-        <div v-else-if="mode === 'ai'" class="flex flex-col h-full bg-white">
-          <div class="px-6 py-4 flex items-center justify-between border-b border-brand-100 bg-white/80 backdrop-blur-md sticky top-0 z-10">
-            <div class="flex items-center gap-3">
-              <button @click="mode = 'hub'" class="w-8 h-8 rounded-full flex items-center justify-center hover:bg-brand-50 text-slate-500 transition-colors">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"></path></svg>
-              </button>
-              <div>
-                <h3 class="font-bold text-slate-900 leading-tight">AI Assistant</h3>
-                <p class="text-[10px] text-brand-500 font-mono tracking-widest uppercase flex items-center gap-1">
-                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Context Aware
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Chat History -->
-          <div ref="chatContainer" class="flex-grow overflow-y-auto p-6 space-y-6 bg-slate-50/30">
-            
-            <div v-if="messages.length === 0" class="flex flex-col items-center justify-center h-full text-center opacity-80 mt-10">
-              <div class="w-16 h-16 rounded-3xl bg-brand-50 flex items-center justify-center text-3xl mb-4 border border-brand-100">🤖</div>
-              <p class="text-sm font-bold text-slate-900 mb-1">I'm here whenever you get stuck.</p>
-              <p class="text-xs text-slate-500 mb-6 max-w-[200px]">Ask me anything about the content on your screen or Smart Adama.</p>
-              
-              <div class="flex flex-col gap-2 w-full max-w-[250px]">
-                <button v-for="prompt in suggestedPrompts" :key="prompt" @click="sendSuggested(prompt)" class="px-4 py-2.5 rounded-xl border border-brand-200 bg-white text-xs font-medium text-brand-600 hover:bg-brand-50 hover:border-brand-300 transition-all text-left shadow-sm">
-                  "{{ prompt }}"
+              <div class="suggestion-grid">
+                <button
+                  v-for="prompt in suggestedPrompts"
+                  :key="prompt"
+                  type="button"
+                  class="suggestion-chip"
+                  @click="sendSuggested(prompt)"
+                >
+                  {{ prompt }}
                 </button>
               </div>
             </div>
 
-            <div v-for="(msg, index) in messages" :key="index" :class="['flex w-full', msg.role === 'user' ? 'justify-end' : 'justify-start']">
-              <div 
-                :class="[
-                  'max-w-[85%] rounded-2xl px-5 py-3.5 text-sm leading-relaxed shadow-sm',
-                  msg.role === 'user' ? 'bg-slate-900 text-white rounded-br-sm whitespace-pre-wrap' : 'bg-white border border-brand-100 text-slate-800 rounded-bl-sm ai-formatted-response'
-                ]"
-                v-html="msg.role === 'ai' ? parseMarkdown(msg.content) : msg.content"
+            <div
+              v-for="(msg, index) in messages"
+              :key="index"
+              class="message-row"
+              :class="msg.role === 'user' ? 'message-row--user' : 'message-row--assistant'"
+            >
+              <div
+                v-if="msg.role === 'ai'"
+                class="message-avatar"
+                aria-hidden="true"
               >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.55">
+                  <circle cx="12" cy="12" r="3" />
+                  <path d="M12 3v4M12 17v4M3 12h4M17 12h4" />
+                </svg>
               </div>
+
+              <article
+                class="message-bubble"
+                :class="msg.role === 'user' ? 'message-bubble--user' : 'message-bubble--assistant'"
+              >
+                <div
+                  v-if="msg.role === 'ai'"
+                  class="message-content ai-formatted-response"
+                  v-html="parseMarkdown(msg.content)"
+                ></div>
+                <div
+                  v-else
+                  class="message-content message-content--user"
+                >
+                  {{ msg.content }}
+                </div>
+
+                <div
+                  v-if="msg.role === 'ai'"
+                  class="message-actions"
+                >
+                  <button type="button" @click="copyMessage(msg.content)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                      <rect x="9" y="9" width="11" height="11" rx="2" />
+                      <path d="M6 15H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1" />
+                    </svg>
+                    {{ copiedMessageIndex === index ? 'Copied' : 'Copy' }}
+                  </button>
+                </div>
+              </article>
             </div>
 
-            <!-- Thinking State -->
-            <div v-if="isThinking" class="flex justify-start">
-              <div class="bg-white border border-brand-100 rounded-2xl rounded-bl-sm px-5 py-4 shadow-sm flex items-center gap-2">
-                <div class="w-2 h-2 bg-brand-300 rounded-full animate-bounce"></div>
-                <div class="w-2 h-2 bg-brand-300 rounded-full animate-bounce" style="animation-delay: 0.15s"></div>
-                <div class="w-2 h-2 bg-brand-300 rounded-full animate-bounce" style="animation-delay: 0.3s"></div>
+            <div v-if="isThinking" class="message-row message-row--assistant">
+              <div class="message-avatar" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.55">
+                  <circle cx="12" cy="12" r="3" />
+                  <path d="M12 3v4M12 17v4M3 12h4M17 12h4" />
+                </svg>
+              </div>
+
+              <div class="thinking-bubble">
+                <span></span>
+                <span></span>
+                <span></span>
+                <em>Thinking</em>
               </div>
             </div>
           </div>
 
-          <!-- Input Area -->
-          <div class="p-4 bg-white border-t border-brand-100">
-            <div class="relative flex items-end bg-brand-50 rounded-2xl border border-brand-200 focus-within:border-brand-400 focus-within:ring-2 focus-within:ring-brand-500/20 transition-all">
-              <textarea 
-                v-model="userInput" 
-                @keydown="handleKeydown"
+          <div class="composer-wrap">
+            <div class="composer-shell">
+              <textarea
+                ref="inputRef"
+                v-model="userInput"
                 rows="1"
-                placeholder="Ask about this page..." 
-                class="w-full bg-transparent border-none focus:ring-0 resize-none max-h-32 min-h-[52px] py-3.5 pl-4 pr-12 text-sm text-slate-900 placeholder:text-slate-400 no-scrollbar"
+                autocomplete="off"
+                :placeholder="isMobile ? 'Ask Smart Adama…' : 'Ask Smart Adama anything…'"
+                @keydown="handleKeydown"
+                @input="autoResizeTextarea"
               ></textarea>
-              <button 
-                @click="sendMessage" 
-                :disabled="!userInput.trim() || isThinking"
-                class="absolute right-2 bottom-2 w-9 h-9 rounded-xl flex items-center justify-center transition-all"
-                :class="userInput.trim() && !isThinking ? 'bg-brand-500 text-white shadow-md hover:bg-brand-600 hover:scale-105' : 'bg-brand-200 text-brand-400 cursor-not-allowed'"
-              >
-                <svg class="w-4 h-4 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
-              </button>
-            </div>
-            <div class="text-center mt-2">
-              <span class="text-[9px] text-slate-400 font-medium tracking-wide">Enter to send • Shift+Enter for new line</span>
+
+              <div class="composer-bottom">
+                <div class="composer-hint">
+                  <span class="composer-context-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                      <circle cx="12" cy="12" r="8.5" />
+                      <path d="M12 8v4l2.5 2" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                  </span>
+                  <span>Enter to send · Shift+Enter for a new line</span>
+                </div>
+
+                <button
+                  type="button"
+                  class="send-button"
+                  :class="{
+                    'send-button--active': userInput.trim() && !isThinking,
+                  }"
+                  :disabled="!userInput.trim() || isThinking"
+                  aria-label="Send message"
+                  @click="sendMessage"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9">
+                    <path d="M4 5.5 20 12 4 18.5l2.2-6.5L4 5.5Z" stroke-linejoin="round" />
+                    <path d="M6.2 12H20" stroke-linecap="round" />
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
         </div>
-
-      </div>
+      </section>
     </Transition>
 
-    <!-- DRAGGABLE FLOATING TOGGLE BUTTON -->
-    <button 
+    <!-- =====================================================
+         FLOATING ASSISTANT BUTTON
+    ====================================================== -->
+    <button
+      ref="toggleButtonRef"
+      type="button"
+      class="assistant-toggle"
+      :class="{
+        'assistant-toggle--open': isOpen,
+        'assistant-toggle--dragging': isDragging,
+      }"
+      :style="toggleStyle"
+      aria-label="Toggle Smart Adama Assistant"
+      :aria-expanded="isOpen"
+      draggable="false"
       @pointerdown.stop.prevent="onPointerDown"
       @pointermove.stop.prevent="onPointerMove"
       @pointerup.stop.prevent="onPointerUp"
       @pointercancel.stop.prevent="onPointerUp"
-      class="fixed z-[100] group w-14 h-14 md:w-16 md:h-16 rounded-full flex items-center justify-center shadow-[0_8px_30px_rgb(0,0,0,0.15)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.25)] focus:outline-none select-none touch-none"
-      :class="[
-        isOpen ? 'bg-slate-900 scale-95' : 'bg-white hover:scale-105',
-        isDragging ? 'cursor-grabbing scale-95 transition-none' : 'cursor-grab transition-all duration-300'
-      ]"
-      :style="{ left: `${pos.x}px`, top: `${pos.y}px` }"
-      aria-label="Toggle Global Assistant"
-      draggable="false"
+      @keydown.enter.prevent="toggleAssistant"
+      @keydown.space.prevent="toggleAssistant"
     >
-      <!-- Subtle Pulse Rings (Only when closed) -->
-      <div v-if="!isOpen && !isDragging" class="absolute inset-0 rounded-full border border-brand-400/50 animate-ping opacity-20 group-hover:opacity-0 transition-opacity pointer-events-none"></div>
-      
-      <!-- Icons -->
-      <div class="relative w-6 h-6 flex items-center justify-center text-xl transition-transform duration-500 pointer-events-none" :class="isOpen ? 'rotate-180 text-white' : 'text-slate-900'">
-        <svg v-if="isOpen" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" draggable="false"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-        <span v-else class="transform group-hover:scale-110 transition-transform block select-none" draggable="false">✨</span>
-      </div>
+      <span v-if="!isOpen" class="toggle-halo" aria-hidden="true"></span>
 
-      <!-- Tooltip -->
-      <div v-if="!isOpen && !isDragging && pos.x > windowWidth / 2" class="absolute right-full mr-4 top-1/2 -translate-y-1/2 px-4 py-2 bg-slate-900 text-white text-xs font-bold rounded-xl opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap shadow-lg pointer-events-none select-none">
-        Need a hand?
-        <div class="absolute right-[-4px] top-1/2 -translate-y-1/2 w-2 h-2 bg-slate-900 rotate-45"></div>
-      </div>
-      <div v-else-if="!isOpen && !isDragging && pos.x < windowWidth / 2" class="absolute left-full ml-4 top-1/2 -translate-y-1/2 px-4 py-2 bg-slate-900 text-white text-xs font-bold rounded-xl opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap shadow-lg pointer-events-none select-none">
-        Need a hand?
-        <div class="absolute left-[-4px] top-1/2 -translate-y-1/2 w-2 h-2 bg-slate-900 rotate-45"></div>
-      </div>
+      <span class="toggle-icon" aria-hidden="true">
+        <svg
+          v-if="!isOpen"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+        >
+          <circle cx="12" cy="12" r="3" />
+          <circle cx="5.5" cy="7.5" r="1.05" />
+          <circle cx="18.5" cy="7.5" r="1.05" />
+          <circle cx="5.5" cy="16.5" r="1.05" />
+          <circle cx="18.5" cy="16.5" r="1.05" />
+          <path d="m9.5 10-3-1.6M14.5 10l3-1.6M9.5 14l-3 1.6M14.5 14l3 1.6" />
+        </svg>
+
+        <svg
+          v-else
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.9"
+        >
+          <path d="M6 6l12 12M18 6 6 18" stroke-linecap="round" />
+        </svg>
+      </span>
+
+      <span
+        v-if="!isOpen && !isDragging && !isMobile"
+        class="toggle-tooltip"
+        :class="pos.x > windowWidth / 2 ? 'toggle-tooltip--left' : 'toggle-tooltip--right'"
+      >
+        Ask Smart Adama
+      </span>
     </button>
-
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, watch, onMounted, onUnmounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
+import { ref, watch, onMounted, onUnmounted, nextTick, computed } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { marked } from 'marked'
+import DOMPurify from 'dompurify'
+import { v4 as uuidv4 } from 'uuid'
+import { aiApi } from '@/api/ai'
+import { useAuthStore } from '@/stores/auth'
+import { useTheme } from '@/composables/useTheme'
+
+// DOMPurify Hook to add target="_blank" to parsed links
+DOMPurify.addHook('afterSanitizeAttributes', (node) => {
+  if (node.tagName === 'A') {
+    node.setAttribute('target', '_blank')
+    node.setAttribute('rel', 'noopener noreferrer')
+  }
+})
+
+const auth = useAuthStore()
+const { themePreference, setTheme } = useTheme()
+
+
+type AssistantMode = 'hub' | 'help' | 'ai'
+type Message = {
+  role: 'user' | 'ai'
+  content: string
+}
+
+
+/* ============================================================
+   ROUTING / AUTH
+============================================================ */
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 
-const isOpen = ref(false)
-const mode = ref<'hub' | 'help' | 'ai'>('hub')
 
-// Configure marked to sanitize HTML and interpret line breaks properly
+/* ============================================================
+   STATE
+============================================================ */
+
+const isOpen = ref(false)
+const mode = ref<AssistantMode>('hub')
+const isThinking = ref(false)
+const userInput = ref('')
+const messages = ref<Message[]>([])
+const copiedMessageIndex = ref<number | null>(null)
+
+const panelRef = ref<HTMLElement | null>(null)
+const inputRef = ref<HTMLTextAreaElement | null>(null)
+const chatContainer = ref<HTMLElement | null>(null)
+const toggleButtonRef = ref<HTMLElement | null>(null)
+
+
+/* ============================================================
+   MARKDOWN
+============================================================ */
+
 marked.setOptions({
   breaks: true,
-  gfm: true
+  gfm: true,
 })
 
-// Helper function to parse markdown securely
+
 const parseMarkdown = (rawText: string) => {
   return marked.parse(rawText) as string
 }
 
-// --- DRAG LOGIC ---
-const windowWidth = ref(window.innerWidth)
-const windowHeight = ref(window.innerHeight)
 
-// Default position (bottom right)
-const pos = ref({ x: window.innerWidth - 88, y: window.innerHeight - 88 })
+/* ============================================================
+   RESPONSIVE / POSITION
+============================================================ */
+
+const windowWidth = ref(
+  typeof window !== 'undefined'
+    ? window.innerWidth
+    : 1280,
+)
+
+const windowHeight = ref(
+  typeof window !== 'undefined'
+    ? window.innerHeight
+    : 800,
+)
+
+const isMobile = computed(() => {
+  return windowWidth.value < 768
+})
+
+const pos = ref({
+  x: Math.max(
+    16,
+    windowWidth.value - 80,
+  ),
+  y: Math.max(
+    16,
+    windowHeight.value - 88,
+  ),
+})
+
 const isDragging = ref(false)
+
 let hasMoved = false
-let startPoint = { x: 0, y: 0 }
-let startPos = { x: 0, y: 0 }
-
-const onPointerDown = (e: PointerEvent) => {
-  hasMoved = false
-  startPoint = { x: e.clientX, y: e.clientY }
-  startPos = { x: pos.value.x, y: pos.value.y }
-  const target = e.currentTarget as HTMLElement
-  target.setPointerCapture(e.pointerId)
+let startPoint = {
+  x: 0,
+  y: 0,
+}
+let startPos = {
+  x: 0,
+  y: 0,
 }
 
-const onPointerMove = (e: PointerEvent) => {
-  if (!e.buttons) return
-  const dx = e.clientX - startPoint.x
-  const dy = e.clientY - startPoint.y
-  
-  if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
-    hasMoved = true
-    isDragging.value = true
-  }
-  
-  if (hasMoved) {
-    let newX = startPos.x + dx
-    let newY = startPos.y + dy
-    // Clamp to screen edges
-    newX = Math.max(16, Math.min(windowWidth.value - 80, newX))
-    newY = Math.max(16, Math.min(windowHeight.value - 80, newY))
-    pos.value = { x: newX, y: newY }
-  }
-}
+const toggleStyle = computed(() => ({
+  left: `${pos.value.x}px`,
+  top: `${pos.value.y}px`,
+}))
 
-const onPointerUp = (e: PointerEvent) => {
-  isDragging.value = false
-  const target = e.currentTarget as HTMLElement
-  target.releasePointerCapture(e.pointerId)
-  
-  if (hasMoved) {
-    // Snap cleanly to the left or right edge of the screen
-    if (pos.value.x < windowWidth.value / 2) {
-      pos.value.x = 24 // snap to left
-    } else {
-      pos.value.x = windowWidth.value - 88 // snap to right
-    }
-  } else {
-    // Treat as click if we didn't drag it
-    isOpen.value = !isOpen.value
-    if (!isOpen.value) mode.value = 'hub'
+const panelPlacement = computed(() => {
+  if (isMobile.value) {
+    return 'mobile'
   }
-  hasMoved = false
-}
 
-const handleResize = () => {
-  windowWidth.value = window.innerWidth
-  windowHeight.value = window.innerHeight
-  // Re-snap on window resize so it doesn't get lost off-screen
-  if (pos.value.x > windowWidth.value / 2) {
-    pos.value.x = windowWidth.value - 88
-  }
-  pos.value.y = Math.min(pos.value.y, windowHeight.value - 88)
-}
+  const horizontal =
+    pos.value.x <
+    windowWidth.value / 2
+      ? 'left'
+      : 'right'
 
-onMounted(() => {
-  window.addEventListener('resize', handleResize)
-})
-onUnmounted(() => {
-  window.removeEventListener('resize', handleResize)
+  const vertical =
+    pos.value.y <
+    windowHeight.value / 2
+      ? 'top'
+      : 'bottom'
+
+  return `${vertical}-${horizontal}`
 })
 
-// --- HUB LOGIC ---
-const navigateToAbout = () => {
-  isOpen.value = false
-  router.push('/about')
-}
 
-// --- HELP LOGIC (Context Aware) ---
+/* ============================================================
+   CONTEXT
+============================================================ */
+
+const contextLabel = computed(() => {
+  const path = route.path
+
+  if (path.includes('/study') || path.includes('/chapter')) {
+    return 'Study'
+  }
+
+  if (path.includes('/dashboard')) {
+    return 'Dashboard'
+  }
+
+  if (path.includes('/profile')) {
+    return 'Profile'
+  }
+
+  if (path.includes('/game')) {
+    return 'Game'
+  }
+
+  return 'Smart Adama'
+})
+
+
 const contextualFaqs = computed(() => {
   const path = route.path
-  
-  if (path.includes('/study') || path.includes('/chapter')) {
+
+  if (
+    path.includes('/study') ||
+    path.includes('/chapter')
+  ) {
     return [
-      { q: 'How does Study Mode work?', a: 'Study mode allows you to interact with the text. You can chat with the AI about specific paragraphs, ask for summaries, and track your reading progress at the bottom of the page.' },
-      { q: 'How do I take a chapter quiz?', a: 'Quizzes are unlocked at the end of each chapter. Pass with a 70% or higher to mark the chapter as complete and earn badges.' },
-      { q: 'Why isn\'t my progress saving?', a: 'Reading progress saves when you click "Finish & Next". To officially complete a chapter, you must pass its quiz.' }
-    ]
-  }
-  
-  if (path.includes('/dashboard')) {
-    return [
-      { q: 'What is the daily streak?', a: 'Your streak increases for every consecutive day you sign in and interact with study materials or quizzes.' },
-      { q: 'How do I earn badges?', a: 'Badges are awarded automatically by the AI system when you achieve high scores on quizzes or maintain long study streaks.' }
+      {
+        q: 'How does Study Mode work?',
+        a: 'Study Mode lets you read the Smart Adama content, track your progress, and ask the assistant about the material you are viewing.',
+      },
+      {
+        q: 'How do chapter quizzes work?',
+        a: 'Chapter quizzes are used to assess your understanding. Your progress and achievement state are updated from the learning system.',
+      },
+      {
+        q: 'Why might my progress not appear immediately?',
+        a: 'Progress is tied to the learning actions recorded by the application. If a change does not appear, refresh the page and confirm that the action was completed successfully.',
+      },
     ]
   }
 
-  // Default Global Fallback
+  if (path.includes('/dashboard')) {
+    return [
+      {
+        q: 'What does my learning progress show?',
+        a: 'The dashboard summarizes your completed chapters, overall progress, quiz performance, learning streak, and achievements.',
+      },
+      {
+        q: 'How do I earn badges?',
+        a: 'Badges are connected to learning milestones such as completing chapters, maintaining consistency, and performing well in assessments.',
+      },
+      {
+        q: 'What should I study next?',
+        a: 'Use the Continue Learning section on the dashboard to return to the next chapter in your learning journey.',
+      },
+    ]
+  }
+
+  if (path.includes('/profile')) {
+    return [
+      {
+        q: 'How do I change my profile picture?',
+        a: 'Open your profile settings and use the profile picture control to upload a new image.',
+      },
+      {
+        q: 'How does dark mode work?',
+        a: 'Appearance is controlled through the application-wide theme system, so the selected theme is shared across Smart Adama pages.',
+      },
+      {
+        q: 'Where can I update my account information?',
+        a: 'Use the Personal Information section of your profile page to update your account details.',
+      },
+    ]
+  }
+
   return [
-    { q: 'How do I get started?', a: 'Navigate to the Dashboard to see your progress, or jump straight into the "Study" section to read the Smart Adama book.' },
-    { q: 'How does the AI Assistant work?', a: 'The AI understands the page you are currently viewing. Just ask it to summarize, explain, or clarify anything you see.' },
-    { q: 'How do I update my profile?', a: 'Click on your avatar in the top right corner of the navigation bar to access your Profile Settings.' }
+    {
+      q: 'How do I get started?',
+      a: 'Open the Dashboard to see your progress, or go to Study to begin learning from the Smart Adama content.',
+    },
+    {
+      q: 'How does the assistant work?',
+      a: 'The assistant receives the current route and your conversation history so it can provide more relevant answers within the application.',
+    },
+    {
+      q: 'Where can I change my account settings?',
+      a: 'Open your Profile page from the navigation bar to manage your profile, security, preferences, and appearance.',
+    },
   ]
 })
 
-// --- AI ASSISTANT LOGIC ---
-const userInput = ref('')
-const messages = ref<{role: 'user' | 'ai', content: string}[]>([])
-const isThinking = ref(false)
-const chatContainer = ref<HTMLElement | null>(null)
 
 const suggestedPrompts = computed(() => {
-  if (route.path.includes('/study')) {
-    return ['Summarize this chapter', 'Explain the key concepts here', 'Quiz me on this topic']
+  const path = route.path
+
+  if (
+    path.includes('/study') ||
+    path.includes('/chapter')
+  ) {
+    return [
+      'Summarize this chapter',
+      'Explain the key concepts',
+      'Quiz me on this topic',
+    ]
   }
-  if (route.path.includes('/dashboard')) {
-    return ['How can I improve my score?', 'What should I study next?']
+
+  if (path.includes('/dashboard')) {
+    return [
+      'How can I improve my score?',
+      'What should I study next?',
+      'Explain my progress',
+    ]
   }
-  if (route.path.includes('/about')) {
-    return ['Who is Ashenafi Deresa?', 'Tell me about the intern team']
+
+  if (path.includes('/profile')) {
+    return [
+      'How do I improve my profile?',
+      'How does dark mode work?',
+      'Help me manage my account',
+    ]
   }
-  return ['What is Smart Adama?', 'What page am I on right now?']
+
+  return [
+    'What is Smart Adama?',
+    'How does the platform work?',
+    'What should I explore first?',
+  ]
 })
 
-const sendSuggested = (prompt: string) => {
-  userInput.value = prompt
-  sendMessage()
+
+/* ============================================================
+   OPEN / CLOSE
+============================================================ */
+
+const openAi = async () => {
+  mode.value = 'ai'
+  await nextTick()
+  inputRef.value?.focus()
+  scrollToBottom()
 }
 
-const handleKeydown = (e: KeyboardEvent) => {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault()
-    if (userInput.value.trim() && !isThinking.value) {
+
+const closeAssistant = () => {
+  isOpen.value = false
+}
+
+
+const goBack = () => {
+  if (mode.value === 'ai') {
+    mode.value = 'hub'
+    return
+  }
+
+  if (mode.value === 'help') {
+    mode.value = 'hub'
+  }
+}
+
+
+const toggleAssistant = () => {
+  if (isDragging.value) {
+    return
+  }
+
+  isOpen.value = !isOpen.value
+
+  if (!isOpen.value) {
+    mode.value = 'hub'
+  }
+}
+
+
+/* ============================================================
+   DRAGGING
+============================================================ */
+
+const clampTogglePosition = (
+  x: number,
+  y: number,
+) => {
+  const size = isMobile.value
+    ? 56
+    : 64
+
+  return {
+    x: Math.max(
+      12,
+      Math.min(
+        windowWidth.value - size - 12,
+        x,
+      ),
+    ),
+    y: Math.max(
+      12,
+      Math.min(
+        windowHeight.value - size - 12,
+        y,
+      ),
+    ),
+  }
+}
+
+
+const onPointerDown = (
+  event: PointerEvent,
+) => {
+  hasMoved = false
+
+  startPoint = {
+    x: event.clientX,
+    y: event.clientY,
+  }
+
+  startPos = {
+    x: pos.value.x,
+    y: pos.value.y,
+  }
+
+  const target =
+    event.currentTarget as HTMLElement
+
+  target.setPointerCapture(
+    event.pointerId,
+  )
+}
+
+
+const onPointerMove = (
+  event: PointerEvent,
+) => {
+  if (!event.buttons) {
+    return
+  }
+
+  const dx =
+    event.clientX - startPoint.x
+
+  const dy =
+    event.clientY - startPoint.y
+
+  if (
+    Math.abs(dx) > 3 ||
+    Math.abs(dy) > 3
+  ) {
+    hasMoved = true
+    isDragging.value = true
+  }
+
+  if (!hasMoved) {
+    return
+  }
+
+  const next = clampTogglePosition(
+    startPos.x + dx,
+    startPos.y + dy,
+  )
+
+  pos.value = next
+}
+
+
+const onPointerUp = (
+  event: PointerEvent,
+) => {
+  const target =
+    event.currentTarget as HTMLElement
+
+  if (
+    target.hasPointerCapture(
+      event.pointerId,
+    )
+  ) {
+    target.releasePointerCapture(
+      event.pointerId,
+    )
+  }
+
+  isDragging.value = false
+
+  if (hasMoved) {
+    if (!isMobile.value) {
+      pos.value.x =
+        pos.value.x <
+        windowWidth.value / 2
+          ? 16
+          : windowWidth.value - 80
+    }
+  } else {
+    toggleAssistant()
+  }
+
+  hasMoved = false
+}
+
+
+/* ============================================================
+   RESIZE / ESCAPE
+============================================================ */
+
+const handleResize = () => {
+  windowWidth.value =
+    window.innerWidth
+
+  windowHeight.value =
+    window.innerHeight
+
+  pos.value = clampTogglePosition(
+    pos.value.x,
+    pos.value.y,
+  )
+}
+
+
+const handleEscape = (
+  event: KeyboardEvent,
+) => {
+  if (event.key !== 'Escape') {
+    return
+  }
+
+  if (isOpen.value) {
+    closeAssistant()
+  }
+}
+
+
+/* ============================================================
+   ABOUT
+============================================================ */
+
+const navigateToAbout = () => {
+  closeAssistant()
+  router.push('/about')
+}
+
+
+/* ============================================================
+   CHAT
+============================================================ */
+
+const sendSuggested = async (
+  prompt: string,
+) => {
+  userInput.value = prompt
+  await nextTick()
+  await sendMessage()
+}
+
+
+const handleKeydown = (
+  event: KeyboardEvent,
+) => {
+  if (
+    event.key === 'Enter' &&
+    !event.shiftKey
+  ) {
+    event.preventDefault()
+
+    if (
+      userInput.value.trim() &&
+      !isThinking.value
+    ) {
       sendMessage()
     }
   }
 }
 
+
+const autoResizeTextarea = () => {
+  const textarea =
+    inputRef.value
+
+  if (!textarea) {
+    return
+  }
+
+  textarea.style.height = 'auto'
+  textarea.style.height = `${Math.min(textarea.scrollHeight, 132)}px`
+}
+
+
 const scrollToBottom = async () => {
   await nextTick()
-  if (chatContainer.value) {
-    chatContainer.value.scrollTop = chatContainer.value.scrollHeight
+
+  if (!chatContainer.value) {
+    return
   }
+
+  chatContainer.value.scrollTo({
+    top:
+      chatContainer.value.scrollHeight,
+    behavior: 'smooth',
+  })
 }
 
-// REAL BACKEND API CALL TO GROQ
-const sendMessage = async () => {
-  if (!userInput.value.trim()) return
 
-  const text = userInput.value.trim()
-  const currentHistory = [...messages.value]
-  
-  messages.value.push({ role: 'user', content: text })
+const sendMessage = async () => {
+  const text =
+    userInput.value.trim()
+
+  if (
+    !text ||
+    isThinking.value
+  ) {
+    return
+  }
+
+  const currentHistory =
+    [...messages.value]
+
+  messages.value.push({
+    role: 'user',
+    content: text,
+  })
+
   userInput.value = ''
   isThinking.value = true
-  scrollToBottom()
+
+  autoResizeTextarea()
+  await scrollToBottom()
 
   try {
-    const apiBase = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
-    const response = await fetch(`${apiBase}/api/v1/global-chat`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${authStore.token}`
-      },
-      body: JSON.stringify({
-        message: text,
-        route: route.path, // Sending current route for context!
-        history: currentHistory
-      })
-    })
+    const apiBase =
+      import.meta.env.VITE_API_BASE_URL ??
+      'http://localhost:8000'
 
-    if (!response.ok) throw new Error('API Request Failed')
+    const response =
+      await fetch(
+        `${apiBase}/api/v1/global-chat`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type':
+              'application/json',
+            Accept:
+              'application/json',
+            ...(authStore.token
+              ? {
+                  Authorization:
+                    `Bearer ${authStore.token}`,
+                }
+              : {}),
+          },
+          body: JSON.stringify({
+            message: text,
+            route: route.path,
+            history:
+              currentHistory,
+          }),
+        },
+      )
 
-    const data = await response.json()
-    
-    messages.value.push({ 
-      role: 'ai', 
-      content: data.reply
+    if (!response.ok) {
+      throw new Error(
+        `Assistant request failed: ${response.status}`,
+      )
+    }
+
+    const data =
+      await response.json()
+
+    messages.value.push({
+      role: 'ai',
+      content:
+        data.reply ||
+        'I could not generate a response. Please try again.',
     })
   } catch (error) {
-    console.error('Chat error:', error)
-    messages.value.push({ role: 'ai', content: "Something went wrong communicating with the server. Please try again." })
+    console.error(
+      'Global assistant error:',
+      error,
+    )
+
+    messages.value.push({
+      role: 'ai',
+      content:
+        'I could not reach the Smart Adama assistant right now. Please try again in a moment.',
+    })
   } finally {
     isThinking.value = false
-    scrollToBottom()
+    await scrollToBottom()
   }
 }
 
-watch(isOpen, (val) => {
-  if (!val) setTimeout(() => mode.value = 'hub', 300)
+
+const resetConversation = async () => {
+  if (isThinking.value) {
+    return
+  }
+
+  messages.value = []
+  copiedMessageIndex.value = null
+  userInput.value = ''
+
+  await nextTick()
+
+  autoResizeTextarea()
+  inputRef.value?.focus()
+}
+
+
+const copyMessage = async (
+  content: string,
+) => {
+  try {
+    await navigator.clipboard.writeText(
+      content,
+    )
+
+    const index =
+      messages.value.findIndex(
+        (item) =>
+          item.role === 'ai' &&
+          item.content === content,
+      )
+
+    copiedMessageIndex.value =
+      index >= 0 ? index : null
+
+    window.setTimeout(() => {
+      copiedMessageIndex.value = null
+    }, 1600)
+  } catch (error) {
+    console.warn(
+      'Clipboard access unavailable',
+      error,
+    )
+  }
+}
+
+const handleClickOutside = (event: MouseEvent) => {
+  if (!isOpen.value || isDragging.value) return
+  
+  const path = event.composedPath()
+  const clickedInsidePanel = panelRef.value && path.includes(panelRef.value)
+  const clickedToggleButton = toggleButtonRef.value && path.includes(toggleButtonRef.value)
+  
+  if (!clickedInsidePanel && !clickedToggleButton) {
+    isOpen.value = false
+  }
+}
+
+
+/* ============================================================
+   WATCHERS / LIFECYCLE
+============================================================ */
+
+watch(
+  isOpen,
+  async (open) => {
+    if (!open) {
+      window.setTimeout(() => {
+        mode.value = 'hub'
+      }, 180)
+      return
+    }
+
+    await nextTick()
+
+    if (isOpen.value && mode.value === 'ai') {
+      inputRef.value?.focus()
+    }
+  },
+)
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
+
+
+watch(
+  () => route.path,
+  () => {
+    if (mode.value === 'help') {
+      // Keep the assistant open, but update the contextual content automatically.
+    }
+  },
+)
+
+
+onMounted(() => {
+  window.addEventListener(
+    'resize',
+    handleResize,
+  )
+
+  window.addEventListener(
+    'keydown',
+    handleEscape,
+  )
+})
+
+
+onUnmounted(() => {
+  window.removeEventListener(
+    'resize',
+    handleResize,
+  )
+
+  window.removeEventListener(
+    'keydown',
+    handleEscape,
+  )
 })
 </script>
 
+
 <style scoped>
-.panel-enter-active,
-.panel-leave-active {
-  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+/* ============================================================
+   COMPONENT ROOT
+============================================================ */
+
+.global-assistant {
+  --assistant-brand: #395886;
+  --assistant-brand-dark: #304B73;
+  --assistant-brand-light: #638ECB;
+  --assistant-brand-soft: #8AAEE0;
+  --assistant-brand-pale: #B1C9EF;
+  --assistant-brand-faint: rgba(99, 142, 203, 0.12);
+  --assistant-page: #F0F3FA;
+  --assistant-border: rgba(57, 88, 134, 0.14);
+  --assistant-border-strong: rgba(57, 88, 134, 0.26);
+  --assistant-surface: rgba(255, 255, 255, 0.85);
+  --assistant-surface-soft: rgba(240, 243, 250, 0.70);
+  --assistant-surface-opaque: rgba(255, 255, 255, 0.92);
+  --assistant-surface-bg: linear-gradient(180deg, rgba(240,243,250,0.40), rgba(240,243,250,0.72));
+  --assistant-code-bg: rgba(99,142,203,0.08);
+  --assistant-text: #14243B;
+  --assistant-muted: #64748B;
+  --assistant-faint: #94A3B8;
+  --assistant-shadow: 0 24px 70px rgba(15, 23, 42, 0.17);
+  --assistant-shadow-soft: 0 10px 35px rgba(15, 23, 42, 0.10);
+  position: relative;
+  z-index: 1000;
 }
-.panel-enter-from,
-.panel-leave-to {
+
+:global(html.dark) {
+  --assistant-brand: #8AAEE0;
+  --assistant-brand-dark: #638ECB;
+  --assistant-brand-faint: rgba(177, 201, 239, 0.15);
+  --assistant-page: #08101C;
+  --assistant-border: rgba(255, 255, 255, 0.09);
+  --assistant-border-strong: rgba(177, 201, 239, 0.24);
+  --assistant-surface: rgba(11, 15, 25, 0.85);
+  --assistant-surface-soft: rgba(15, 23, 42, 0.70);
+  --assistant-surface-opaque: rgba(11, 15, 25, 0.92);
+  --assistant-surface-bg: linear-gradient(180deg, rgba(3,7,18,0.54), rgba(3,7,18,0.82));
+  --assistant-code-bg: #172337;
+  --assistant-text: #F8FAFC;
+  --assistant-muted: #94A3B8;
+  --assistant-faint: #64748B;
+  --assistant-shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
+  --assistant-shadow-soft: 0 10px 35px rgba(0, 0, 0, 0.28);
+}
+
+
+/* ============================================================
+   PANEL
+============================================================ */
+
+.assistant-panel {
+  position: fixed;
+  z-index: 100;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  width: min(840px, calc(100vw - 32px));
+  max-height: calc(100vh - 120px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--assistant-border);
+  border-radius: 24px;
+  background: var(--assistant-surface);
+  box-shadow: var(--assistant-shadow);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+.assistant-panel--mobile {
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+  transform: none;
+  width: auto;
+  max-height: calc(100vh - 20px);
+  border-radius: 24px;
+}
+
+.assistant-panel--mobile .assistant-header {
+  padding-top: max(12px, env(safe-area-inset-top));
+}
+
+
+/* ============================================================
+   PANEL TRANSITION
+============================================================ */
+
+.assistant-panel-enter-active,
+.assistant-panel-leave-active {
+  transition:
+    opacity 0.24s ease,
+    transform 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.assistant-panel-enter-from,
+.assistant-panel-leave-to {
   opacity: 0;
-  transform: scale(0.95);
+  transform: translate(-50%, 15px) scale(0.97);
+}
+
+.assistant-panel--mobile.assistant-panel-enter-from,
+.assistant-panel--mobile.assistant-panel-leave-to {
+  transform: translateY(15px) scale(0.97);
+}
+
+
+/* ============================================================
+   HEADER
+============================================================ */
+
+.assistant-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 14px;
+  border-bottom: 1px solid var(--assistant-border);
+  background: color-mix(in srgb, var(--assistant-surface) 92%, transparent);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.assistant-header-main {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.assistant-brand-mark {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border: 1px solid rgba(99, 142, 203, 0.22);
+  border-radius: 11px;
+  color: #638ECB;
+  background: rgba(99, 142, 203, 0.08);
+}
+
+.assistant-brand-mark svg {
+  width: 18px;
+  height: 18px;
+}
+
+.assistant-title-wrap {
+  min-width: 0;
+}
+
+.assistant-title-row {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.assistant-title-wrap h2 {
+  overflow: hidden;
+  margin: 0;
+  color: var(--assistant-text);
+  font-size: 0.80rem;
+  line-height: 1.1;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.assistant-title-wrap p {
+  margin: 3px 0 0;
+  color: var(--assistant-muted);
+  font-size: 0.48rem;
+  line-height: 1.35;
+}
+
+.context-badge {
+  flex: 0 0 auto;
+  padding: 3px 6px;
+  border: 1px solid rgba(99, 142, 203, 0.20);
+  border-radius: 999px;
+  color: #638ECB;
+  background: rgba(99, 142, 203, 0.07);
+  font-size: 0.39rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.assistant-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex: 0 0 auto;
+}
+
+.icon-button,
+.header-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  color: var(--assistant-muted);
+  cursor: pointer;
+  transition:
+    background 0.16s ease,
+    color 0.16s ease;
+}
+
+.icon-button {
+  width: 31px;
+  height: 31px;
+  border-radius: 9px;
+}
+
+.icon-button:hover,
+.header-action:hover {
+  color: var(--assistant-text);
+  background: var(--assistant-surface-soft);
+}
+
+.icon-button svg {
+  width: 15px;
+  height: 15px;
+}
+
+.header-action {
+  gap: 4px;
+  padding: 7px 8px;
+  border-radius: 8px;
+  font-size: 0.45rem;
+  font-weight: 800;
+}
+
+.header-action svg {
+  width: 12px;
+  height: 12px;
+}
+
+
+/* ============================================================
+   BODY
+============================================================ */
+
+.assistant-body {
+  min-height: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+
+/* ============================================================
+   HUB
+============================================================ */
+
+.hub-body {
+  padding: 14px;
+  overflow-y: auto;
+}
+
+.hub-hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+  min-height: 154px;
+  overflow: hidden;
+  padding: 18px;
+  border: 1px solid var(--assistant-border);
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(57, 88, 134, 0.97), rgba(99, 142, 203, 0.96));
+  color: white;
+}
+
+.hub-visual {
+  position: relative;
+  width: 104px;
+  height: 104px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hub-orbit {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.21);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.hub-orbit--one {
+  width: 92px;
+  height: 92px;
+}
+
+.hub-orbit--two {
+  width: 68px;
+  height: 68px;
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+.hub-core {
+  position: relative;
+  z-index: 2;
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 13px;
+  color: #D5DEEF;
+  background: rgba(255, 255, 255, 0.10);
+}
+
+.hub-core svg {
+  width: 20px;
+  height: 20px;
+}
+
+.hub-copy {
+  position: relative;
+  z-index: 2;
+}
+
+.section-kicker {
+  display: block;
+  color: #8AAEE0;
+  font-size: 0.43rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.hub-copy .section-kicker {
+  color: #B1C9EF;
+}
+
+.hub-copy h3 {
+  margin: 6px 0 0;
+  color: white;
+  font-size: 1.2rem;
+  line-height: 1.08;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.hub-copy p {
+  margin: 6px 0 0;
+  color: rgba(255,255,255,0.74);
+  font-size: 0.52rem;
+  line-height: 1.55;
+}
+
+.hub-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.hub-option,
+.ai-entry {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 11px;
+  border-radius: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    background 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.hub-option {
+  border: 1px solid var(--assistant-border);
+  background: var(--assistant-surface);
+}
+
+.hub-option:hover {
+  transform: translateY(-1px);
+  border-color: var(--assistant-border-strong);
+  background: var(--assistant-surface-soft);
+}
+
+.option-icon,
+.ai-entry-icon {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border-radius: 10px;
+}
+
+.option-icon svg,
+.ai-entry-icon svg {
+  width: 17px;
+  height: 17px;
+}
+
+.option-icon--blue {
+  color: var(--assistant-brand);
+  background: var(--assistant-brand-faint);
+}
+
+.option-icon--soft {
+  color: var(--assistant-brand-soft);
+  background: var(--assistant-brand-faint);
+}
+
+:global(html.dark) .option-icon--soft {
+  color: var(--assistant-brand);
+}
+
+.option-copy,
+.ai-entry-copy {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.option-copy strong,
+.ai-entry-copy strong {
+  overflow: hidden;
+  color: var(--assistant-text);
+  font-size: 0.56rem;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.option-copy span,
+.ai-entry-copy span {
+  color: var(--assistant-muted);
+  font-size: 0.45rem;
+  line-height: 1.45;
+}
+
+.option-arrow {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 auto;
+  color: var(--assistant-faint);
+}
+
+.ai-entry {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 14px 18px;
+  border: none;
+  border-radius: 16px;
+  background: #395886;
+  box-shadow: 0 10px 24px rgba(57, 88, 134, 0.18);
+  color: white;
+  transition: 0.2s ease;
+}
+
+.ai-entry:hover {
+  transform: translateY(-1px);
+  background: #304B73;
+  box-shadow: 0 14px 30px rgba(57, 88, 134, 0.22);
+}
+
+.ai-entry-icon {
+  color: #D5DEEF;
+  background: rgba(255,255,255,0.10);
+}
+
+.ai-entry-copy strong {
+  color: white;
+}
+
+.ai-entry-copy span {
+  display: block;
+  font-size: 0.52rem;
+  font-weight: 500;
+  color: #D5DEEF;
+  margin-top: 1px;
+}
+
+.ai-entry-key {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255,255,255,0.13);
+  border-radius: 6px;
+  color: rgba(255,255,255,0.72);
+  font-size: 0.47rem;
+}
+
+
+/* ============================================================
+   HELP
+============================================================ */
+
+.help-body {
+  min-height: 0;
+}
+
+.help-intro {
+  padding: 16px 16px 9px;
+}
+
+.help-intro h3 {
+  margin: 5px 0 0;
+  color: var(--assistant-text);
+  font-size: 0.95rem;
+  line-height: 1.2;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.faq-list {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 16px 16px;
+}
+
+.faq-item {
+  margin-bottom: 7px;
+  overflow: hidden;
+  border: 1px solid var(--assistant-border);
+  border-radius: 12px;
+  background: var(--assistant-surface);
+}
+
+.faq-item[open] {
+  border-color: var(--assistant-border-strong);
+}
+
+.faq-item summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 11px 12px;
+  color: var(--assistant-text);
+  font-size: 0.56rem;
+  font-weight: 800;
+  line-height: 1.4;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.faq-item summary::-webkit-details-marker {
+  display: none;
+}
+
+.faq-plus {
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border-radius: 6px;
+  color: var(--assistant-brand);
+  background: var(--assistant-brand-faint);
+  font-size: 0.75rem;
+  line-height: 1;
+  transition: transform 0.18s ease;
+}
+
+.faq-item[open] .faq-plus {
+  transform: rotate(45deg);
+}
+
+.faq-answer {
+  padding: 0 12px 12px;
+  border-top: 1px solid var(--assistant-border);
+  color: var(--assistant-muted);
+  font-size: 0.53rem;
+  line-height: 1.65;
+}
+
+.help-footer {
+  flex: 0 0 auto;
+  padding: 11px 16px 14px;
+  border-top: 1px solid var(--assistant-border);
+  background: var(--assistant-surface);
+}
+
+.help-footer > span {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--assistant-muted);
+  font-size: 0.46rem;
+  text-align: center;
+}
+
+.help-ai-button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 11px;
+  border: 1px solid var(--assistant-brand-faint);
+  border-radius: 10px;
+  color: var(--assistant-brand);
+  background: var(--assistant-brand-faint);
+  font-size: 0.52rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.18s ease, transform 0.18s ease;
+}
+
+:global(html.dark) .help-ai-button {
+  color: var(--assistant-brand);
+}
+
+.help-ai-button:hover {
+  transform: translateY(-1px);
+  background: var(--assistant-brand-faint);
+}
+
+.help-ai-button svg {
+  width: 12px;
+  height: 12px;
+}
+
+
+/* ============================================================
+   CHAT
+============================================================ */
+
+.chat-body {
+  min-height: 0;
+}
+
+.chat-scroll {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  background: var(--assistant-surface-bg);
+  scroll-behavior: smooth;
+}
+
+.chat-empty {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 22px 12px 16px;
+  text-align: center;
+}
+
+.chat-empty-mark {
+  width: 54px;
+  height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+  border: 1px solid var(--assistant-border);
+  border-radius: 16px;
+  color: var(--assistant-brand);
+  background: var(--assistant-brand-faint);
+}
+
+.chat-empty-mark svg {
+  width: 24px;
+  height: 24px;
+}
+
+.chat-empty h3 {
+  max-width: 250px;
+  margin: 6px 0 0;
+  color: var(--assistant-text);
+  font-size: 1rem;
+  line-height: 1.2;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+}
+
+.chat-empty p {
+  max-width: 280px;
+  margin: 7px auto 13px;
+  color: var(--assistant-muted);
+  font-size: 0.52rem;
+  line-height: 1.65;
+}
+
+.suggestion-grid {
+  width: min(100%, 330px);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.suggestion-chip {
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid var(--assistant-border);
+  border-radius: 10px;
+  color: var(--assistant-text);
+  background: var(--assistant-surface);
+  font-size: 0.47rem;
+  line-height: 1.4;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform 0.16s ease,
+    border-color 0.16s ease,
+    background 0.16s ease;
+}
+
+.suggestion-chip:hover {
+  transform: translateY(-1px);
+  border-color: var(--assistant-border-strong);
+  background: var(--assistant-surface-soft);
+}
+
+.message-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 7px;
+  margin-bottom: 13px;
+}
+
+.message-row--user {
+  justify-content: flex-end;
+}
+
+.message-row--assistant {
+  justify-content: flex-start;
+}
+
+.message-avatar {
+  width: 27px;
+  height: 27px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border: 1px solid var(--assistant-border);
+  border-radius: 9px;
+  color: var(--assistant-brand);
+  background: var(--assistant-brand-faint);
+}
+
+.message-avatar svg {
+  width: 13px;
+  height: 13px;
+}
+
+.message-bubble {
+  position: relative;
+  max-width: min(84%, 330px);
+  min-width: 0;
+  padding: 10px 11px;
+  border-radius: 14px;
+}
+
+.message-bubble--user {
+  border-bottom-right-radius: 4px;
+  color: white;
+  background: var(--assistant-brand);
+  box-shadow: 0 7px 18px rgba(0,0,0,0.1);
+}
+
+.message-bubble--assistant {
+  border: 1px solid var(--assistant-border);
+  border-bottom-left-radius: 4px;
+  color: var(--assistant-text);
+  background: var(--assistant-surface);
+  box-shadow: var(--assistant-shadow-soft);
+}
+
+.message-content {
+  font-size: 0.56rem;
+  line-height: 1.65;
+  word-break: break-word;
+}
+
+.message-content--user {
+  white-space: pre-wrap;
+}
+
+.message-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 6px;
+  opacity: 0;
+  transition: opacity 0.16s ease;
+}
+
+.message-bubble--assistant:hover .message-actions,
+.message-actions:focus-within {
+  opacity: 1;
+}
+
+.message-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 5px;
+  border: 0;
+  border-radius: 6px;
+  color: var(--assistant-faint);
+  background: transparent;
+  font-size: 0.41rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.message-actions button:hover {
+  color: var(--assistant-text);
+  background: var(--assistant-surface-soft);
+}
+
+.message-actions svg {
+  width: 10px;
+  height: 10px;
+}
+
+.thinking-bubble {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 11px;
+  border: 1px solid var(--assistant-border);
+  border-radius: 14px;
+  border-bottom-left-radius: 4px;
+  background: var(--assistant-surface);
+  box-shadow: var(--assistant-shadow-soft);
+}
+
+.thinking-bubble span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--assistant-brand);
+  animation: assistant-bounce 1.1s ease-in-out infinite;
+}
+
+.thinking-bubble span:nth-child(2) {
+  animation-delay: 0.12s;
+}
+
+.thinking-bubble span:nth-child(3) {
+  animation-delay: 0.24s;
+}
+
+.thinking-bubble em {
+  margin-left: 4px;
+  color: var(--assistant-muted);
+  font-size: 0.43rem;
+  font-style: normal;
+  font-weight: 700;
+}
+
+@keyframes assistant-bounce {
+  0%, 70%, 100% {
+    transform: translateY(0);
+    opacity: 0.45;
+  }
+  35% {
+    transform: translateY(-3px);
+    opacity: 1;
+  }
+}
+
+
+/* ============================================================
+   COMPOSER
+============================================================ */
+
+.composer-wrap {
+  flex: 0 0 auto;
+  padding: 10px 12px calc(12px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--assistant-border);
+  background: var(--assistant-surface);
+}
+
+.composer-shell {
+  position: relative;
+  padding: 8px;
+  border-radius: 16px;
+  background: var(--assistant-surface-soft);
+  z-index: 1;
+  overflow: hidden;
+}
+
+.composer-shell::before {
+  content: '';
+  position: absolute;
+  top: -100%;
+  left: -100%;
+  width: 300%;
+  height: 300%;
+  z-index: -2;
+  background: conic-gradient(from 0deg, transparent 65%, var(--assistant-brand) 85%, var(--assistant-brand-dark) 100%);
+  animation: composer-spin 2.5s linear infinite;
+  opacity: 0.2;
+  transition: opacity 0.25s ease;
+}
+
+.composer-shell::after {
+  content: '';
+  position: absolute;
+  inset: 1.5px;
+  border-radius: 14.5px;
+  background: var(--assistant-surface);
+  z-index: -1;
+}
+
+.composer-shell:focus-within::before {
+  opacity: 0.9;
+}
+
+@keyframes composer-spin {
+  100% { transform: rotate(360deg); }
+}
+
+.composer-shell textarea {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  min-height: 39px;
+  max-height: 132px;
+  display: block;
+  resize: none;
+  overflow-y: auto;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--assistant-text);
+  font-family: inherit;
+  font-size: 0.57rem;
+  line-height: 1.55;
+}
+
+.composer-shell textarea::placeholder {
+  color: var(--assistant-faint);
+}
+
+.composer-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.composer-hint {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--assistant-faint);
+  font-size: 0.39rem;
+}
+
+.composer-context-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.composer-context-icon svg {
+  width: 11px;
+  height: 11px;
+}
+
+.send-button {
+  width: 31px;
+  height: 31px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 9px;
+  color: var(--assistant-brand);
+  background: var(--assistant-brand-faint);
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    background 0.18s ease,
+    color 0.18s ease;
+}
+
+.send-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.76;
+}
+
+.send-button--active {
+  color: white;
+  background: var(--assistant-brand);
+  box-shadow: 0 7px 18px rgba(0,0,0,0.1);
+}
+
+.send-button--active:hover {
+  transform: translateY(-1px);
+  background: var(--assistant-brand-dark);
+}
+
+.send-button svg {
+  width: 15px;
+  height: 15px;
+}
+
+
+/* ============================================================
+   FLOATING TOGGLE
+============================================================ */
+
+.assistant-toggle {
+  position: fixed;
+  z-index: 110;
+  width: 62px;
+  height: 62px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--assistant-border);
+  border-radius: 18px;
+  color: var(--assistant-brand);
+  background: var(--assistant-surface-opaque);
+  box-shadow: 0 14px 35px rgba(0,0,0,0.1);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+  transition:
+    transform 0.22s ease,
+    box-shadow 0.22s ease,
+    background 0.22s ease,
+    color 0.22s ease;
+}
+
+:global(html.dark) .assistant-toggle {
+  color: var(--assistant-brand);
+  background: var(--assistant-surface-opaque);
+  border-color: var(--assistant-border);
+}
+
+.assistant-toggle:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 42px rgba(0,0,0,0.15);
+}
+
+.assistant-toggle--open {
+  color: white;
+  background: var(--assistant-brand);
+}
+
+.assistant-toggle--dragging {
+  cursor: grabbing;
+  transform: scale(0.96);
+  transition: none;
+}
+
+.toggle-icon {
+  position: relative;
+  z-index: 2;
+  width: 23px;
+  height: 23px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.toggle-icon svg {
+  width: 23px;
+  height: 23px;
+}
+
+.toggle-halo {
+  position: absolute;
+  inset: -1px;
+  border: 1px solid var(--assistant-brand);
+  border-radius: 18px;
+  animation: assistant-pulse 2.8s ease-out infinite;
   pointer-events: none;
 }
 
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-details > summary {
-  list-style: none;
-}
-details > summary::-webkit-details-marker {
-  display: none;
+@keyframes assistant-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.42;
+  }
+  70%, 100% {
+    transform: scale(1.16);
+    opacity: 0;
+  }
 }
 
-/* --- AI MARKDOWN FORMATTING --- */
+.toggle-tooltip {
+  position: absolute;
+  top: 50%;
+  z-index: 10;
+  transform: translateY(-50%);
+  padding: 7px 9px;
+  border-radius: 8px;
+  color: white;
+  background: var(--assistant-brand-dark);
+  font-size: 0.48rem;
+  font-weight: 800;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.16s ease;
+  box-shadow: 0 8px 22px rgba(0,0,0,0.15);
+}
+
+.assistant-toggle:hover .toggle-tooltip {
+  opacity: 1;
+}
+
+.toggle-tooltip--left {
+  right: calc(100% + 10px);
+}
+
+.toggle-tooltip--right {
+  left: calc(100% + 10px);
+}
+
+
+/* ============================================================
+   MARKDOWN
+============================================================ */
+
 .ai-formatted-response :deep(p) {
-  margin-bottom: 0.75rem;
+  margin: 0 0 0.62rem;
 }
+
 .ai-formatted-response :deep(p:last-child) {
   margin-bottom: 0;
 }
 
-/* Bold Text */
 .ai-formatted-response :deep(strong) {
-  color: var(--color-brand-500, #395886);
-  font-weight: 700;
+  color: var(--assistant-brand);
+  font-weight: 800;
 }
 
-/* Lists */
+:global(html.dark) .ai-formatted-response :deep(strong) {
+  color: var(--assistant-brand);
+}
+
 .ai-formatted-response :deep(ul),
 .ai-formatted-response :deep(ol) {
-  padding-left: 1.25rem;
-  margin-top: 0.5rem;
-  margin-bottom: 0.75rem;
+  margin: 0.45rem 0 0.65rem;
+  padding-left: 1.1rem;
 }
+
 .ai-formatted-response :deep(ul) {
-  list-style-type: disc;
+  list-style: disc;
 }
+
 .ai-formatted-response :deep(ol) {
-  list-style-type: decimal;
+  list-style: decimal;
 }
+
 .ai-formatted-response :deep(li) {
-  margin-bottom: 0.25rem;
-  color: #334155; /* Slate 700 */
+  margin-bottom: 0.22rem;
 }
+
 .ai-formatted-response :deep(li::marker) {
-  color: var(--color-brand-400, #638ECB);
+  color: var(--assistant-brand);
 }
 
-/* Code Blocks & Inline Code */
 .ai-formatted-response :deep(code) {
-  background-color: #f1f5f9; /* Slate 100 */
-  padding: 0.15rem 0.3rem;
-  border-radius: 0.25rem;
-  font-family: monospace;
-  font-size: 0.85em;
-  color: #c026d3; /* Fuchsia 600 for contrast */
-}
-.ai-formatted-response :deep(pre) {
-  background-color: #1e293b; /* Slate 800 */
-  padding: 1rem;
-  border-radius: 0.5rem;
-  overflow-x: auto;
-  margin-top: 0.5rem;
-  margin-bottom: 0.75rem;
-}
-.ai-formatted-response :deep(pre code) {
-  background-color: transparent;
-  padding: 0;
-  color: #f8fafc; /* Slate 50 */
+  padding: 0.12rem 0.28rem;
+  border-radius: 4px;
+  background: var(--assistant-brand-faint);
+  color: var(--assistant-brand);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.88em;
 }
 
-/* Headings inside AI response */
+:global(html.dark) .ai-formatted-response :deep(code) {
+  color: var(--assistant-brand);
+  background: var(--assistant-brand-faint);
+}
+
+.ai-formatted-response :deep(pre) {
+  margin: 0.65rem 0;
+  overflow-x: auto;
+  padding: 0.8rem;
+  border-radius: 9px;
+  background: var(--assistant-code-bg);
+  color: #E2E8F0;
+}
+
+.ai-formatted-response :deep(pre code) {
+  padding: 0;
+  background: transparent;
+  color: inherit;
+}
+
 .ai-formatted-response :deep(h1),
 .ai-formatted-response :deep(h2),
 .ai-formatted-response :deep(h3) {
-  font-weight: 700;
-  color: #0f172a; /* Slate 900 */
-  margin-top: 1rem;
-  margin-bottom: 0.5rem;
+  margin: 0.75rem 0 0.4rem;
+  color: var(--assistant-text);
+  font-weight: 800;
 }
+
 .ai-formatted-response :deep(h3) {
-  font-size: 1.1em;
+  font-size: 0.7rem;
+}
+
+
+/* ============================================================
+   SCROLLBARS
+============================================================ */
+
+.chat-scroll,
+.faq-list,
+.hub-body {
+  scrollbar-width: thin;
+  scrollbar-color: var(--assistant-border) transparent;
+}
+
+.chat-scroll::-webkit-scrollbar,
+.faq-list::-webkit-scrollbar,
+.hub-body::-webkit-scrollbar {
+  width: 5px;
+}
+
+.chat-scroll::-webkit-scrollbar-thumb,
+.faq-list::-webkit-scrollbar-thumb,
+.hub-body::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: var(--assistant-border);
+}
+
+.theme-switcher {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--assistant-border);
+}
+
+.theme-btn {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.4rem 0.8rem;
+  border-radius: 999px;
+  color: var(--assistant-muted);
+  background: transparent;
+  transition: 0.2s ease;
+}
+
+.theme-btn:hover {
+  background: var(--assistant-brand-faint);
+  color: var(--assistant-text);
+}
+
+.theme-btn--active {
+  background: var(--assistant-brand-faint);
+  color: var(--assistant-text);
+}
+
+
+/* ============================================================
+   MOBILE
+============================================================ */
+
+@media (max-width: 767px) {
+  .assistant-toggle {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+  }
+
+  .toggle-halo {
+    border-radius: 16px;
+  }
+
+  .assistant-panel--mobile {
+    width: calc(100vw - 20px);
+  }
+
+  .hub-hero {
+    grid-template-columns: 84px minmax(0, 1fr);
+    min-height: 134px;
+    padding: 14px;
+  }
+
+  .hub-visual {
+    width: 76px;
+    height: 76px;
+  }
+
+  .hub-orbit--one {
+    width: 70px;
+    height: 70px;
+  }
+
+  .hub-orbit--two {
+    width: 53px;
+    height: 53px;
+  }
+
+  .hub-core {
+    width: 35px;
+    height: 35px;
+    border-radius: 11px;
+  }
+
+  .hub-core svg {
+    width: 17px;
+    height: 17px;
+  }
+
+  .hub-copy h3 {
+    font-size: 1.03rem;
+  }
+
+  .suggestion-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .message-bubble {
+    max-width: 88%;
+  }
+
+  .message-actions {
+    opacity: 1;
+  }
+}
+
+
+/* ============================================================
+   REDUCED MOTION
+============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 </style>

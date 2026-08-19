@@ -11,6 +11,12 @@ export const useAuthStore = defineStore('auth', () => {
   const token   = ref<string | null>(localStorage.getItem(TOKEN_KEY))
   const loading = ref(false)
   const error   = ref<string | null>(null)
+  
+  // Modal State
+  const isAuthModalOpen = ref(false)
+  const authModalMode = ref<'login' | 'register'>('login')
+  const authRedirectUrl = ref<string | null>(null)
+
   // Per-field validation errors from 422 responses
   const fieldErrors = ref<Record<string, string>>({})
 
@@ -30,11 +36,23 @@ export const useAuthStore = defineStore('auth', () => {
     error.value   = null
     fieldErrors.value = {}
     localStorage.removeItem(TOKEN_KEY)
+    closeAuthModal()
   }
 
   function clearErrors() {
     error.value = null
     fieldErrors.value = {}
+  }
+
+  function openAuthModal(mode: 'login' | 'register' = 'login', redirectUrl: string | null = null) {
+    authModalMode.value = mode
+    authRedirectUrl.value = redirectUrl
+    isAuthModalOpen.value = true
+  }
+
+  function closeAuthModal() {
+    isAuthModalOpen.value = false
+    authRedirectUrl.value = null
   }
 
   function handleError(e: unknown, fallback: string) {
@@ -74,7 +92,7 @@ export const useAuthStore = defineStore('auth', () => {
       setToken(data.token)
       user.value = data.user as App.UserProfile
     } catch (e) {
-      handleError(e, 'Invalid email or password.')
+      handleError(e, 'Invalid credentials.')
       throw e
     } finally {
       loading.value = false
@@ -88,6 +106,7 @@ export const useAuthStore = defineStore('auth', () => {
       // Swallow — token cleared regardless
     } finally {
       clearAuth()
+      window.location.href = '/'
     }
   }
 
@@ -165,5 +184,10 @@ export const useAuthStore = defineStore('auth', () => {
     uploadAvatar,
     deleteAccount,
     clearErrors,
+    isAuthModalOpen,
+    authModalMode,
+    authRedirectUrl,
+    openAuthModal,
+    closeAuthModal,
   }
 })

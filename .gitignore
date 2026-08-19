@@ -1,40 +1,421 @@
-# OS
+# ============================================================
+# SMART ADAMA — PRODUCTION .gitignore
+# ============================================================
+# Repository root:
+#   backend/   -> Laravel API
+#   frontend/  -> Vue + Vite
+#
+# IMPORTANT:
+# Secrets, generated files, dependencies, runtime data,
+# build artifacts, local databases, and large source assets
+# must NOT be committed.
+# ============================================================
+
+
+# ============================================================
+# 1. OPERATING SYSTEM / EDITOR FILES
+# ============================================================
+
 .DS_Store
+.DS_Store?
+._*
 Thumbs.db
+Desktop.ini
+
 *.swp
 *.swo
+*.swn
+*.bak
+*.tmp
+*.temp
+*~
+
 .idea/
 .vscode/
+*.iml
 *.sublime-project
 *.sublime-workspace
 
-# Secrets — NEVER commit these
-*.env
-!*.env.example
-.env.*
-!.env.example
 
-# Backend (Laravel)
+# ============================================================
+# 2. ENVIRONMENT VARIABLES / SECRETS
+# ============================================================
+# NEVER commit real credentials, API keys, tokens, passwords,
+# database credentials, OAuth secrets, etc.
+
+.env
+.env.*
+*.env
+
+# Allow example environment files
+!.env.example
+!*.env.example
+
+# Common secret/key/certificate files
+*.key
+*.pem
+*.p12
+*.pfx
+*.crt
+*.cer
+
+# Laravel secret/config artifacts
+auth.json
+
+
+# ============================================================
+# 3. GENERAL LOGS / DEBUG / TEMPORARY FILES
+# ============================================================
+
+*.log
+*.pid
+*.seed
+*.cache
+*.dump
+*.stackdump
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+lerna-debug.log*
+
+
+# ============================================================
+# 4. LARAVEL / PHP BACKEND
+# ============================================================
+
+# Composer dependencies
 backend/vendor/
-backend/node_modules/
-backend/storage/app/public
-backend/storage/framework/cache/
-backend/storage/framework/sessions/
-backend/storage/framework/testing/
-backend/storage/framework/views/
-backend/storage/logs/
-backend/bootstrap/cache/
-backend/.phpunit.result.cache
+
+# Laravel generated/runtime files
+backend/storage/framework/cache/*
+backend/storage/framework/sessions/*
+backend/storage/framework/testing/*
+backend/storage/framework/views/*
+backend/storage/logs/*
+
+# Keep required Laravel directory structure
+!backend/storage/framework/cache/.gitignore
+!backend/storage/framework/sessions/.gitignore
+!backend/storage/framework/testing/.gitignore
+!backend/storage/framework/views/.gitignore
+!backend/storage/logs/.gitignore
+
+# Application-generated/public storage
+backend/storage/app/public/*
 backend/public/storage
 
-# Frontend (Vue/Vite)
+# Private uploaded/generated manuscripts
+backend/storage/app/private/*
+
+# Laravel bootstrap cache
+backend/bootstrap/cache/*
+!backend/bootstrap/cache/.gitignore
+
+# PHPUnit
+backend/.phpunit.result.cache
+
+# Pest/PHPUnit generated artifacts
+.phpunit.result.cache
+
+# PHP coverage
+coverage/
+backend/coverage/
+
+
+# ============================================================
+# 5. LARAVEL LOCAL DATABASES
+# ============================================================
+# Do not commit local development databases.
+
+backend/database/*.sqlite
+backend/database/*.sqlite3
+backend/database/*.db
+
+# Keep database directory itself available
+!backend/database/.gitignore
+
+
+# ============================================================
+# 6. PHP / COMPOSER GENERATED FILES
+# ============================================================
+
+composer.phar
+backend/composer.phar
+
+
+# ============================================================
+# 7. NODE.JS / NPM / PNPM / YARN
+# ============================================================
+
+node_modules/
+**/node_modules/
+
+.npm/
+.yarn/
+.pnpm-store/
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+
+# ============================================================
+# 8. VITE / VUE FRONTEND
+# ============================================================
+
+# Dependencies
 frontend/node_modules/
+
+# Production builds
 frontend/dist/
+
+# Vite cache
 frontend/.vite/
+
+# Frontend coverage
 frontend/coverage/
+
+# Playwright
 frontend/playwright-report/
 frontend/test-results/
 
-# Docker volumes
+# Cypress
+frontend/cypress/videos/
+frontend/cypress/screenshots/
+
+# Generic test artifacts
+frontend/.nyc_output/
+
+
+# ============================================================
+# 9. FRONTEND GENERATED / LOCAL FILES
+# ============================================================
+
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+
+frontend/*.local
+frontend/**/*.local
+
+
+# ============================================================
+# 10. SMART ADAMA BOOK / LARGE SOURCE DOCUMENTS
+# ============================================================
+# IMPORTANT:
+# The Smart Adama source book MUST NOT be committed to GitHub.
+#
+# Explicitly ignore the production book:
+frontend/public/books/SA-Book.pdf
+#
+# Also prevent accidental commits of other PDFs placed in
+# the public books directory.
+
+frontend/public/books/*.pdf
+frontend/public/books/**/*.pdf
+
+# Backend uploaded manuscripts / source PDFs
+backend/storage/app/private/manuscripts/*.pdf
+
+
+# ============================================================
+# 11. LARGE MEDIA / GENERATED MEDIA
+# ============================================================
+# IMPORTANT:
+# Only use these rules if large media files are generated/local
+# and should NOT be version controlled.
+#
+# Keep your existing intentionally tracked project media unless
+# you specifically decide to move them to Git LFS/object storage.
+
+# Generated video exports
+*.mov
+*.avi
+*.mkv
+*.webm
+
+# Temporary media exports
+**/exports/
+**/renders/
+**/generated/
+
+
+# ============================================================
+# 12. DOCKER / LOCAL DEVELOPMENT DATA
+# ============================================================
+
 postgres_data/
 redis_data/
+mysql_data/
+mongo_data/
+
+**/docker-data/
+**/.docker/
+
+
+# ============================================================
+# 13. DATABASE / CACHE / QUEUE RUNTIME DATA
+# ============================================================
+
+*.sqlite
+*.sqlite3
+*.db
+
+redis/
+*.rdb
+
+tmp/
+temp/
+.cache/
+.parcel-cache/
+
+
+# ============================================================
+# 14. TEST / E2E ARTIFACTS
+# ============================================================
+
+**/test-results/
+**/playwright-report/
+**/coverage/
+**/.nyc_output/
+
+.phpunit.result.cache
+**/.phpunit.result.cache
+
+
+# ============================================================
+# 15. BUILD / COMPILATION ARTIFACTS
+# ============================================================
+
+dist/
+build/
+out/
+
+*.tsbuildinfo
+
+
+# ============================================================
+# 16. TYPESCRIPT / VITE GENERATED FILES
+# ============================================================
+
+*.tsbuildinfo
+vite.config.*.timestamp-*
+
+
+# ============================================================
+# 17. PYTHON / AI / ML LOCAL ARTIFACTS
+# ============================================================
+# Useful if AI/RAG tooling generates local Python artifacts.
+
+__pycache__/
+*.py[cod]
+*$py.class
+
+.venv/
+venv/
+env/
+ENV/
+
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+.ipynb_checkpoints/
+
+
+# ============================================================
+# 18. AI / RAG LOCAL DATA
+# ============================================================
+# Do not accidentally commit local embedding/vector/index data.
+
+**/.vectorstore/
+**/.chroma/
+**/chroma_db/
+**/faiss_index/
+**/embeddings/
+**/vector_data/
+
+# Local AI/cache artifacts
+**/.ai-cache/
+**/.rag-cache/
+
+
+# ============================================================
+# 19. GENERATED DOCUMENTATION / EXPORTS
+# ============================================================
+
+*.docx
+*.doc
+*.odt
+
+# Uncomment if documentation exports are generated locally:
+# docs/generated/
+# docs/build/
+
+
+# ============================================================
+# 20. ARCHIVES
+# ============================================================
+
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.rar
+*.7z
+
+
+# ============================================================
+# 21. LOCAL CONFIGURATION
+# ============================================================
+
+*.local
+config.local.*
+settings.local.*
+
+
+# ============================================================
+# 22. BACKUP FILES
+# ============================================================
+
+*.orig
+*.rej
+*.old
+*.backup
+*.backup.*
+*.save
+
+
+# ============================================================
+# 23. OS / FILE MANAGER METADATA
+# ============================================================
+
+.Trashes
+.Spotlight-V100
+.fseventsd
+.DocumentRevisions-V100
+.TemporaryItems
+
+
+# ============================================================
+# 24. LOCAL IDE / DEVELOPMENT TOOL STATE
+# ============================================================
+
+.history/
+.cursor/
+.windsurf/
+*.code-workspace
+
+
+# ============================================================
+# 25. SMART ADAMA — EXPLICITLY IGNORED FILES
+# ============================================================
+# These are intentionally listed explicitly so they remain
+# protected even if broader ignore rules are changed later.
+
+frontend/public/books/SA-Book.pdf
+.SA-Book.pdf

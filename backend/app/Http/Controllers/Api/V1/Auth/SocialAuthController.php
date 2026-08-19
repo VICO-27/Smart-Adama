@@ -20,16 +20,27 @@ class SocialAuthController extends Controller
         // Temporarily removing the try/catch so we can see the exact Laravel error screen
         $socialUser = Socialite::driver($provider)->stateless()->user();
         
-        $user = User::firstOrCreate(
-            ['email' => $socialUser->getEmail()],
-            [
-                'name' => $socialUser->getName() ?? 'User',
-                'provider' => $provider,
-                'provider_id' => $socialUser->getId(),
-                'avatar_url' => $socialUser->getAvatar(),
-                'password' => null,
-            ]
-        );
+        $user = User::where('provider', $provider)
+            ->where('provider_id', $socialUser->getId())
+            ->first();
+
+        if (!$user) {
+            // If email is provided, try linking to existing email
+            if ($email = $socialUser->getEmail()) {
+                $user = User::where('email', $email)->first();
+            }
+            
+            if (!$user) {
+                $user = User::create([
+                    'name' => $socialUser->getName() ?? 'User',
+                    'email' => $socialUser->getEmail(),
+                    'provider' => $provider,
+                    'provider_id' => $socialUser->getId(),
+                    'avatar_url' => $socialUser->getAvatar(),
+                    'password' => null,
+                ]);
+            }
+        }
 
         if (!$user->provider) {
             $user->update([

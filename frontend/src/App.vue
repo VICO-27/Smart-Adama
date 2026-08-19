@@ -7,14 +7,20 @@
   </router-view>
 
   <!-- The ONE and ONLY Global Assistant rendered globally -->
-  <GlobalAssistant v-if="authStore.isAuthenticated" />
+  <GlobalAssistant v-if="authStore.isAuthenticated && route.name !== 'study' && route.name !== 'study-session'" />
+
+  <!-- Global Auth Modal -->
+  <AuthModal v-if="authStore.isAuthModalOpen" />
 </template>
 
 <script setup lang="ts">
 import { useAuthStore } from '@/stores/auth'
+import { useRoute } from 'vue-router'
 import GlobalAssistant from '@/components/layout/GlobalAssistant.vue'
+import AuthModal from '@/components/auth/AuthModal.vue'
 
 const authStore = useAuthStore()
+const route = useRoute()
 </script>
 
 <style>

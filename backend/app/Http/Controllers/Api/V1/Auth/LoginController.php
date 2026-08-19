@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
+use App\Utils\PhoneNormalizer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
@@ -19,7 +20,13 @@ class LoginController extends Controller
 {
     public function __invoke(LoginRequest $request): JsonResponse
     {
-        $throttleKey = 'login:' . strtolower($request->email) . '|' . $request->ip();
+        $identifier = $request->input('identifier') ?? $request->input('email');
+        $credential = $request->input('credential') ?? $request->input('password');
+
+        // Try normalizing as phone number, or keep as is for email
+        $normalizedPhone = PhoneNormalizer::normalize($identifier);
+
+        $throttleKey = 'login:' . strtolower($identifier) . '|' . $request->ip();
 
         // Req 1.4 — throttle after 5 failed attempts
         if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
@@ -32,13 +39,19 @@ class LoginController extends Controller
             ], 429)->withHeaders(['Retry-After' => $seconds]);
         }
 
-        $user = User::where('email', $request->email)->first();
+        $user = User::where('email', $identifier)
+            ->when($normalizedPhone, function ($query) use ($normalizedPhone) {
+                $query->orWhere('phone_number', $normalizedPhone);
+            })
+            ->first();
 
-        if (! $user || ! Hash::check($request->password, $user->password)) {
+        if (! $user || ! Hash::check($credential, $user->password)) {
             RateLimiter::hit($throttleKey, 60 * 10); // 10 minute window
 
+            $field = $request->has('email') && !$request->has('identifier') ? 'email' : 'identifier';
+
             throw ValidationException::withMessages([
-                'email' => ['The provided credentials are incorrect.'],
+                $field => ['The provided credentials are incorrect.'],
             ]);
         }
 

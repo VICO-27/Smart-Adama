@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\Auth\LoginController;
 use App\Http\Controllers\Api\V1\Auth\LogoutController;
 use App\Http\Controllers\Api\V1\Auth\MeController;
 use App\Http\Controllers\Api\V1\Auth\PasswordResetController;
+use App\Http\Controllers\Api\V1\Auth\PinRecoveryController;
 use App\Http\Controllers\Api\V1\Auth\RegisterController;
 use App\Http\Controllers\Api\V1\Auth\SocialAuthController;
 use App\Http\Controllers\Api\V1\Books\AdminBookController;
@@ -46,6 +47,11 @@ Route::prefix('auth')->group(function () {
     Route::post('/login', LoginController::class);
     Route::post('/password/forgot', [PasswordResetController::class, 'forgot']);
     Route::post('/password/reset', [PasswordResetController::class, 'reset']);
+    
+    // --- NEW: PIN Recovery Routes ---
+    Route::post('/pin/forgot', [PinRecoveryController::class, 'verifyPhone']);
+    Route::post('/pin/verify-code', [PinRecoveryController::class, 'verifyCode']);
+    Route::post('/pin/reset', [PinRecoveryController::class, 'resetPin']);
     
     // --- NEW: Socialite Routes ---
     Route::get('/{provider}/redirect', [SocialAuthController::class, 'redirect']);

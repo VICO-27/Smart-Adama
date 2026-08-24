@@ -24,6 +24,8 @@ it('admin can create a book', function () {
 
 it('admin can upload a manuscript with the book', function () {
     Storage::fake('local');
+    Queue::fake([\App\Jobs\ProcessUploadedPdfJob::class]);
+    
     $admin = User::factory()->admin()->create();
     $file  = UploadedFile::fake()->create('manuscript.pdf', 1000, 'application/pdf');
 
@@ -36,6 +38,8 @@ it('admin can upload a manuscript with the book', function () {
     $response->assertStatus(201);
     $book = Book::first();
     expect($book->source_file_path)->not->toBeNull();
+    
+    Queue::assertPushed(\App\Jobs\ProcessUploadedPdfJob::class, fn ($job) => $job->book->id === $book->id);
 });
 
 it('non-admin cannot create a book', function () {

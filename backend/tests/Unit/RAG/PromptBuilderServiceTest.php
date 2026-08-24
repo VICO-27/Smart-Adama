@@ -9,14 +9,14 @@ beforeEach(function () {
 // ── PromptBuilderService ─────────────────────────────────────────────────────
 
 it('includes a system message as the first element', function () {
-    $messages = $this->builder->buildMessages([], [], 'What is Smart Adama?', false);
+    $messages = $this->builder->buildMessages([], [], 'What is Smart Adama?', ['isGrounded' => false], false);
 
     expect($messages[0]['role'])->toBe('system');
 });
 
 it('appends the user query as the last message', function () {
     $query    = 'What does Smart Adama say about leadership?';
-    $messages = $this->builder->buildMessages([], [], $query, false);
+    $messages = $this->builder->buildMessages([], [], $query, ['isGrounded' => false], false);
 
     $last = end($messages);
     expect($last['role'])->toBe('user')
@@ -24,24 +24,24 @@ it('appends the user query as the last message', function () {
 });
 
 it('uses the no-context system prompt when grounded=false', function () {
-    $messages = $this->builder->buildMessages([], [], 'Some query', false);
+    $messages = $this->builder->buildMessages([], [], 'Some query', ['isGrounded' => false], false);
 
-    expect($messages[0]['content'])->toContain('No content has been ingested');
+    expect($messages[0]['content'])->toContain('No reliable context was found');
 });
 
 it('uses the full system prompt with context when grounded=true', function () {
     $chunks = [[
-        'chunk_text'    => 'Smart Adama is a visionary framework.',
-        'chapter_title' => 'Chapter 1',
-        'section_title' => 'Introduction',
+        'chunk_text'         => 'Smart Adama is a visionary framework.',
+        'page_number'        => 42,
+        'structural_context' => ['heading' => 'Introduction'],
     ]];
 
-    $messages = $this->builder->buildMessages([], $chunks, 'Tell me about Smart Adama', true);
+    $messages = $this->builder->buildMessages([], $chunks, 'Tell me about Smart Adama', ['isGrounded' => true], false);
 
     expect($messages[0]['content'])
-        ->toContain('CONTEXT PASSAGES')
+        ->toContain('TEXT: ')
         ->toContain('Smart Adama is a visionary framework.')
-        ->toContain('Chapter 1 — Introduction');
+        ->toContain('[Page 42]');
 });
 
 it('injects conversation history between system and current user message', function () {
@@ -50,7 +50,7 @@ it('injects conversation history between system and current user message', funct
         ['role' => 'assistant', 'content' => 'Hi there!'],
     ];
 
-    $messages = $this->builder->buildMessages($history, [], 'Follow-up question', false);
+    $messages = $this->builder->buildMessages($history, [], 'Follow-up question', ['isGrounded' => false], false);
 
     // system, user(Hello), assistant(Hi), user(Follow-up)
     expect(count($messages))->toBe(4)
@@ -65,21 +65,21 @@ it('limits history to the most recent 20 messages', function () {
         $history[] = ['role' => $i % 2 === 0 ? 'user' : 'assistant', 'content' => "msg {$i}"];
     }
 
-    $messages = $this->builder->buildMessages($history, [], 'New query', false);
+    $messages = $this->builder->buildMessages($history, [], 'New query', ['isGrounded' => false], false);
 
     // system + up to 20 history + 1 user query = max 22
     expect(count($messages))->toBeLessThanOrEqual(22);
 });
 
-it('builds a numbered context block from multiple chunks', function () {
+it('builds a context block from multiple chunks with page numbers and headings', function () {
     $chunks = [
-        ['chunk_text' => 'First chunk text.', 'chapter_title' => 'Ch1', 'section_title' => 'S1'],
-        ['chunk_text' => 'Second chunk text.', 'chapter_title' => 'Ch1', 'section_title' => 'S2'],
+        ['chunk_text' => 'First chunk text.', 'page_number' => 10, 'structural_context' => ['heading' => 'S1']],
+        ['chunk_text' => 'Second chunk text.', 'page_number' => 12, 'structural_context' => ['heading' => 'S2']],
     ];
 
-    $messages = $this->builder->buildMessages([], $chunks, 'query', true);
+    $messages = $this->builder->buildMessages([], $chunks, 'query', ['isGrounded' => true], false);
 
     expect($messages[0]['content'])
-        ->toContain('[1] Ch1 — S1')
-        ->toContain('[2] Ch1 — S2');
+        ->toContain('[Page 10] First chunk text.')
+        ->toContain('[Page 12] Second chunk text.');
 });

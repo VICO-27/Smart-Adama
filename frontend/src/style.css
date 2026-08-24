@@ -245,6 +245,9 @@ html.dark {
   color-scheme: dark;
 }
 
+/* ============================================================
+   GLOBAL DARK MODE TAILWIND OVERRIDES (Admin/Profile/Quiz Fixes)
+============================================================ */
 
 /* ============================================================
    BODY / ROOT
@@ -344,19 +347,42 @@ html.dark .bg-white {
     var(--sa-text);
 }
 
-html.dark .bg-gray-50 {
+html.dark .bg-gray-50,
+html.dark .bg-slate-50 {
   background-color:
     var(--sa-surface-soft) !important;
 }
 
-html.dark .bg-gray-100 {
+html.dark .bg-gray-100,
+html.dark .bg-slate-100 {
   background-color:
     var(--sa-surface-muted) !important;
 }
 
-html.dark .bg-brand-50 {
+html.dark .bg-brand-50,
+html.dark .bg-smart-blue-50 {
   background-color:
     #0F172A !important;
+}
+
+html.dark .bg-slate-900 {
+  background-color:
+    #020617 !important;
+}
+
+html.dark .bg-slate-950 {
+  background-color:
+    #000000 !important;
+}
+
+html.dark .border-slate-200,
+html.dark .border-slate-100 {
+  border-color: var(--sa-border) !important;
+}
+
+html.dark .ring-slate-200,
+html.dark .ring-slate-300 {
+  --tw-ring-color: var(--sa-border-strong) !important;
 }
 
 

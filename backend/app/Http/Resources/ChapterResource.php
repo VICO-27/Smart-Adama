@@ -19,6 +19,7 @@ class ChapterResource extends JsonResource
             'created_at'       => $this->created_at?->toISOString(),
             // Conditionally include sections when loaded
             'sections'         => SectionResource::collection($this->whenLoaded('sections')),
+            'quiz'             => new QuizResource($this->whenLoaded('quiz')),
         ];
     }
 }

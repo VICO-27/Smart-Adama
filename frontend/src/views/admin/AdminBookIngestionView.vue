@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { booksApi } from '@/api/books'
-import AppShell from '@/components/layout/AppShell.vue'
 import SaCard from '@/components/ui/SaCard.vue'
 import SaButton from '@/components/ui/SaButton.vue'
 import { useRouter } from 'vue-router'
@@ -223,7 +222,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <AppShell>
+
     <div class="max-w-7xl mx-auto space-y-6">
       
       <!-- Header -->
@@ -492,8 +491,7 @@ onMounted(() => {
           </SaCard>
         </div>
       </div>
-    </div>
-  </AppShell>
+  </div>
 </template>
 
 <style scoped>

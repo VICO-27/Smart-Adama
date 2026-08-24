@@ -37,7 +37,7 @@ class ChunkingService
      *     section_id:  string,
      * }>
      */
-    public function chunk(string $text, string $sectionId): array
+    public function chunk(string $text, ?string $sectionId = null): array
     {
         $text = $this->normalise($text);
 
@@ -168,9 +168,9 @@ class ChunkingService
     /**
      * Build a chunk array from a text string.
      *
-     * @return array{chunk_text: string, chunk_index: int, token_count: int, section_id: string}
+     * @return array{chunk_text: string, chunk_index: int, token_count: int, section_id: ?string}
      */
-    private function buildChunk(string $text, int $index, string $sectionId): array
+    private function buildChunk(string $text, int $index, ?string $sectionId): array
     {
         $words      = str_word_count($text);
         $tokenCount = (int) ceil($words / self::WORDS_PER_TOKEN);

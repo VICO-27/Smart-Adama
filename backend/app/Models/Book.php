@@ -16,9 +16,32 @@ class Book extends Model
         'status',
         'source_file_path',
         'source_file_type',
+        'processing_metadata',
     ];
 
+    protected function casts(): array
+    {
+        return [
+            'processing_metadata' => 'array',
+        ];
+    }
+
     // ── Scopes & Helpers ─────────────────────────────────────────────────────
+
+    /**
+     * Append a log entry to processing_metadata.
+     */
+    public function logProgress(string $message, string $level = 'info'): void
+    {
+        $metadata = $this->processing_metadata ?? [];
+        $metadata['logs'][] = [
+            'timestamp' => now()->toIso8601String(),
+            'level' => $level,
+            'message' => $message,
+        ];
+        
+        $this->update(['processing_metadata' => $metadata]);
+    }
 
     /**
      * Get the canonical Smart Adama book for learner progress tracking.

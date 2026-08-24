@@ -7,6 +7,9 @@ use App\Http\Requests\Quizzes\StoreQuizRequest;
 use App\Http\Resources\QuizResource;
 use App\Models\Chapter;
 use App\Models\Quiz;
+use App\Models\Question;
+use App\Models\QuestionOption;
+use App\Services\AI\Contracts\LLMGatewayInterface;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -89,5 +92,72 @@ class AdminQuizController extends Controller
         return response()->json([
             'quiz' => new QuizResource($quiz->refresh()->load('questions.options'), includeAnswers: true),
         ]);
+    }
+
+    /**
+     * POST /admin/chapters/{chapter}/generate-quiz
+     * Automatically generate a quiz using LLM based on chapter content.
+     */
+    public function generate(Chapter $chapter, LLMGatewayInterface $llm): JsonResponse
+    {
+        if ($chapter->quiz()->exists()) {
+            return response()->json(['message' => 'This chapter already has a quiz.'], 422);
+        }
+
+        $chapter->load('sections');
+        $content = $chapter->sections->pluck('content')->join("\n\n");
+        if (strlen(trim($content)) < 100) {
+            return response()->json(['message' => 'Not enough content in chapter to generate a quiz.'], 422);
+        }
+
+        $prompt = "Generate exactly 5 multiple choice questions based on the following text. 
+Return ONLY a valid JSON array. Each object must have 'question_text', 'explanation', and 'options'. 
+'options' must be an array of exactly 4 strings. 
+The first option in the array MUST be the correct answer (I will shuffle them later).
+Text: " . substr($content, 0, 8000);
+
+        try {
+            $response = $llm->chat([['role' => 'user', 'content' => $prompt]], ['temperature' => 0.3]);
+            
+            // Try to extract JSON from markdown if LLM wrapped it
+            if (preg_match('/```json(.*?)```/is', $response, $matches)) {
+                $response = trim($matches[1]);
+            }
+            
+            $questionsData = json_decode($response, true);
+            
+            if (!$questionsData || !is_array($questionsData)) {
+                return response()->json(['message' => 'Failed to parse AI response into questions.', 'raw' => $response], 500);
+            }
+
+            $quiz = $chapter->quiz()->create([
+                'title'            => $chapter->title . ' - Auto Assessment',
+                'passing_score_pct' => 70,
+                'status'           => 'draft',
+            ]);
+
+            foreach (array_slice($questionsData, 0, 10) as $qData) {
+                if (!isset($qData['question_text']) || !isset($qData['options']) || !is_array($qData['options'])) continue;
+
+                $question = $quiz->questions()->create([
+                    'question_text' => $qData['question_text'],
+                    'explanation' => $qData['explanation'] ?? '',
+                ]);
+
+                foreach ($qData['options'] as $idx => $optText) {
+                    $question->options()->create([
+                        'option_text' => $optText,
+                        'is_correct' => ($idx === 0) // First is correct as prompted
+                    ]);
+                }
+            }
+
+            return response()->json([
+                'quiz' => new QuizResource($quiz->load('questions.options'), includeAnswers: true),
+            ], 201);
+
+        } catch (\Throwable $e) {
+            return response()->json(['message' => 'AI Generation failed: ' . $e->getMessage()], 500);
+        }
     }
 }

@@ -58,6 +58,10 @@ Route::prefix('auth')->group(function () {
     Route::get('/{provider}/callback', [SocialAuthController::class, 'callback']);
 });
 
+Route::get('/latest-book-id', function () {
+    return \App\Models\Book::orderBy('created_at', 'desc')->first()->id;
+});
+
 Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/auth/logout', LogoutController::class);
@@ -124,6 +128,7 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'admin'])->group(function ()
     // Books
     Route::post('/books', [AdminBookController::class, 'store']);
     Route::get('/books/{book}', [AdminBookController::class, 'show']);
+    Route::delete('/books/{book}', [AdminBookController::class, 'destroy']);
     
     // Chapters - GET routes must come before POST/PUT/PATCH to avoid matching {chapter} IDs
     Route::get('/chapters/{chapter}/sections', [AdminSectionController::class, 'index']);
@@ -141,6 +146,7 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'admin'])->group(function ()
     Route::patch('/sections/{section}/reorder', [AdminSectionController::class, 'reorder']);
     
     // Quizzes
+    Route::post('/chapters/{chapter}/generate-quiz', [AdminQuizController::class, 'generate']);
     Route::post('/chapters/{chapter}/quizzes', [AdminQuizController::class, 'store']);
     Route::post('/quizzes/{quiz}/publish', [AdminQuizController::class, 'publish']);
     
@@ -160,4 +166,27 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'admin'])->group(function ()
     Route::post('/chapters/{chapter}/retry', [AdminBookIngestionController::class, 'retryFailed']);
     Route::get('/chapters/{chapter}/status', [AdminBookIngestionController::class, 'getChapterStatus']);
     Route::post('/books/{book}/verify', [AdminBookIngestionController::class, 'verifyBook']);
+
+    // System
+    Route::get('/system/health', \App\Http\Controllers\Api\V1\Dashboard\AdminSystemController::class);
+    Route::get('/rag/debug-search', [\App\Http\Controllers\Api\V1\RAG\DebugRetrievalController::class, 'search']);
+
+    // Notifications
+    Route::get('/notifications', [\App\Http\Controllers\Api\V1\Admin\AdminNotificationController::class, 'index']);
+    Route::post('/notifications/mark-all-read', [\App\Http\Controllers\Api\V1\Admin\AdminNotificationController::class, 'markAllAsRead']);
+    Route::post('/notifications/{id}/mark-read', [\App\Http\Controllers\Api\V1\Admin\AdminNotificationController::class, 'markAsRead']);
+    Route::post('/notifications/seed', [\App\Http\Controllers\Api\V1\Admin\AdminNotificationController::class, 'seedMock']);
+
+    // Users
+    Route::get('/users', [\App\Http\Controllers\Api\V1\Users\AdminUserController::class, 'index']);
+    Route::post('/users/invite', [\App\Http\Controllers\Api\V1\Users\AdminUserController::class, 'invite']);
+    Route::get('/users/{user}', [\App\Http\Controllers\Api\V1\Users\AdminUserController::class, 'show']);
+
+    // Settings
+    Route::get('/settings', [\App\Http\Controllers\Api\V1\Dashboard\AdminSettingsController::class, 'index']);
+    Route::put('/settings', [\App\Http\Controllers\Api\V1\Dashboard\AdminSettingsController::class, 'update']);
+
+    // RAG Document Management
+    Route::get('/rag/documents', [\App\Http\Controllers\Api\V1\RAG\DocumentManagementController::class, 'index']);
+    Route::get('/rag/documents/{id}/progress', [\App\Http\Controllers\Api\V1\RAG\DocumentManagementController::class, 'progress']);
 });

@@ -2037,6 +2037,12 @@ onMounted(() => {
 
   padding:
     5rem 1rem 0;
+
+  position:
+    relative;
+
+  z-index:
+    10;
 }
 
 
@@ -2778,7 +2784,7 @@ html.dark
     9px;
 
   background:
-    #395886;
+    #10B981;
 
   color:
     white;
@@ -2805,7 +2811,7 @@ html.dark
 
 .journey-button:hover {
   background:
-    #638ECB;
+    #059669;
 
   transform:
     translateY(-1px);

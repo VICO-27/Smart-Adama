@@ -1,16 +1,18 @@
 <!-- src/App.vue -->
 <template>
-  <router-view v-slot="{ Component, route }">
-    <transition name="page" mode="out-in">
-      <component :is="Component" :key="route.fullPath" />
-    </transition>
-  </router-view>
+  <ErrorBoundary>
+    <router-view v-slot="{ Component, route }">
+      <transition name="page" mode="out-in">
+        <component :is="Component" :key="route.fullPath" />
+      </transition>
+    </router-view>
 
-  <!-- The ONE and ONLY Global Assistant rendered globally -->
-  <GlobalAssistant v-if="authStore.isAuthenticated && route.name !== 'study' && route.name !== 'study-session'" />
+    <!-- The ONE and ONLY Global Assistant rendered globally -->
+    <GlobalAssistant v-if="authStore.isAuthenticated && route.name !== 'study' && route.name !== 'study-session'" />
 
-  <!-- Global Auth Modal -->
-  <AuthModal v-if="authStore.isAuthModalOpen" />
+    <!-- Global Auth Modal -->
+    <AuthModal v-if="authStore.isAuthModalOpen" />
+  </ErrorBoundary>
 </template>
 
 <script setup lang="ts">
@@ -18,6 +20,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useRoute } from 'vue-router'
 import GlobalAssistant from '@/components/layout/GlobalAssistant.vue'
 import AuthModal from '@/components/auth/AuthModal.vue'
+import ErrorBoundary from '@/components/ErrorBoundary.vue'
 
 const authStore = useAuthStore()
 const route = useRoute()

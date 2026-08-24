@@ -2,12 +2,10 @@
 
 namespace App\Providers;
 
-use App\Services\AI\ClaudeLLMGateway;
-use App\Services\AI\GroqLLMGateway;
+use App\Services\AI\OllamaLLMGateway;
 use App\Services\AI\Contracts\EmbeddingProviderInterface;
 use App\Services\AI\Contracts\LLMGatewayInterface;
-use App\Services\AI\OpenAIEmbeddingProvider;
-use App\Services\AI\VoyageEmbeddingProvider;
+use App\Services\AI\OllamaEmbeddingProvider;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Event;
@@ -17,24 +15,14 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        // LLM Gateway — resolved from config('ai.llm_provider')
+        // LLM Gateway — exclusively using Ollama for fully local architecture
         $this->app->bind(LLMGatewayInterface::class, function ($app) {
-            $provider = config('ai.llm_provider', 'groq');
-            
-            return match ($provider) {
-                'groq'   => $app->make(\App\Services\AI\GroqLLMGateway::class),
-                'claude' => $app->make(\App\Services\AI\ClaudeLLMGateway::class),
-                default  => $app->make(\App\Services\AI\GroqLLMGateway::class),
-            };
+            return $app->make(\App\Services\AI\OllamaLLMGateway::class);
         });
 
-        // Embedding Provider — resolved from config('ai.embedding_provider')
+        // Embedding Provider — exclusively using Ollama for fully local architecture
         $this->app->bind(EmbeddingProviderInterface::class, function ($app) {
-            return match (config('ai.embedding_provider')) {
-                'voyage' => $app->make(VoyageEmbeddingProvider::class),
-                'openai' => $app->make(OpenAIEmbeddingProvider::class),
-                default  => $app->make(VoyageEmbeddingProvider::class),
-            };
+            return $app->make(\App\Services\AI\OllamaEmbeddingProvider::class);
         });
     }
 

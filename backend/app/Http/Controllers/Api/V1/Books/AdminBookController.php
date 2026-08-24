@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Books\StoreBookRequest;
 use App\Http\Resources\BookResource;
 use App\Http\Resources\ChapterResource;
+use App\Jobs\ProcessUploadedPdfJob;
 use App\Models\Book;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Storage;
@@ -35,10 +36,14 @@ class AdminBookController extends Controller
 
         $book = Book::create([
             'title'            => $request->title,
-            'status'           => 'draft',
+            'status'           => $filePath ? 'uploading' : 'draft',
             'source_file_path' => $filePath,
             'source_file_type' => $fileType,
         ]);
+
+        if ($filePath) {
+            ProcessUploadedPdfJob::dispatch($book);
+        }
 
         return response()->json([
             'book' => new BookResource($book),
@@ -51,7 +56,7 @@ class AdminBookController extends Controller
      */
     public function show(Book $book): JsonResponse
     {
-        $book->load(['chapters.sections']);
+        $book->load(['chapters.sections', 'chapters.quiz']);
 
         return response()->json([
             'book' => array_merge(
@@ -63,5 +68,20 @@ class AdminBookController extends Controller
                 ]
             ),
         ]);
+    }
+
+    /**
+     * DELETE /admin/books/{book}
+     * Deletes the book and its associated file.
+     */
+    public function destroy(Book $book): JsonResponse
+    {
+        if ($book->source_file_path && Storage::disk('local')->exists($book->source_file_path)) {
+            Storage::disk('local')->delete($book->source_file_path);
+        }
+        
+        $book->delete();
+
+        return response()->json(['message' => 'Book deleted successfully.']);
     }
 }

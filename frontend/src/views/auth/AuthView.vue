@@ -161,13 +161,13 @@ onMounted(() => {
   <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
     
     <!-- Wider Card Container with darker blue #273C5B color -->
-    <div class="w-full max-w-md rounded-2xl shadow-2xl p-5 sm:p-6 text-white relative border border-white/10" style="background-color: #273C5B;">
+    <div class="w-full max-w-md rounded-2xl shadow-2xl p-4 sm:p-5 text-white relative border border-white/10" style="background-color: #273C5B;">
       
       <RouterLink to="/" class="absolute top-4 right-4 text-blue-200 hover:text-white transition-colors bg-white/10 rounded-full p-1" title="Close">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
       </RouterLink>
 
-      <div class="flex flex-col items-center justify-center mb-6">
+      <div class="flex flex-col items-center justify-center mb-4">
         <img src="/logo.png" alt="Smart Adama Logo" class="w-12 h-12 object-contain mb-2 drop-shadow-md" />
         <h1 class="text-xl font-bold tracking-tight text-white">
           <template v-if="flow === 'phone' || flow === 'email'">
@@ -277,7 +277,7 @@ onMounted(() => {
       <!-- ================= MAIN AUTH FLOWS ================= -->
       <template v-else>
         <!-- PHONE FLOW -->
-        <form v-if="flow === 'phone'" @submit.prevent="submitAuth" novalidate class="flex flex-col gap-4">
+        <form v-if="flow === 'phone'" @submit.prevent="submitAuth" novalidate class="flex flex-col gap-3">
           
           <div v-if="mode === 'register'">
             <label class="block text-sm font-semibold text-white mb-1.5">Full name</label>
@@ -356,7 +356,7 @@ onMounted(() => {
         </form>
 
         <!-- EMAIL FLOW (ALTERNATIVE) -->
-        <form v-else-if="flow === 'email'" @submit.prevent="submitAuth" novalidate class="flex flex-col gap-4">
+        <form v-else-if="flow === 'email'" @submit.prevent="submitAuth" novalidate class="flex flex-col gap-3">
           <div v-if="mode === 'register'">
             <label class="block text-sm font-semibold text-white mb-1.5">Full name</label>
             <SaInput
@@ -404,7 +404,7 @@ onMounted(() => {
         </form>
 
         <!-- DIVIDER -->
-        <div class="relative flex items-center py-4">
+        <div class="relative flex items-center py-2">
           <div class="flex-grow border-t border-white/20"></div>
           <span class="flex-shrink-0 mx-4 text-xs font-semibold uppercase tracking-wider text-white/70">OR</span>
           <div class="flex-grow border-t border-white/20"></div>
@@ -449,7 +449,7 @@ onMounted(() => {
       </template>
 
       <!-- Toggle between Login and Register -->
-      <p v-if="flow === 'phone' || flow === 'email'" class="mt-6 text-center text-sm text-blue-100">
+      <p v-if="flow === 'phone' || flow === 'email'" class="mt-4 text-center text-sm text-blue-100">
         <template v-if="mode === 'login'">
           New user?
           <button @click="toggleMode" type="button" class="font-bold text-white hover:underline ml-1">Sign up here</button>

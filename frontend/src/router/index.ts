@@ -9,19 +9,22 @@ import ChatView from '@/views/ChatView.vue'
 import ChapterView from '@/views/ChapterView.vue'
 import QuizView from '@/views/QuizView.vue'
 import QuizzesView from '@/views/QuizzesView.vue'
-import AboutView from '@/views/AboutView.vue' // <-- Imported AboutView
-import AdminBookView from '@/views/admin/AdminBookView.vue'
+import AboutView from '@/views/AboutView.vue'
+import AdminDocumentManager from '@/views/admin/AdminDocumentManager.vue'
 import AdminQuizView from '@/views/admin/AdminQuizView.vue'
-import AdminBookIngestionView from '@/views/admin/AdminBookIngestionView.vue'
 import AdminChapterEditor from '@/views/admin/AdminChapterEditor.vue'
+import AdminRetrievalDebugger from '@/views/admin/AdminRetrievalDebugger.vue'
+import AdminLayout from '@/views/admin/AdminLayout.vue'
+import AdminDashboardView from '@/views/admin/AdminDashboardView.vue'
+import AdminSystemHealthView from '@/views/admin/AdminSystemHealthView.vue'
+import AdminUsersView from '@/views/admin/AdminUsersView.vue'
+import AdminAiSettingsView from '@/views/admin/AdminAiSettingsView.vue'
 import NotFoundView from '@/views/NotFoundView.vue'
-import GameView from '@/views/GameView.vue' // <-- Add this line
-
+import GameView from '@/views/GameView.vue' 
 
 const routes: RouteRecordRaw[] = [
-
   {
-    path: '/game', // <-- Add this route block
+    path: '/game', 
     name: 'game',
     component: GameView,
     meta: { requiresAuth: true },
@@ -33,10 +36,10 @@ const routes: RouteRecordRaw[] = [
     meta: { public: true },
   },
   {
-    path: '/about',               // <-- Added About Route
+    path: '/about',               
     name: 'about',
     component: AboutView,
-    meta: { public: true },       // Accessible without logging in
+    meta: { public: true },       
   },
   {
     path: '/auth/callback',
@@ -87,28 +90,62 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true },
   },
   {
-    path: '/admin/books',
-    name: 'admin-books',
-    component: AdminBookView,
+    path: '/admin',
+    component: AdminLayout,
     meta: { requiresAuth: true, requiresAdmin: true },
-  },
-  {
-    path: '/admin/book-ingestion',
-    name: 'admin-book-ingestion',
-    component: AdminBookIngestionView,
-    meta: { requiresAuth: true, requiresAdmin: true },
-  },
-  {
-    path: '/admin/quizzes',
-    name: 'admin-quizzes',
-    component: AdminQuizView,
-    meta: { requiresAuth: true, requiresAdmin: true },
-  },
-  {
-    path: '/admin/chapters/:id',
-    name: 'admin-chapter-editor',
-    component: AdminChapterEditor,
-    meta: { requiresAuth: true, requiresAdmin: true },
+    children: [
+      {
+        path: '',
+        name: 'admin-dashboard',
+        component: AdminDashboardView,
+      },
+      {
+        path: 'documents',
+        name: 'admin-documents',
+        component: AdminDocumentManager,
+      },
+      {
+        path: 'quizzes',
+        name: 'admin-quizzes',
+        component: AdminQuizView,
+      },
+      {
+        path: 'chapters/:id',
+        name: 'admin-chapter-editor',
+        component: AdminChapterEditor,
+      },
+      // Placeholders for future views
+      {
+        path: 'users',
+        name: 'admin-users',
+        component: AdminUsersView,
+      },
+      {
+        path: 'users/:id',
+        name: 'admin-user-detail',
+        component: () => import('@/views/admin/AdminUserDetailView.vue'),
+      },
+      {
+        path: 'ai-settings',
+        name: 'admin-ai-settings',
+        component: AdminAiSettingsView,
+      },
+      {
+        path: 'rag-debugger',
+        name: 'admin-rag-debugger',
+        component: AdminRetrievalDebugger,
+      },
+      {
+        path: 'profile',
+        name: 'admin-profile',
+        component: () => import('@/views/admin/AdminProfileView.vue'),
+      },
+      {
+        path: 'system',
+        name: 'admin-system',
+        component: AdminSystemHealthView,
+      }
+    ]
   },
   {
     path: '/:pathMatch(.*)*',
@@ -126,7 +163,7 @@ const router = createRouter({
 
 let sessionHydrated = false
 
-router.beforeEach(async (to) => {
+router.beforeEach(async (to, from) => {
   const auth = useAuthStore()
 
   if (!sessionHydrated && auth.token && !auth.user) {

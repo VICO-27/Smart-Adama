@@ -1,5 +1,16 @@
 <template>
+  <div v-if="fatalError" class="fatal-error-overlay">
+    <div class="fatal-error-modal">
+      <h2>Something went wrong</h2>
+      <p>We encountered an unexpected error while rendering this page.</p>
+      <pre>{{ fatalError }}</pre>
+      <button class="btn btn--primary" @click="fatalError = null">Dismiss</button>
+      <button class="btn" @click="reloadPage">Reload Page</button>
+    </div>
+  </div>
+
   <div
+    v-else
     class="chat-page"
     :style="themeVars"
     :class="{
@@ -34,7 +45,8 @@
         @click="isSidebarOpen = true"
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M13 5l7 7-7 7M5 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" />
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2" stroke-linecap="round" />
+          <path d="M9 3v18" stroke-linecap="round" />
         </svg>
       </button>
 
@@ -57,187 +69,372 @@
     <aside
       v-if="isSidebarOpen && !isFullscreen"
       class="side-panel side-panel--left"
-      :style="isMobile ? undefined : { width: `${sidebarWidth}px` }"
       :class="{ 'side-panel--mobile': isMobile }"
       aria-label="Course navigation"
     >
       <div class="side-panel__header">
         <div class="side-panel__brand-row">
-          <button
-            type="button"
+          <RouterLink
+            to="/dashboard"
             class="brand-button"
-            title="Reload Smart Adama"
-            @click="reloadPage"
+            title="Go to Dashboard"
           >
             <img src="/logo.png" alt="Smart Adama" />
             <span>{{ $t('nav.brand') }}</span>
-          </button>
+          </RouterLink>
 
-          <button
-            type="button"
-            class="icon-button"
-            aria-label="Close chapters"
-            title="Close chapters"
-            @click="isSidebarOpen = false"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M11 19 4 12l7-7M20 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
-          </button>
+          <div style="display: flex; gap: 4px;">
+            <button
+              type="button"
+              class="icon-button"
+              aria-label="Search"
+              title="Search"
+              @click="toggleSidebarSearch"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.3-4.3" stroke-linecap="round" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              class="icon-button"
+              aria-label="Close sidebar"
+              title="Close sidebar"
+              @click="isSidebarOpen = false"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" stroke-linecap="round" />
+                <path d="M9 3v18" stroke-linecap="round" />
+              </svg>
+            </button>
+          </div>
         </div>
 
-        <button type="button" class="new-session-button" @click="startNewChat">
+        <!-- Sidebar Search -->
+        <div v-if="isSidebarSearchActive" class="sidebar-search-container">
+          <div class="sidebar-search-wrapper">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.3-4.3" stroke-linecap="round" />
+            </svg>
+            <input 
+              type="text" 
+              v-model="sidebarSearchQuery" 
+              ref="sidebarSearchInputRef"
+              class="sidebar-search-input" 
+              :placeholder="activeSidebarTab === 'chats' ? 'Search chats...' : 'Search chapters...'"
+              @keyup.esc="toggleSidebarSearch"
+            />
+            <button v-if="sidebarSearchQuery" @click="sidebarSearchQuery = ''" class="search-clear" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- ChatGPT-style New Chat Button -->
+        <button type="button" class="new-chat-button" @click="startNewChat">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 4v16M4 12h16" stroke-linecap="round" />
+            <path d="M12 5v14M5 12h14" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
-          {{ $t('chapter.new_session') }}
+          New chat
         </button>
+
+        <button 
+          type="button" 
+          class="reader-toggle-button" 
+          @click="viewMode === 'reading' ? switchToPdf() : viewMode = 'reading'"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          {{ viewMode === 'reading' ? 'Get Full PDF' : 'Back to Reading' }}
+        </button>
+
+        <!-- Modern Tab Switcher -->
+        <div class="sidebar-tab-switcher">
+          <button 
+            type="button" 
+            class="tab-btn" 
+            :class="{ 'is-active': activeSidebarTab === 'chats' }"
+            @click="activeSidebarTab = 'chats'; if (!isAiSidebarOpen) { isAiSidebarOpen = true; isReaderOpen = false; }"
+          >
+            Chats
+          </button>
+          <button 
+            type="button" 
+            class="tab-btn" 
+            :class="{ 'is-active': activeSidebarTab === 'chapters' }"
+            @click="activeSidebarTab = 'chapters'; if (!isReaderOpen) { isReaderOpen = true; isAiSidebarOpen = false; }"
+          >
+            Chapters
+          </button>
+        </div>
       </div>
 
       <div class="side-panel__scroll">
-        <RouterLink to="/quizzes" class="sidebar-link sidebar-link--quiz">
-          <span class="sidebar-link__icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="m9 12 2 2 4-4M7.8 4.7a3.4 3.4 0 0 0 1.9-.8 3.4 3.4 0 0 1 4.4 0 3.4 3.4 0 0 0 1.9.8 3.4 3.4 0 0 1 3.1 3.1 3.4 3.4 0 0 0 .8 1.9 3.4 3.4 0 0 1 0 4.4 3.4 3.4 0 0 0-.8 1.9 3.4 3.4 0 0 1-3.1 3.1 3.4 3.4 0 0 0-1.9.8 3.4 3.4 0 0 1-4.4 0 3.4 3.4 0 0 0-1.9-.8 3.4 3.4 0 0 1-3.1-3.1 3.4 3.4 0 0 0-.8-1.9 3.4 3.4 0 0 1 0-4.4 3.4 3.4 0 0 0 .8-1.9 3.4 3.4 0 0 1 3.1-3.1Z" />
-            </svg>
-          </span>
-          <span>{{ $t('chapter.quizzes') }}</span>
-        </RouterLink>
-
-        <section class="sidebar-section">
-          <div class="sidebar-section__title">{{ $t('chapter.course_content') }}</div>
-
-          <div class="chapter-list">
-            <article
-              v-for="chapter in allVisibleChapters"
-              :key="chapter.id"
-              class="chapter-item"
-              :class="{ 'chapter-item--active': booksStore.currentChapter?.id === chapter.id }"
-            >
-              <div class="chapter-item__row">
-                <button type="button" class="chapter-title" @click="loadBookChapter(chapter.id)">
-                  {{ chapter.title }}
-                </button>
-
+        <!-- CHATS TAB -->
+        <div v-if="activeSidebarTab === 'chats'" class="sidebar-tab-content">
+          <section class="sidebar-section sidebar-section--sessions">
+            <div class="session-list chatgpt-session-list">
+              <div
+                v-for="session in visibleSessions"
+                :key="session.id"
+                style="display: flex; align-items: center; gap: 4px; padding-right: 4px;"
+              >
                 <button
                   type="button"
-                  class="chapter-toggle"
-                  :aria-expanded="!!expandedChapters[chapter.id]"
-                  :aria-label="`Toggle ${chapter.title}`"
-                  @click.stop="toggleChapterCollapse(chapter.id)"
+                  class="session-item"
+                  :class="{ 'session-item--active': chatStore.currentSession?.id === session.id }"
+                  @click="switchSession(session.id)"
+                  style="flex: 1; margin: 0;"
                 >
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    :class="{ 'rotate-180': expandedChapters[chapter.id] }"
-                  >
-                    <path d="m6 9 6 6 6-6" stroke-linecap="round" stroke-linejoin="round" />
-                  </svg>
+                  <span class="session-item__title">{{ session.title || 'New Conversation' }}</span>
+                </button>
+                <button 
+                  type="button" 
+                  @click.stop="deleteChat(session.id)" 
+                  title="Delete chat"
+                  style="background: transparent; border: none; padding: 6px; cursor: pointer; color: var(--reader-muted); border-radius: 6px; display: flex; align-items: center;" 
+                  onmouseover="this.style.color='var(--reader-error, #ef4444)'; this.style.background='var(--reader-surface-2)';" 
+                  onmouseout="this.style.color='var(--reader-muted)'; this.style.background='transparent';"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                 </button>
               </div>
+            </div>
+            
+            <button
+              v-if="hiddenChatsCount > 0"
+              type="button"
+              class="show-more-button"
+              @click="showAllChats = !showAllChats"
+            >
+              {{ showAllChats ? 'Show less' : `Show ${hiddenChatsCount} more` }}
+            </button>
+          </section>
+        </div>
 
-              <div v-if="expandedChapters[chapter.id]" class="chapter-sections">
-                <button
-                  v-if="chapter.title === 'Introduction & Preface'"
-                  type="button"
-                  class="section-link"
-                  :class="{ 'section-link--active': booksStore.currentChapter?.id === chapter.id }"
-                  @click="loadBookChapter(chapter.id)"
-                >
-                  <span class="section-bullet">01</span>
-                  <span>Overview</span>
-                </button>
+        <!-- CHAPTERS TAB -->
+        <div v-if="activeSidebarTab === 'chapters'" class="sidebar-tab-content">
+          <RouterLink to="/quizzes" class="sidebar-link sidebar-link--quiz">
+            <span class="sidebar-link__icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="m9 12 2 2 4-4M7.8 4.7a3.4 3.4 0 0 0 1.9-.8 3.4 3.4 0 0 1 4.4 0 3.4 3.4 0 0 0 1.9.8 3.4 3.4 0 0 1 3.1 3.1 3.4 3.4 0 0 0 .8 1.9 3.4 3.4 0 0 1 0 4.4 3.4 3.4 0 0 0-.8 1.9 3.4 3.4 0 0 1-3.1 3.1 3.4 3.4 0 0 0-1.9.8 3.4 3.4 0 0 1-4.4 0 3.4 3.4 0 0 0-1.9-.8 3.4 3.4 0 0 1-3.1-3.1 3.4 3.4 0 0 0-.8-1.9 3.4 3.4 0 0 1 0-4.4 3.4 3.4 0 0 0 .8-1.9 3.4 3.4 0 0 1 3.1-3.1Z" />
+              </svg>
+            </span>
+            <span>{{ $t('chapter.quizzes') }}</span>
+          </RouterLink>
 
-                <template v-else>
-                  <button
-                    v-for="section in (chapter.sections?.data || chapter.sections || [])"
-                    :key="section.id"
-                    type="button"
-                    class="section-link"
-                    :class="{
-                      'section-link--active':
-                        booksStore.currentChapter?.id === chapter.id &&
-                        sectionToPageMap.get(section.id) === currentPage - 1,
-                    }"
-                    @click="jumpToSection(chapter.id, section.id)"
-                  >
-                    <span class="section-bullet">•</span>
-                    <span>{{ section.title }}</span>
+          <section class="sidebar-section">
+            <div class="sidebar-section__title">{{ $t('chapter.course_content') }}</div>
+
+            <div class="chapter-list modern-chapter-list">
+              <article
+                v-for="chapter in allVisibleChapters"
+                :key="chapter.id"
+                class="chapter-item"
+                :class="{ 'chapter-item--active': booksStore.currentChapter?.id === chapter.id }"
+              >
+                <div class="chapter-item__row">
+                  <button type="button" class="chapter-title" @click="loadBookChapter(chapter.id)">
+                    {{ chapter.title }}
                   </button>
 
-                  <RouterLink :to="`/chapters/${chapter.id}/quiz`" class="chapter-quiz-link">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="m9 12 2 2 4-4M7.8 4.7a3.4 3.4 0 0 0 1.9-.8 3.4 3.4 0 0 1 4.4 0 3.4 3.4 0 0 0 1.9.8 3.4 3.4 0 0 1 3.1 3.1 3.4 3.4 0 0 0 .8 1.9 3.4 3.4 0 0 1 0 4.4 3.4 3.4 0 0 0-.8 1.9 3.4 3.4 0 0 1-3.1 3.1 3.4 3.4 0 0 0-1.9.8 3.4 3.4 0 0 1-4.4 0 3.4 3.4 0 0 0-1.9-.8 3.4 3.4 0 0 1-3.1-3.1 3.4 3.4 0 0 0-.8-1.9 3.4 3.4 0 0 1 0-4.4 3.4 3.4 0 0 0 .8-1.9 3.4 3.4 0 0 1 3.1-3.1Z" />
+                  <button
+                    type="button"
+                    class="chapter-toggle"
+                    :aria-expanded="!!expandedChapters[chapter.id]"
+                    :aria-label="`Toggle ${chapter.title}`"
+                    @click.stop="toggleChapterCollapse(chapter.id)"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      :class="{ 'rotate-180': expandedChapters[chapter.id] }"
+                    >
+                      <path d="m6 9 6 6 6-6" stroke-linecap="round" stroke-linejoin="round" />
                     </svg>
-                    {{ $t('chapter.take_quiz') }}
-                  </RouterLink>
-                </template>
-              </div>
-            </article>
-          </div>
+                  </button>
+                </div>
 
-          <button
-            v-if="hasHiddenChapters"
-            type="button"
-            class="show-more-button"
-            @click="toggleShowAll"
-          >
-            {{ isShowingAll ? $t('chapter.show_less') : $t('chapter.show_more') }}
-          </button>
-        </section>
+                <div v-if="expandedChapters[chapter.id]" class="chapter-sections">
+                  <button
+                    v-if="chapter.title === 'Introduction & Preface'"
+                    type="button"
+                    class="section-link"
+                    :class="{ 'section-link--active': booksStore.currentChapter?.id === chapter.id }"
+                    @click="loadBookChapter(chapter.id)"
+                  >
+                    <span class="section-bullet">01</span>
+                    <span>Overview</span>
+                  </button>
 
-        <section class="sidebar-section sidebar-section--sessions">
-          <div class="sidebar-section__title">{{ $t('chapter.recent_chats') }}</div>
+                  <template v-else>
+                    <button
+                      v-for="section in (chapter.sections?.data || chapter.sections || [])"
+                      :key="section.id"
+                      type="button"
+                      class="section-link"
+                      :class="{
+                        'section-link--active':
+                          booksStore.currentChapter?.id === chapter.id &&
+                          sectionToPageMap.get(section.id) === currentPage - 1,
+                      }"
+                      @click="jumpToSection(chapter.id, section.id)"
+                    >
+                      <span class="section-bullet">•</span>
+                      <span>{{ section.title }}</span>
+                    </button>
 
-          <div class="session-list">
+                    <RouterLink :to="`/chapters/${chapter.id}/quiz`" class="chapter-quiz-link">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="m9 12 2 2 4-4M7.8 4.7a3.4 3.4 0 0 0 1.9-.8 3.4 3.4 0 0 1 4.4 0 3.4 3.4 0 0 0 1.9.8 3.4 3.4 0 0 1 3.1 3.1 3.4 3.4 0 0 0 .8 1.9 3.4 3.4 0 0 1 0 4.4 3.4 3.4 0 0 0-.8 1.9 3.4 3.4 0 0 1-3.1 3.1 3.4 3.4 0 0 0-1.9.8 3.4 3.4 0 0 1-4.4 0 3.4 3.4 0 0 0-1.9-.8 3.4 3.4 0 0 1-3.1-3.1 3.4 3.4 0 0 0-.8-1.9 3.4 3.4 0 0 1 0-4.4 3.4 3.4 0 0 0 .8-1.9 3.4 3.4 0 0 1 3.1-3.1Z" />
+                      </svg>
+                      {{ $t('chapter.take_quiz') }}
+                    </RouterLink>
+                  </template>
+                </div>
+              </article>
+            </div>
+
             <button
-              v-for="session in visibleSessions"
-              :key="session.id"
+              v-if="hasHiddenChapters"
               type="button"
-              class="session-item"
-              :class="{ 'session-item--active': chatStore.currentSession?.id === session.id }"
-              @click="switchSession(session.id)"
+              class="show-more-button"
+              @click="toggleShowAll"
             >
-              <span class="session-item__title">{{ session.title || 'New Conversation' }}</span>
+              {{ isShowingAll ? $t('chapter.show_less') : $t('chapter.show_more') }}
             </button>
-          </div>
-
-          <button
-            v-if="hiddenChatsCount > 0"
-            type="button"
-            class="show-more-button"
-            @click="showAllChats = !showAllChats"
-          >
-            {{ showAllChats ? 'Show less' : `Show ${hiddenChatsCount} more` }}
-          </button>
-        </section>
+          </section>
+        </div>
       </div>
 
-      <!-- Accessible resize handle -->
-      <button
-        v-if="!isMobile"
-        type="button"
-        class="resize-handle resize-handle--right"
-        aria-label="Resize chapter sidebar"
-        :aria-valuenow="sidebarWidth"
-        aria-valuemin="240"
-        aria-valuemax="480"
-        @mousedown="startDragLeft"
-        @keydown.left.prevent="nudgeSidebarWidth(-16)"
-        @keydown.right.prevent="nudgeSidebarWidth(16)"
-        @keydown.home.prevent="setSidebarWidth(240)"
-        @keydown.end.prevent="setSidebarWidth(480)"
-      >
-        <span></span>
-      </button>
+      <!-- Sidebar Footer (Profile & Settings) -->
+      <div class="sidebar-footer" style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+        <RouterLink to="/profile" class="sidebar-profile-link" style="flex: 1; padding-right: 4px;">
+          <div class="sidebar-profile-avatar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="8" r="3.5" />
+              <path d="M5 20a7 7 0 0 1 14 0" />
+            </svg>
+          </div>
+          <div class="sidebar-profile-info">
+            <span class="sidebar-profile-name">Profile</span>
+            <span class="sidebar-profile-plan">Manage Account</span>
+          </div>
+        </RouterLink>
+
+        <!-- Display Settings Toggle (Moved from header) -->
+        <div class="reader-menu" ref="displaySettingsRef">
+          <button
+            type="button"
+            class="header-control-button"
+            :aria-expanded="isDisplaySettingsOpen"
+            title="Display Settings"
+            @click.stop="toggleDisplaySettings"
+            style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 10px; background: transparent; border: none; cursor: pointer; color: var(--reader-muted); transition: all 0.2s ease;"
+            onmouseover="this.style.background='var(--reader-surface-2)'; this.style.color='var(--reader-text)';"
+            onmouseout="this.style.background='transparent'; this.style.color='var(--reader-muted)';"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px;">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+          </button>
+
+          <Transition name="menu">
+            <div v-if="isDisplaySettingsOpen" class="popover-menu popover-menu--display-settings" style="bottom: 100%; top: auto; right: auto; left: 0; margin-bottom: 12px; transform-origin: bottom left; width: 200px; overflow: visible;">
+              
+              <div class="display-settings-group" style="position: relative;">
+                <button 
+                  class="display-settings-label" 
+                  style="display: flex; justify-content: space-between; align-items: center; width: 100%; border: none; background: transparent; cursor: pointer; padding: 8px 4px;"
+                  @click="activeSettingsSubmenu = activeSettingsSubmenu === 'font' ? null : 'font'"
+                >
+                  Font
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px; transform: rotate(-90deg);"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+                
+                <Transition name="fade">
+                  <div v-if="activeSettingsSubmenu === 'font'" class="popover-menu flyout-menu" style="left: 100%; right: auto; top: -10px; margin-left: 8px; width: 220px;">
+                    <div style="display: flex; gap: 4px;">
+                      <button type="button" :class="{ 'is-selected': readerFont === 'sans' }" @click="setFont('sans')" style="flex:1; justify-content:center;">Sans-serif</button>
+                      <button type="button" :class="{ 'is-selected': readerFont === 'serif' }" @click="setFont('serif')" style="flex:1; justify-content:center;">Serif</button>
+                    </div>
+                  </div>
+                </Transition>
+              </div>
+
+              <div class="display-settings-group" style="position: relative;">
+                <button 
+                  class="display-settings-label" 
+                  style="display: flex; justify-content: space-between; align-items: center; width: 100%; border: none; background: transparent; cursor: pointer; padding: 8px 4px;"
+                  @click="activeSettingsSubmenu = activeSettingsSubmenu === 'appearance' ? null : 'appearance'"
+                >
+                  Appearance
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px; transform: rotate(-90deg);"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+                
+                <Transition name="fade">
+                  <div v-if="activeSettingsSubmenu === 'appearance'" class="popover-menu flyout-menu" style="left: 100%; right: auto; top: -10px; margin-left: 8px; width: 220px;">
+                    <div style="display: flex; flex-direction: column; gap: 2px;">
+                      <button
+                        v-for="(item, key) in THEMES"
+                        :key="key"
+                        type="button"
+                        :class="{ 'is-selected': readerTheme === key }"
+                        @click="setTheme(key)"
+                      >
+                        <span class="theme-swatch" :style="{ background: item.vars['--rt-surface'] }"></span>
+                        {{ item.label }}
+                        <svg v-if="readerTheme === key" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left: auto;">
+                          <path d="m5 12 4 4L19 6" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                </Transition>
+              </div>
+
+              <!-- New items: Clear Chat History & Sign Out -->
+              <hr style="margin: 8px 0; border: 0; border-top: 1px solid var(--reader-border);" />
+              
+              <button 
+                class="display-settings-label" 
+                style="display: flex; justify-content: flex-start; align-items: center; gap: 8px; width: 100%; border: none; background: transparent; cursor: pointer; padding: 8px 4px; color: var(--reader-error, #ef4444);"
+                @click="clearChatHistory"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                Clear Chat History
+              </button>
+              
+              <button 
+                class="display-settings-label" 
+                style="display: flex; justify-content: flex-start; align-items: center; gap: 8px; width: 100%; border: none; background: transparent; cursor: pointer; padding: 8px 4px;"
+                @click="signOut"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"></path></svg>
+                Sign Out
+              </button>
+
+            </div>
+          </Transition>
+        </div>
+      </div>
+
     </aside>
 
     <!-- =========================================================
-         MAIN READER
+         WORKSPACE (Main Area + Right Sidebar)
     ========================================================== -->
-    <main class="reader-main">
+    <div class="workspace" style="flex: 1; display: flex; flex-direction: column; min-width: 0;">
+      
       <div v-if="viewMode === 'reading'" class="reading-progress-track">
         <div class="reading-progress-value" :style="{ width: `${readingProgress}%` }"></div>
       </div>
@@ -245,32 +442,17 @@
       <header class="reader-header">
         <div class="reader-header__left">
           <template v-if="!isMobile">
-            <RouterLink
-              v-if="!isFullscreen"
-              to="/profile"
-              class="header-icon-button"
-              title="Profile"
-              aria-label="Open profile"
+            <button
+              type="button"
+              class="btn-read-with-ai"
+              :class="{ 'is-active': isReaderOpen && isAiSidebarOpen }"
+              @click="toggleSplitScreen"
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="8" r="3.5" />
-                <path d="M5 20a7 7 0 0 1 14 0" />
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px; color: #10b981;">
+                <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
               </svg>
-            </RouterLink>
-
-            <div class="breadcrumb">
-              <RouterLink v-if="!isFullscreen" to="/dashboard" class="breadcrumb__home">
-                {{ $t('nav.home') }}
-              </RouterLink>
-
-              <svg v-if="!isFullscreen" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="m9 18 6-6-6-6" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-
-              <span class="breadcrumb__current">
-                {{ booksStore.currentChapter?.title || 'Select a chapter' }}
-              </span>
-            </div>
+              Read with AI
+            </button>
           </template>
           
           <template v-else>
@@ -315,25 +497,7 @@
               <Transition name="menu">
                 <div v-if="isMobileSettingsOpen" class="mobile-settings-dropdown">
                   
-                  <!-- Reader Mode -->
-                  <div class="mobile-settings-section">
-                    <div class="segmented-control" role="tablist" aria-label="Reader mode" style="width: 100%">
-                      <button
-                        type="button"
-                        :class="{ 'is-active': viewMode === 'reading' }"
-                        @click="viewMode = 'reading'"
-                      >
-                        {{ $t('chapter.reading') }}
-                      </button>
-                      <button
-                        type="button"
-                        :class="{ 'is-active': viewMode === 'pdf' }"
-                        @click="switchToPdf"
-                      >
-                        {{ $t('chapter.pdf') }}
-                      </button>
-                    </div>
-                  </div>
+                  <!-- Reader Mode removed from here -->
 
                   <template v-if="viewMode === 'reading'">
                     <!-- Page Control -->
@@ -404,128 +568,22 @@
           </template>
 
           <template v-else>
-            <div class="segmented-control" role="tablist" aria-label="Reader mode">
-              <button
-                type="button"
-                :class="{ 'is-active': viewMode === 'reading' }"
-                @click="viewMode = 'reading'"
-              >
-                {{ $t('chapter.reading') }}
-              </button>
-              <button
-                type="button"
-                :class="{ 'is-active': viewMode === 'pdf' }"
-                @click="switchToPdf"
-              >
-                {{ $t('chapter.pdf') }}
-              </button>
-            </div>
+            <!-- segmented control removed -->
 
-            <template v-if="viewMode === 'reading'">
-              <div class="page-control page-control--desktop">
-                <button type="button" :disabled="currentPage <= 1" aria-label="Previous page" @click="prevPage">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
-                    <path d="m15 19-7-7 7-7" stroke-linecap="round" stroke-linejoin="round" />
-                  </svg>
-                </button>
-
-                <label class="page-jump">
-                  <input
-                    v-model="jumpPageInput"
-                    aria-label="Current page"
-                    inputmode="numeric"
-                    @keyup.enter="jumpToPage"
-                    @blur="jumpToPage"
-                  />
-                  <span>/ {{ totalPages }}</span>
-                </label>
-
-                <button type="button" :disabled="currentPage >= totalPages" aria-label="Next page" @click="nextPage">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
-                    <path d="m9 5 7 7-7 7" stroke-linecap="round" stroke-linejoin="round" />
-                  </svg>
-                </button>
-              </div>
-
-              <div class="reader-menu" ref="fontMenuRef">
-                <button
-                  type="button"
-                  class="header-control-button"
-                  :aria-expanded="isFontMenuOpen"
-                  title="Reader font"
-                  @click.stop="toggleFontMenu"
-                >
-                  <span class="font-aa">Aa</span>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="m6 9 6 6 6-6" stroke-linecap="round" stroke-linejoin="round" />
-                  </svg>
-                </button>
-
-                <Transition name="menu">
-                  <div v-if="isFontMenuOpen" class="popover-menu">
-                    <button type="button" :class="{ 'is-selected': readerFont === 'sans' }" @click="setFont('sans')">
-                      Sans-serif
-                    </button>
-                    <button type="button" :class="{ 'is-selected': readerFont === 'serif' }" @click="setFont('serif')">
-                      Serif
-                    </button>
-                  </div>
-                </Transition>
-              </div>
-
-              <div class="reader-menu" ref="themeMenuRef">
-                <button
-                  type="button"
-                  class="header-control-button"
-                  :aria-expanded="isThemeMenuOpen"
-                  title="Reader theme"
-                  @click.stop="toggleThemeMenu"
-                >
-                  <span class="theme-swatch" :style="{ background: THEMES[readerTheme].vars['--rt-surface'] }"></span>
-                  <span class="theme-menu-label">{{ THEMES[readerTheme].label }}</span>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="m6 9 6 6 6-6" stroke-linecap="round" stroke-linejoin="round" />
-                  </svg>
-                </button>
-
-                <Transition name="menu">
-                  <div v-if="isThemeMenuOpen" class="popover-menu popover-menu--theme">
-                    <button
-                      v-for="(item, key) in THEMES"
-                      :key="key"
-                      type="button"
-                      :class="{ 'is-selected': readerTheme === key }"
-                      @click="setTheme(key)"
-                    >
-                      <span class="theme-swatch" :style="{ background: item.vars['--rt-surface'] }"></span>
-                      {{ item.label }}
-                      <svg v-if="readerTheme === key" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="m5 12 4 4L19 6" stroke-linecap="round" stroke-linejoin="round" />
-                      </svg>
-                    </button>
-                  </div>
-                </Transition>
-              </div>
-            </template>
-
-            <button
-              v-if="!isMobile"
-              type="button"
-              class="header-icon-button"
-              :title="isFullscreen ? 'Exit fullscreen' : 'Fullscreen'"
-              :aria-label="isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'"
-              @click="toggleFullscreen"
-            >
-              <svg v-if="!isFullscreen" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M4 8V4h4M4 4l5 5M20 8V4h-4m4 0-5 5M4 16v4h4m-4 0 5-5m11 5v-4m0 4h-4m4 0-5-5" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-              <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M9 9V4M9 9H4M9 9 3 3M15 9V4m0 5h5m-5 0 6-6M9 15v5m0-5H4m5 0-6 6m12-6v5m0-5h5m-5 0 6 6" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-            </button>
           </template>
         </div>
       </header>
+
+      <div class="workspace-content" style="flex: 1; display: flex; min-height: 0;">
+        <!-- =========================================================
+             MAIN READER
+        ========================================================== -->
+        <main
+          v-show="isReaderOpen"
+          class="reader-main"
+          style="flex: 1; min-width: 0;"
+          :style="{ borderRight: isReaderOpen && isAiSidebarOpen && !isMobile ? '1px solid var(--reader-border)' : 'none' }"
+        >
 
       <!-- =====================================================
            READING VIEW
@@ -545,15 +603,7 @@
             maxWidth: '100%',
           }"
         >
-          <button
-            v-if="!isMobile"
-            type="button"
-            class="reader-resize reader-resize--left"
-            aria-label="Resize reading column from left"
-            @mousedown="startReaderDrag"
-          >
-            <span></span>
-          </button>
+
 
           <article
             class="reader-paper"
@@ -667,15 +717,7 @@
             </div>
           </article>
 
-          <button
-            v-if="!isMobile"
-            type="button"
-            class="reader-resize reader-resize--right"
-            aria-label="Resize reading column from right"
-            @mousedown="startReaderDrag"
-          >
-            <span></span>
-          </button>
+
         </div>
       </div>
 
@@ -707,97 +749,19 @@
     </main>
 
     <!-- =========================================================
-         RIGHT COLLAPSED RAIL
-    ========================================================== -->
-    <aside
-      v-if="!isAiSidebarOpen && !isFullscreen && !isMobile"
-      class="collapsed-rail collapsed-rail--right"
-      aria-label="Assistant controls"
-    >
-      <button
-        type="button"
-        class="rail-button"
-        title="Open AI Assistant"
-        aria-label="Open AI Assistant"
-        @click="isAiSidebarOpen = true"
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="m11 19-7-7 7-7M20 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round" />
-        </svg>
-      </button>
-    </aside>
-
-    <!-- =========================================================
          RIGHT AI SIDEBAR
     ========================================================== -->
     <aside
-      v-if="isAiSidebarOpen && !isFullscreen"
+      v-show="isAiSidebarOpen && !isFullscreen"
       class="side-panel side-panel--right"
-      :style="isMobile ? undefined : { width: `${aiSidebarWidth}px` }"
-      :class="{ 'side-panel--mobile': isMobile }"
+      :style="isMobile ? undefined : { flex: isReaderOpen ? '0 0 auto' : 1, width: isReaderOpen ? '400px' : 'auto' }"
+      :class="{ 'side-panel--mobile': isMobile, 'chat-full-screen': !isReaderOpen && !isMobile, 'chat-is-empty': currentMessages.length === 0 }"
       aria-label="Smart Adama AI Assistant"
     >
-      <button
-        v-if="!isMobile"
-        type="button"
-        class="resize-handle resize-handle--left"
-        aria-label="Resize AI sidebar"
-        :aria-valuenow="aiSidebarWidth"
-        aria-valuemin="300"
-        aria-valuemax="560"
-        @mousedown="startDragRight"
-        @keydown.left.prevent="nudgeAiSidebarWidth(-16)"
-        @keydown.right.prevent="nudgeAiSidebarWidth(16)"
-        @keydown.home.prevent="setAiSidebarWidth(300)"
-        @keydown.end.prevent="setAiSidebarWidth(560)"
-      >
-        <span></span>
-      </button>
-
-      <header class="ai-panel__header">
-        <div class="ai-panel__title">
-          <div class="ai-panel__icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
-              <circle cx="12" cy="12" r="3" />
-              <circle cx="6" cy="7" r="1" />
-              <circle cx="18" cy="7" r="1" />
-              <circle cx="6" cy="17" r="1" />
-              <circle cx="18" cy="17" r="1" />
-              <path d="M9.5 10 7 8.7M14.5 10 17 8.7M9.5 14 7 15.3M14.5 14l2.5 1.3" />
-            </svg>
-          </div>
-          <div>
-            <h2>Learning Assistant</h2>
-            <p>{{ booksStore.currentChapter?.title || 'Smart Adama' }}</p>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          class="icon-button"
-          aria-label="Close assistant"
-          title="Close assistant"
-          @click="isAiSidebarOpen = false"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="m13 5 7 7-7 7M6 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
-        </button>
-      </header>
 
       <div ref="messagesContainerRef" class="ai-messages">
         <div v-if="currentMessages.length === 0" class="ai-welcome">
-          <div class="ai-welcome__icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
-              <circle cx="12" cy="12" r="3" />
-              <path d="M12 3v4M12 17v4M3 12h4M17 12h4" stroke-linecap="round" />
-            </svg>
-          </div>
-          <span class="ai-welcome__eyebrow">Smart Adama AI</span>
-          <h3>Learn from this chapter.</h3>
-          <p>
-            Ask for an explanation, a summary, a concept comparison, or a follow-up question.
-          </p>
+          <h3>What can I help with?</h3>
         </div>
 
         <div v-for="msg in currentMessages" :key="msg.id" class="message-stack">
@@ -817,7 +781,7 @@
             </div>
 
             <article class="message message--assistant">
-              <div v-html="msg.content" class="ai-response-content"></div>
+              <div v-html="renderMarkdown(msg.content)" class="ai-response-content"></div>
 
               <div class="feedback-row">
                 <button
@@ -862,14 +826,19 @@
           <article class="message message--assistant">
             <template v-if="chatStore.streamingContent">
               <div class="streaming-text">
-                {{ chatStore.streamingContent }}
+                <span v-html="renderMarkdown(chatStore.streamingContent)"></span>
                 <span class="streaming-cursor">▋</span>
               </div>
             </template>
 
             <template v-else>
-              <div class="thinking-dots" aria-label="Thinking">
-                <span></span><span></span><span></span>
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <div class="thinking-dots" aria-label="Thinking" style="margin: 0;">
+                  <span></span><span></span><span></span>
+                </div>
+                <span v-if="chatStore.activityPayload" style="color: var(--color-text-muted); font-size: 0.9em; font-style: italic; opacity: 0.8;">
+                  {{ chatStore.activityPayload.message }}
+                </span>
               </div>
             </template>
           </article>
@@ -888,25 +857,12 @@
         </div>
       </div>
 
-      <div v-if="currentMessages.length === 0" class="quick-prompts">
-        <button type="button" @click="sendPrompt('Explain this section')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
-            <path d="M5 4h14v16H5V4ZM9 8h6M9 12h6M9 16h4" />
-          </svg>
-          {{ $t('chapter.explain') }}
-        </button>
 
-        <button type="button" @click="sendPrompt('Summarize this page')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
-            <path d="M6 3h8l4 4v14H6V3ZM14 3v5h5M9 12h6M9 16h6" />
-          </svg>
-          {{ $t('chapter.summarize') }}
-        </button>
-      </div>
 
       <form class="ai-composer" @submit.prevent="sendMessage">
         <div class="ai-composer__field">
           <input
+            ref="chatInputRef"
             v-model="chatInput"
             :disabled="chatStore.streaming"
             type="text"
@@ -915,9 +871,10 @@
           />
 
           <button
+            v-if="!chatStore.streaming"
             type="submit"
             class="send-button"
-            :disabled="!chatInput.trim() || chatStore.streaming"
+            :disabled="!chatInput.trim()"
             aria-label="Send message"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
@@ -925,10 +882,24 @@
               <path d="M6.3 12H20" stroke-linecap="round" />
             </svg>
           </button>
+
+          <button
+            v-else
+            type="button"
+            class="send-button stop-button"
+            aria-label="Stop generating"
+            @click.prevent="chatStore.cancelStream()"
+          >
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <rect x="7" y="7" width="10" height="10" rx="1.5" />
+            </svg>
+          </button>
         </div>
-        <span class="composer-note">Enter to send</span>
       </form>
     </aside>
+
+      </div> <!-- /workspace-content -->
+    </div> <!-- /workspace -->
 
     <!-- =========================================================
          TEXT SELECTION ACTION
@@ -995,6 +966,7 @@ import {
   nextTick,
   onMounted,
   onUnmounted,
+  onErrorCaptured,
   ref,
   watch,
 } from 'vue'
@@ -1003,9 +975,12 @@ import {
   useRoute,
   useRouter,
 } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 import { useChatStore } from '@/stores/chat'
 import { useBooksStore } from '@/stores/books'
 import { useProgressStore } from '@/stores/progress'
+import { marked } from 'marked'
+import DOMPurify from 'dompurify'
 import apiClient from '@/api/client'
 import IntroductionPreface from '@/components/IntroductionPreface.vue'
 import { useI18n } from 'vue-i18n'
@@ -1015,18 +990,65 @@ const booksStore = useBooksStore()
 const progressStore = useProgressStore()
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 const { t } = useI18n()
+
+async function signOut() {
+  await authStore.logout()
+  router.push('/login')
+}
+
+async function clearChatHistory() {
+  if (confirm('Are you sure you want to delete all chat history?')) {
+    try {
+      for (const session of chatStore.sessions) {
+        await chatStore.deleteSession(session.id)
+      }
+      await chatStore.fetchSessions()
+      startNewChat()
+    } catch (e) {
+      console.error('Failed to clear history:', e)
+    }
+  }
+}
+
+async function deleteChat(sessionId: string) {
+  if (confirm('Are you sure you want to delete this chat?')) {
+    try {
+      await chatStore.deleteSession(sessionId)
+      if (chatStore.currentSession?.id === sessionId) {
+        startNewChat()
+      }
+    } catch (e) {
+      console.error('Failed to delete chat:', e)
+    }
+  }
+}
+
+/* ============================================================
+   ERROR BOUNDARY
+============================================================ */
+
+const fatalError = ref<string | null>(null)
+
+onErrorCaptured((err: unknown) => {
+  console.error('ChatView Error Boundary Caught:', err)
+  fatalError.value = err instanceof Error ? err.message : String(err)
+  return false // Prevent the error from propagating further and unmounting the tree
+})
 
 /* ============================================================
    RESPONSIVE LAYOUT STATE
 ============================================================ */
 
 const isSidebarOpen = ref(typeof window !== 'undefined' ? window.innerWidth > 768 : true)
+const isAiSidebarOpen = ref(true)
+const isReaderOpen = ref(false)
 const sidebarWidth = ref(300)
+const activeSidebarTab = ref<'chats' | 'chapters'>('chats')
 const isDraggingLeft = ref(false)
 
-const isAiSidebarOpen = ref(typeof window !== 'undefined' ? window.innerWidth > 768 : true)
-const aiSidebarWidth = ref(380)
+
 const isDraggingRight = ref(false)
 
 const windowWidth = ref(
@@ -1162,16 +1184,39 @@ const allSortedChapters = computed(() => {
   return getSortedChapters(book)
 })
 
+const isSidebarSearchActive = ref(false)
+const sidebarSearchQuery = ref('')
+const sidebarSearchInputRef = ref<HTMLInputElement | null>(null)
+
+const toggleSidebarSearch = () => {
+  isSidebarSearchActive.value = !isSidebarSearchActive.value
+  if (isSidebarSearchActive.value) {
+    nextTick(() => {
+      sidebarSearchInputRef.value?.focus()
+    })
+  } else {
+    sidebarSearchQuery.value = ''
+  }
+}
+
 const allVisibleChapters = computed(() => {
   const chapters = allSortedChapters.value
-  return isShowingAll.value ? chapters : chapters.slice(0, 5)
+  const query = sidebarSearchQuery.value.trim().toLowerCase()
+  const filtered = query 
+    ? chapters.filter(c => c.title?.toLowerCase().includes(query) || c.chapter_number?.toString().includes(query))
+    : chapters
+  return isShowingAll.value || query ? filtered : filtered.slice(0, 5)
 })
 
 const hasHiddenChapters = computed(() => allSortedChapters.value.length > 5)
 
 const visibleSessions = computed(() => {
   const sessions = chatStore.sessions || []
-  return showAllChats.value ? sessions : sessions.slice(0, 6)
+  const query = sidebarSearchQuery.value.trim().toLowerCase()
+  const filtered = query
+    ? sessions.filter(s => (s.title || 'New Conversation').toLowerCase().includes(query))
+    : sessions
+  return showAllChats.value || query ? filtered : filtered.slice(0, 6)
 })
 
 const hiddenChatsCount = computed(() =>
@@ -1371,6 +1416,11 @@ const checkChapterCompletion = async (
     console.warn('Chapter completion sync failed:', error)
   }
 }
+const renderMarkdown = (text: string | undefined): string => {
+  if (!text) return ''
+  const parsed = marked.parse(text)
+  return DOMPurify.sanitize(parsed as string)
+}
 
 watch(
   () => booksStore.currentChapter?.id,
@@ -1385,6 +1435,16 @@ watch(
 
     await nextTick()
     await checkChapterCompletion(newId, currentPage.value)
+
+    const savedSessionId = localStorage.getItem(`smart_adama_chat_session_${newId}`)
+    if (savedSessionId && route.params.sessionId !== savedSessionId) {
+      try {
+        await chatStore.loadSession(savedSessionId)
+        router.replace({ name: 'study-session', params: { sessionId: savedSessionId } })
+      } catch (e) {
+        localStorage.removeItem(`smart_adama_chat_session_${newId}`)
+      }
+    }
   },
 )
 
@@ -1529,60 +1589,8 @@ const stopDragLeft = () => {
   document.removeEventListener('mousemove', onDragLeft)
 }
 
-const setAiSidebarWidth = (value: number) => {
-  const max = Math.min(560, Math.max(300, Math.floor(window.innerWidth * 0.42)))
-  aiSidebarWidth.value = clamp(value, 300, max)
-}
 
-const nudgeAiSidebarWidth = (delta: number) => {
-  setAiSidebarWidth(aiSidebarWidth.value + delta)
-}
 
-const startDragRight = () => {
-  if (isMobile.value) return
-  isDraggingRight.value = true
-  document.body.style.cursor = 'col-resize'
-  document.addEventListener('mousemove', onDragRight)
-  document.addEventListener('mouseup', stopDragRight, { once: true })
-}
-
-const onDragRight = (event: MouseEvent) => {
-  if (!isDraggingRight.value) return
-  setAiSidebarWidth(window.innerWidth - event.clientX)
-}
-
-const stopDragRight = () => {
-  isDraggingRight.value = false
-  document.body.style.cursor = ''
-  document.removeEventListener('mousemove', onDragRight)
-}
-
-const startReaderDrag = () => {
-  if (isMobile.value || !readerContainerRef.value) return
-
-  isDraggingReader.value = true
-  const rect = readerContainerRef.value.getBoundingClientRect()
-  readerDragCenter = rect.left + rect.width / 2
-  document.body.style.cursor = 'ew-resize'
-  document.addEventListener('mousemove', onReaderDrag)
-  document.addEventListener('mouseup', stopReaderDrag, { once: true })
-}
-
-const onReaderDrag = (event: MouseEvent) => {
-  if (!isDraggingReader.value) return
-
-  readerWidth.value = clamp(
-    Math.abs(event.clientX - readerDragCenter) * 2,
-    520,
-    Math.min(1400, Math.max(520, window.innerWidth - 80)),
-  )
-}
-
-const stopReaderDrag = () => {
-  isDraggingReader.value = false
-  document.body.style.cursor = ''
-  document.removeEventListener('mousemove', onReaderDrag)
-}
 
 /* ============================================================
    OVERSCROLL PAGE TURNING
@@ -1786,16 +1794,14 @@ const readerFont = ref<'serif' | 'sans'>(
 
 const themeVars = computed(() => THEMES[readerTheme.value].vars)
 
-const isThemeMenuOpen = ref(false)
-const isFontMenuOpen = ref(false)
+const isDisplaySettingsOpen = ref(false)
 const isMobileSettingsOpen = ref(false)
-const themeMenuRef = ref<HTMLElement | null>(null)
-const fontMenuRef = ref<HTMLElement | null>(null)
+const activeSettingsSubmenu = ref<string | null>(null)
+const displaySettingsRef = ref<HTMLElement | null>(null)
 const mobileSettingsMenuRef = ref<HTMLElement | null>(null)
 
 const setTheme = (key: any) => {
   readerTheme.value = key as ThemeKey
-  isThemeMenuOpen.value = false
   try {
     localStorage.setItem(READER_THEME_KEY, key as string)
   } catch {
@@ -1805,7 +1811,6 @@ const setTheme = (key: any) => {
 
 const setFont = (key: 'serif' | 'sans') => {
   readerFont.value = key
-  isFontMenuOpen.value = false
   try {
     localStorage.setItem(READER_FONT_KEY, key)
   } catch {
@@ -1813,25 +1818,17 @@ const setFont = (key: 'serif' | 'sans') => {
   }
 }
 
-const toggleFontMenu = () => {
-  isFontMenuOpen.value = !isFontMenuOpen.value
-  isThemeMenuOpen.value = false
-}
-
-const toggleThemeMenu = () => {
-  isThemeMenuOpen.value = !isThemeMenuOpen.value
-  isFontMenuOpen.value = false
+const toggleDisplaySettings = () => {
+  isDisplaySettingsOpen.value = !isDisplaySettingsOpen.value
+  if (!isDisplaySettingsOpen.value) activeSettingsSubmenu.value = null
 }
 
 const handleClickOutsideMenus = (event: MouseEvent) => {
   const target = event.target as Node
 
-  if (isThemeMenuOpen.value && themeMenuRef.value && !themeMenuRef.value.contains(target)) {
-    isThemeMenuOpen.value = false
-  }
-
-  if (isFontMenuOpen.value && fontMenuRef.value && !fontMenuRef.value.contains(target)) {
-    isFontMenuOpen.value = false
+  if (isDisplaySettingsOpen.value && displaySettingsRef.value && !displaySettingsRef.value.contains(target)) {
+    isDisplaySettingsOpen.value = false
+    activeSettingsSubmenu.value = null
   }
 
   if (isMobileSettingsOpen.value && mobileSettingsMenuRef.value && !mobileSettingsMenuRef.value.contains(target)) {
@@ -1842,6 +1839,8 @@ const handleClickOutsideMenus = (event: MouseEvent) => {
 /* ============================================================
    KEYBOARD / SELECTION
 ============================================================ */
+
+const chatInputRef = ref<HTMLInputElement | null>(null)
 
 const handleKeydown = (event: KeyboardEvent) => {
   const target = event.target as HTMLElement | null
@@ -1862,6 +1861,18 @@ const handleKeydown = (event: KeyboardEvent) => {
   } else if (event.key === 'Escape') {
     if (isFullscreen.value) toggleFullscreen()
     if (isMobile.value) closeMobilePanels()
+  } else if (event.key.length === 1 && !event.ctrlKey && !event.altKey && !event.metaKey) {
+    // Auto-focus chat if user starts typing alphanumeric/punctuation characters
+    if (event.key.match(/^[a-zA-Z0-9!"#$%&'()*+,-./:;<=>?@[\]^_`{|}~]$/)) {
+      if (!isAiSidebarOpen.value) {
+        isAiSidebarOpen.value = true
+        isReaderOpen.value = false
+      }
+      // Use nextTick to ensure the DOM has updated if the sidebar was just opened
+      nextTick(() => {
+        chatInputRef.value?.focus()
+      })
+    }
   }
 }
 
@@ -1952,6 +1963,10 @@ const startNewChat = async () => {
   chatInput.value = ''
 
   if (chatStore.currentSession) {
+    if (booksStore.currentChapter?.id) {
+      localStorage.setItem(`smart_adama_chat_session_${booksStore.currentChapter.id}`, chatStore.currentSession.id)
+    }
+    
     router.push({
       name: 'study-session',
       params: { sessionId: chatStore.currentSession.id },
@@ -1959,18 +1974,39 @@ const startNewChat = async () => {
   }
 }
 
+const toggleSplitScreen = () => {
+  if (isReaderOpen.value && isAiSidebarOpen.value) {
+    if (activeSidebarTab.value === 'chapters') {
+      isAiSidebarOpen.value = false
+    } else {
+      isReaderOpen.value = false
+    }
+  } else {
+    isReaderOpen.value = true
+    isAiSidebarOpen.value = true
+  }
+}
+
 const startNewChatAndOpen = async () => {
   await startNewChat()
-  toggleAiSidebar(true)
+  isAiSidebarOpen.value = true
+  isReaderOpen.value = false
 }
 
 const switchSession = async (sessionId: string) => {
   await chatStore.loadSession(sessionId)
 
+  if (booksStore.currentChapter?.id) {
+    localStorage.setItem(`smart_adama_chat_session_${booksStore.currentChapter.id}`, sessionId)
+  }
+
   router.push({
     name: 'study-session',
     params: { sessionId },
   })
+
+  isAiSidebarOpen.value = true
+  isReaderOpen.value = false
 
   if (isMobile.value) {
     isSidebarOpen.value = false
@@ -1981,6 +2017,9 @@ const loadBookChapter = async (chapterId: string) => {
   await booksStore.loadChapter(chapterId)
   currentPage.value = 1
   jumpPageInput.value = '1'
+
+  isReaderOpen.value = true
+  isAiSidebarOpen.value = false
 
   if (isMobile.value) {
     isSidebarOpen.value = false
@@ -2016,22 +2055,30 @@ const toggleFeedback = async (
   }
 }
 
+const isSubmitting = ref(false)
+
 const sendMessage = async () => {
   const text = chatInput.value.trim()
-  if (!text || chatStore.streaming) return
+  if (!text || chatStore.streaming || isSubmitting.value) return
 
-  if (!chatStore.currentSession) {
-    await startNewChat()
+  isSubmitting.value = true
+
+  try {
+    if (!chatStore.currentSession) {
+      await startNewChat()
+    }
+
+    if (!chatStore.currentSession) return
+
+    chatInput.value = ''
+
+    await chatStore.sendMessage(
+      chatStore.currentSession.id,
+      text,
+    )
+  } finally {
+    isSubmitting.value = false
   }
-
-  if (!chatStore.currentSession) return
-
-  chatInput.value = ''
-
-  await chatStore.sendMessage(
-    chatStore.currentSession.id,
-    text,
-  )
 }
 
 /* ============================================================
@@ -2062,6 +2109,19 @@ onMounted(async () => {
   const sessionId = route.params.sessionId as string | undefined
   if (sessionId) {
     await chatStore.loadSession(sessionId)
+    if (booksStore.currentChapter?.id) {
+      localStorage.setItem(`smart_adama_chat_session_${booksStore.currentChapter.id}`, sessionId)
+    }
+  } else if (booksStore.currentChapter?.id) {
+    const savedId = localStorage.getItem(`smart_adama_chat_session_${booksStore.currentChapter.id}`)
+    if (savedId) {
+      try {
+        await chatStore.loadSession(savedId)
+        router.replace({ name: 'study-session', params: { sessionId: savedId } })
+      } catch (e) {
+        localStorage.removeItem(`smart_adama_chat_session_${booksStore.currentChapter.id}`)
+      }
+    }
   }
 
   // Open the current chapter in the sidebar when it is available.
@@ -2073,8 +2133,6 @@ onMounted(async () => {
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
   document.removeEventListener('mousemove', onDragLeft)
-  document.removeEventListener('mousemove', onDragRight)
-  document.removeEventListener('mousemove', onReaderDrag)
   document.removeEventListener('mouseup', handleTextSelection)
   document.removeEventListener('keydown', handleKeydown)
   document.removeEventListener('click', handleClickOutsideMenus)
@@ -2223,7 +2281,10 @@ onUnmounted(() => {
 }
 
 .side-panel--left {
+  width: 260px !important;
+  flex: 0 0 260px !important;
   border-right: 1px solid var(--reader-border);
+  z-index: 50;
 }
 
 .side-panel--right {
@@ -2305,34 +2366,281 @@ onUnmounted(() => {
   height: 17px;
 }
 
-.new-session-button {
+/* Sidebar Search */
+.sidebar-search-container {
+  margin-top: 12px;
+  margin-bottom: 4px;
+}
+
+.sidebar-search-wrapper {
+  display: flex;
+  align-items: center;
+  background: var(--rt-input-bg, #FFFFFF);
+  border: 1px solid var(--rt-border, #E2E8F0);
+  border-radius: 8px;
+  padding: 6px 10px;
+  gap: 8px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+html.dark .sidebar-search-wrapper {
+  background: var(--rt-input-bg, #0B1220);
+  border-color: var(--rt-border, #334155);
+}
+
+.sidebar-search-wrapper:focus-within {
+  border-color: #395886;
+  box-shadow: 0 0 0 2px rgba(57, 88, 134, 0.15);
+}
+
+html.dark .sidebar-search-wrapper:focus-within {
+  border-color: #638ECB;
+  box-shadow: 0 0 0 2px rgba(99, 142, 203, 0.15);
+}
+
+.search-icon {
+  width: 14px;
+  height: 14px;
+  color: var(--rt-text-muted, #94A3B8);
+  flex-shrink: 0;
+}
+
+.sidebar-search-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent !important;
+  color: var(--rt-text, #0F172A);
+  font-size: 0.85rem;
+  padding: 0;
+  outline: none;
+}
+
+html.dark .sidebar-search-input {
+  color: var(--rt-text, #F8FAFC);
+}
+
+.sidebar-search-input::placeholder {
+  color: var(--rt-text-muted, #94A3B8);
+}
+
+.search-clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  background: var(--rt-hover, #F1F5F9);
+  color: var(--rt-text-secondary, #64748B);
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+html.dark .search-clear {
+  background: var(--rt-hover, #1E293B);
+  color: var(--rt-text-secondary, #94A3B8);
+}
+
+.search-clear:hover {
+  background: #E2E8F0;
+  color: #0F172A;
+}
+
+html.dark .search-clear:hover {
+  background: #334155;
+  color: #F8FAFC;
+}
+
+.search-clear svg {
+  width: 12px;
+  height: 12px;
+}
+
+.new-chat-button {
   width: 100%;
   margin-top: 10px;
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  padding: 8px 14px;
+  border: 1px solid var(--reader-border);
+  border-radius: 12px;
+  color: var(--reader-text);
+  background: var(--reader-bg);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.new-chat-button:hover {
+  background: var(--reader-surface-2);
+}
+
+.new-chat-button svg {
+  width: 16px;
+  height: 16px;
+  opacity: 0.8;
+}
+
+.reader-toggle-button {
+  width: 100%;
+  margin-top: 8px;
   min-height: 38px;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border: 1px solid var(--reader-border);
-  border-radius: 10px;
-  color: var(--reader-text);
-  background: var(--reader-surface);
-  font-size: 0.72rem;
-  font-weight: 800;
+  justify-content: flex-start;
+  gap: 12px;
+  padding: 8px 14px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  color: var(--reader-muted);
+  background: transparent;
+  font-size: 0.75rem;
+  font-weight: 500;
   cursor: pointer;
-  transition: transform 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+  transition: all 0.2s ease;
 }
 
-.new-session-button:hover {
-  transform: translateY(-1px);
+.reader-toggle-button:hover {
+  background: var(--reader-surface);
+  color: var(--reader-text);
+}
+
+.reader-toggle-button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.sidebar-tab-switcher {
+  display: flex;
+  margin-top: 16px;
+  background: var(--reader-surface);
+  padding: 4px;
+  border-radius: 10px;
+  gap: 4px;
+}
+
+.tab-btn {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--reader-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tab-btn.is-active {
   background: var(--reader-bg);
-  box-shadow: 0 5px 16px rgba(15, 23, 42, 0.06);
+  color: var(--reader-text);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 
-.new-session-button svg {
-  width: 15px;
-  height: 15px;
+.sidebar-tab-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ChatGPT style chat list */
+.chatgpt-session-list .session-item {
+  border: none;
+  background: transparent;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-weight: 500;
+  color: var(--reader-body);
+  transition: background 0.15s ease;
+  justify-content: flex-start;
+}
+.chatgpt-session-list .session-item:hover {
+  background: var(--reader-surface);
+  transform: none;
+  box-shadow: none;
+}
+.chatgpt-session-list .session-item--active {
+  background: var(--reader-surface-2);
+  color: var(--reader-text);
+}
+
+/* Minimalist Chapter List */
+.modern-chapter-list .chapter-item {
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+  margin-bottom: 2px;
+}
+.modern-chapter-list .chapter-item__row {
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: transparent;
+}
+.modern-chapter-list .chapter-item__row:hover {
+  background: var(--reader-surface);
+}
+.modern-chapter-list .chapter-item--active .chapter-item__row {
+  background: var(--reader-surface-2);
+}
+
+/* Sidebar Footer (Profile) */
+.sidebar-footer {
+  padding: 12px;
+  border-top: 1px solid var(--reader-border);
+  position: relative;
+  z-index: 9999;
+}
+
+.sidebar-profile-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+.sidebar-profile-link:hover {
+  background: var(--reader-surface);
+}
+
+.sidebar-profile-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--reader-surface-2);
+  color: var(--reader-text);
+}
+.sidebar-profile-avatar svg {
+  width: 18px;
+  height: 18px;
+}
+
+.sidebar-profile-info {
+  display: flex;
+  flex-direction: column;
+}
+.sidebar-profile-name {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--reader-text);
+}
+.sidebar-profile-plan {
+  font-size: 0.65rem;
+  color: var(--reader-muted);
 }
 
 .side-panel__scroll {
@@ -2541,6 +2849,32 @@ onUnmounted(() => {
   background: var(--reader-surface);
 }
 
+.message-stack__assistant {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+:deep(.thinking-block) {
+  margin: 8px 0;
+  padding: 8px 12px;
+  background-color: var(--color-surface-sunken);
+  border-left: 2px solid var(--color-border);
+  border-radius: 4px;
+  font-size: 0.9em;
+  color: var(--color-text-muted);
+}
+:deep(.thinking-block summary) {
+  cursor: pointer;
+  font-weight: 500;
+  user-select: none;
+  opacity: 0.8;
+}
+:deep(.thinking-block summary:hover) {
+  opacity: 1;
+}
+
 .session-list {
   display: flex;
   flex-direction: column;
@@ -2648,10 +2982,10 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--reader-border);
-  background: color-mix(in srgb, var(--reader-surface-2) 90%, transparent);
-  backdrop-filter: blur(18px);
+  padding: 12px 16px;
+  border-bottom: none;
+  background: transparent;
+  pointer-events: none; /* Let clicks pass through empty header space */
 }
 
 .reader-header__left,
@@ -2660,6 +2994,36 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 7px;
+  pointer-events: auto; /* Re-enable clicks on buttons */
+}
+
+.btn-read-with-ai {
+  padding: 6px 12px;
+  border-radius: 9999px;
+  font-weight: 500;
+  font-size: 0.75rem;
+  color: var(--reader-text);
+  background: transparent;
+  border: 1px solid var(--reader-border);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s;
+}
+
+.btn-read-with-ai:hover {
+  background: var(--reader-surface-2);
+}
+
+.btn-read-with-ai.is-active {
+  color: #10b981;
+  background: color-mix(in srgb, #10b981 12%, transparent);
+  border-color: color-mix(in srgb, #10b981 20%, transparent);
+}
+
+.btn-read-with-ai.is-active:hover {
+  background: color-mix(in srgb, #10b981 16%, transparent);
 }
 
 .reader-header__right {
@@ -2879,7 +3243,7 @@ onUnmounted(() => {
   position: absolute;
   right: 0;
   top: calc(100% + 7px);
-  z-index: 50;
+  z-index: 9999;
   width: 150px;
   padding: 5px;
   border: 1px solid var(--reader-border);
@@ -2891,6 +3255,28 @@ onUnmounted(() => {
 
 .popover-menu--theme {
   width: 160px;
+}
+
+.popover-menu--display-settings {
+  width: 260px;
+  padding: 12px;
+}
+
+.display-settings-group {
+  margin-bottom: 16px;
+}
+
+.display-settings-group:last-child {
+  margin-bottom: 0;
+}
+
+.display-settings-label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--reader-muted);
+  margin-bottom: 8px;
 }
 
 .popover-menu button {
@@ -3307,60 +3693,7 @@ onUnmounted(() => {
    AI PANEL
 ============================================================ */
 
-.ai-panel__header {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 12px;
-  border-bottom: 1px solid var(--reader-border);
-  background: color-mix(in srgb, var(--reader-surface-2) 90%, transparent);
-}
 
-.ai-panel__title {
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.ai-panel__icon {
-  width: 34px;
-  height: 34px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  border: 1px solid color-mix(in srgb, var(--reader-accent) 22%, var(--reader-border));
-  border-radius: 10px;
-  color: var(--reader-accent);
-  background: color-mix(in srgb, var(--reader-accent) 8%, transparent);
-}
-
-.ai-panel__icon svg {
-  width: 18px;
-  height: 18px;
-}
-
-.ai-panel__title h2 {
-  overflow: hidden;
-  color: var(--reader-text);
-  font-size: 0.75rem;
-  font-weight: 800;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.ai-panel__title p {
-  max-width: 240px;
-  margin-top: 2px;
-  overflow: hidden;
-  color: var(--reader-muted);
-  font-size: 0.45rem;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
 
 .ai-messages {
   min-height: 0;
@@ -3368,6 +3701,57 @@ onUnmounted(() => {
   overflow: auto;
   padding: 14px;
   scroll-behavior: smooth;
+}
+
+/* Chat Full-Screen Adjustments (ChatGPT/Claude style) */
+.chat-full-screen {
+  background: var(--reader-bg);
+  border-left: none;
+}
+
+
+
+.chat-full-screen .ai-messages,
+.chat-full-screen .ai-composer,
+.chat-full-screen .quick-prompts {
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.chat-full-screen .ai-composer {
+  padding: 0 14px 24px 14px;
+}
+
+.chat-is-empty .ai-messages {
+  flex: 0 0 auto;
+  margin-top: auto;
+}
+
+.chat-is-empty .ai-composer {
+  margin-bottom: auto;
+}
+
+.chat-is-empty .ai-welcome {
+  align-items: center;
+  text-align: center;
+  border: none;
+  background: transparent;
+  padding: 0;
+  margin-bottom: 32px;
+}
+
+.chat-is-empty .ai-welcome__icon,
+.chat-is-empty .ai-welcome p,
+.chat-is-empty .ai-welcome__eyebrow {
+  display: none;
+}
+
+.chat-is-empty .ai-welcome h3 {
+  font-size: clamp(1.4rem, 4vw, 2.2rem);
+  font-weight: 600;
+  color: var(--reader-text);
+  letter-spacing: -0.5px;
 }
 
 .ai-welcome {
@@ -3441,20 +3825,20 @@ onUnmounted(() => {
 
 .message--user {
   margin-left: auto;
-  color: var(--reader-accent-text);
-  background: var(--reader-accent);
-  border-bottom-right-radius: 4px;
-  box-shadow: 0 7px 16px color-mix(in srgb, var(--reader-accent) 15%, transparent);
+  color: var(--reader-text);
+  background: var(--reader-surface-2);
+  border-radius: 20px;
 }
 
 .message--assistant {
   width: 100%;
   max-width: 100%;
-  color: var(--reader-body);
-  background: var(--reader-surface);
-  border: 1px solid var(--reader-border);
-  border-bottom-left-radius: 4px;
-  box-shadow: 0 5px 18px rgba(15, 23, 42, 0.035);
+  color: var(--reader-text);
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding-left: 0;
+  padding-right: 0;
 }
 
 .assistant-label {
@@ -3647,8 +4031,8 @@ onUnmounted(() => {
 .ai-composer {
   flex: 0 0 auto;
   padding: 10px 12px calc(12px + env(safe-area-inset-bottom));
-  border-top: 1px solid var(--reader-border);
-  background: var(--reader-surface-2);
+  border-top: none;
+  background: transparent;
 }
 
 @media (max-width: 1023px) {
@@ -3718,13 +4102,7 @@ onUnmounted(() => {
   height: 15px;
 }
 
-.composer-note {
-  display: block;
-  margin-top: 5px;
-  color: var(--reader-muted);
-  font-size: 0.38rem;
-  text-align: center;
-}
+
 
 /* ============================================================
    TEXT SELECTION POPUP
@@ -4355,5 +4733,43 @@ onUnmounted(() => {
 
 .chat-page ::-webkit-scrollbar-thumb:hover {
   background: var(--rt-accent, #8AAEE0);
+}
+.fatal-error-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  z-index: 9999;
+}
+
+.fatal-error-modal {
+  background: var(--rt-surface, #fff);
+  padding: 2rem;
+  border-radius: 12px;
+  max-width: 600px;
+  width: 90%;
+  color: var(--rt-text, #000);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+}
+
+.fatal-error-modal pre {
+  background: #ffebe9;
+  color: #cf222e;
+  padding: 1rem;
+  border-radius: 6px;
+  overflow-x: auto;
+  font-size: 0.85rem;
+  margin: 1rem 0;
+}
+
+.fatal-error-modal .btn {
+  margin-right: 1rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--rt-border, #ccc);
+  border-radius: 6px;
+  cursor: pointer;
 }
 </style>

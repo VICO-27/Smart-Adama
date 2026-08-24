@@ -4,11 +4,8 @@ namespace App\Http\Controllers\Api\V1\Chat;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Chat\SendMessageRequest;
-use App\Models\ChatMessageSource;
 use App\Models\ChatSession;
-use App\Services\AI\Contracts\LLMGatewayInterface;
-use App\Services\RAG\PromptBuilderService;
-use App\Services\RAG\RetrievalService;
+use App\Services\Chat\ChatOrchestrator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -16,9 +13,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class ChatMessageController extends Controller
 {
     public function __construct(
-        private readonly RetrievalService     $retrieval,
-        private readonly PromptBuilderService $promptBuilder,
-        private readonly LLMGatewayInterface  $llm,
+        private readonly ChatOrchestrator $orchestrator,
     ) {
     }
 
@@ -46,35 +41,8 @@ class ChatMessageController extends Controller
             $session->update(['last_activity_at' => now()]);
         }
 
-        // 2. Retrieve relevant chunks scoped strictly to the current chapter
-        $topK      = (int) config('ai.rag.top_k', 5);
-        $chapterId = $session->chapter_id ?? null;
-        $retrieval = $this->retrieval->retrieve($userContent, $topK, null, $chapterId);
-        $chunks    = $retrieval['chunks'];
-        $grounded  = $retrieval['grounded'];
-
-        // 3. Build conversation history
-        $history = $session->messages()
-            ->whereNot('id', $userMessage->id)
-            ->orderBy('created_at')
-            ->get()
-            ->map(fn ($m) => ['role' => $m->role, 'content' => $m->content])
-            ->toArray();
-
-        // 4. Build prompt messages
-        $messages = $this->promptBuilder->buildMessages(
-            $history,
-            $chunks,
-            $userContent,
-            $grounded
-        );
-
+        // Create the assistant message placeholder before streaming starts
         $assistantMessage = null;
-        $citations        = [];
-        $streamError      = null;
-        $responseContent  = '';
-
-        // Persist assistant message (empty initially, will be updated after)
         DB::transaction(function () use ($session, &$assistantMessage) {
             $assistantMessage = $session->messages()->create([
                 'role'    => 'assistant',
@@ -82,124 +50,81 @@ class ChatMessageController extends Controller
             ]);
         });
 
-        // Stream tokens + done event to client
-        return new StreamedResponse(function () use (
-            $messages, $chunks, $session, $assistantMessage, &$responseContent, &$citations, &$streamError
-        ) {
-            // Nuke ALL levels of PHP output buffering to force immediate delivery
+        return new StreamedResponse(function () use ($session, $userContent, $userMessage, $assistantMessage) {
+            ignore_user_abort(true);
+            ob_implicit_flush(1);
             while (ob_get_level() > 0) {
-                ob_end_clean();
+                ob_end_flush();
             }
 
-            try {
-                foreach ($this->llm->streamChat($messages) as $token) {
-                    $responseContent .= $token;
-
-                    // Stream token immediately to client
-                    echo 'event: delta' . "\n";
-                    echo 'data: ' . json_encode(['token' => $token]) . "\n\n";
-                    
-                    // Force the web server to push the packet instantly
+            $emitActivity = function (string $stage, string $message) {
+                try {
+                    $json = json_encode(['stage' => $stage, 'message' => $message], JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE);
+                    echo 'event: activity' . "\n";
+                    echo 'data: ' . $json . "\n\n";
                     @ob_flush();
                     flush();
-                }
-            } catch (\Throwable $e) {
-                Log::error('ChatMessageController: LLM stream error', [
-                    'session_id' => $session->id,
-                    'error'      => $e->getMessage(),
-                ]);
-                $streamError = $e->getMessage();
-
-                // Delete the placeholder message so it doesn't show up empty on refresh
-                if ($assistantMessage) {
-                    $assistantMessage->delete();
-                }
-
-                echo 'event: error' . "\n";
-                echo 'data: ' . json_encode([
-                    'error' => [
-                        'code'    => 'AI_PROVIDER_UNAVAILABLE',
-                        'message' => 'The AI service is temporarily unavailable: ' . $e->getMessage(),
-                    ],
-                ]) . "\n\n";
-                @ob_flush();
-                flush();
-                return;
-            }
-
-            // ADDED: Check if the AI returned absolutely nothing
-            if (empty(trim($responseContent))) {
-                Log::error('ChatMessageController: AI returned empty response', ['session_id' => $session->id]);
-                
-                // Delete the empty placeholder from the database
-                if ($assistantMessage) {
-                    $assistantMessage->delete();
-                }
-                
-                echo 'event: error' . "\n";
-                echo 'data: ' . json_encode([
-                    'error' => [
-                        'code'    => 'EMPTY_RESPONSE',
-                        'message' => 'The AI failed to generate a response. Please check your API keys or rate limits.',
-                    ],
-                ]) . "\n\n";
-                @ob_flush();
-                flush();
-                return;
-            }
-
-            $finalHtml = '';
-
-            // Update assistant message content and persist sources after stream completes
-            DB::transaction(function () use ($session, $responseContent, $chunks, $assistantMessage, &$citations, &$finalHtml) {
-                try {
-                    $markdownService = app(\App\Services\MarkdownService::class);
-                    $htmlContent = $markdownService->toHtml($responseContent);
-                    
-                    if (empty(trim($htmlContent))) {
-                        $htmlContent = nl2br(e($responseContent)); 
-                    }
                 } catch (\Throwable $e) {
-                    $htmlContent = nl2br(e($responseContent)); 
+                    Log::warning('SSE activity JSON encoding failed', ['error' => $e->getMessage()]);
                 }
-                
-                $finalHtml = $htmlContent;
-
-                $assistantMessage->update([
-                    'content' => $finalHtml,
-                ]);
-
-                foreach ($chunks as $chunk) {
-                    ChatMessageSource::create([
-                        'chat_message_id'  => $assistantMessage->id,
-                        'content_chunk_id' => $chunk['id'],
-                        'similarity_score' => $chunk['similarity'],
-                    ]);
+            };
+            
+            $emitToken = function (string $token) {
+                try {
+                    $json = json_encode(['content' => $token], JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE);
+                    echo 'event: token' . "\n";
+                    echo 'data: ' . $json . "\n\n";
+                    @ob_flush();
+                    flush();
+                } catch (\Throwable $e) {
+                    Log::warning('SSE token JSON encoding failed', ['error' => $e->getMessage()]);
                 }
+            };
+            
+            $emitError = function (string $code, string $message) {
+                try {
+                    $json = json_encode(['error' => ['code' => $code, 'message' => $message]], JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE);
+                    echo 'event: error' . "\n";
+                    echo 'data: ' . $json . "\n\n";
+                    @ob_flush();
+                    flush();
+                } catch (\Throwable $e) {
+                    Log::error('SSE error JSON encoding failed', ['error' => $e->getMessage()]);
+                }
+            };
+            
+            $emitComplete = function (int $messageId, bool $grounded, array $citations, string $finalHtml) {
+                try {
+                    $json = json_encode([
+                        'message_id'   => $messageId,
+                        'grounded'     => $grounded,
+                        'citations'    => $citations,
+                        'html_content' => $finalHtml,
+                    ], JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE);
+                    echo 'event: complete' . "\n";
+                    echo 'data: ' . $json . "\n\n";
+                    @ob_flush();
+                    flush();
+                } catch (\Throwable $e) {
+                    Log::error('SSE complete JSON encoding failed', ['error' => $e->getMessage()]);
+                }
+            };
 
-                $citations = array_map(fn ($chunk) => [
-                    'chunk_id'      => $chunk['id'],
-                    'chapter_title' => $chunk['chapter_title'],
-                    'section_title' => $chunk['section_title'],
-                    'excerpt'       => mb_substr($chunk['chunk_text'], 0, 200),
-                    'similarity'    => $chunk['similarity'],
-                ], $chunks);
-            });
-
-            // Done event with message ID, citations, AND the final compiled HTML
-            echo 'event: done' . "\n";
-            echo 'data: ' . json_encode([
-                'message_id'   => $assistantMessage?->id,
-                'grounded'     => ! empty($citations),
-                'citations'    => $citations,
-                'html_content' => $finalHtml,
-            ]) . "\n\n";
-            @ob_flush();
-            flush();
+            // Delegate to the orchestrator to keep controller thin
+            $this->orchestrator->handleStreamMessage(
+                $session,
+                $userContent,
+                $userMessage,
+                $assistantMessage,
+                $emitActivity,
+                $emitToken,
+                $emitError,
+                $emitComplete
+            );
 
         }, 200, [
             'Content-Type'      => 'text/event-stream',
-            'Cache-Control'     => 'no-cache, no-transform', // Bypass proxy buffering
+            'Cache-Control'     => 'no-cache, no-transform',
             'X-Accel-Buffering' => 'no',
             'Connection'        => 'keep-alive',
         ]);

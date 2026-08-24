@@ -18,104 +18,157 @@ class RetrievalService
     ) {
     }
 
-    /**
-     * Retrieve chunks strictly scoped to a specific chapter (if provided),
-     * or globally scoped to the Canonical Book (to ignore duplicate seeders).
-     */
-    public function retrieve(string $query, int $k = 5, ?float $threshold = null, ?string $chapterId = null): array
+    public function search(string $originalQuery, string $normalizedQuery, int $limit = 10): \Illuminate\Support\Collection
     {
-        $threshold = $threshold ?? (float) config('ai.rag.similarity_threshold', 0.35);
-        $configK   = (int) config('ai.rag.top_k', 5);
-        $k         = min(max(1, $k), max($configK, 30));
+        $k_rrf = 60; // Standard RRF tuning constant
 
-        $queryVector = $this->embedder->embed($query);
+        // Embed the normalized query to get the best semantic representation
+        $queryVector = $this->embedder->embed($normalizedQuery);
         $vectorStr   = '[' . implode(',', $queryVector) . ']';
-
-        // 1. Resolve Scope to prevent cross-contamination
-        $canonicalBook = Book::canonical();
-        $bookId = $canonicalBook ? $canonicalBook->id : null;
-
-        $bindings = [$vectorStr, $vectorStr, $threshold];
-        
-        $scopeSql = '';
-        if ($chapterId) {
-            // Strict Chapter Scope (Study Mode)
-            $scopeSql = 'AND ch.id = ?';
-            $bindings[] = $chapterId;
-        } elseif ($bookId) {
-            // Strict Canonical Book Scope (Global Search)
-            $scopeSql = 'AND ch.book_id = ?';
-            $bindings[] = $bookId;
-        } else {
-            // Fallback
-            $scopeSql = 'AND ch.order >= 1 AND ch.order <= 11';
-        }
-
-        $bindings[] = $vectorStr;
-        $bindings[] = $k;
 
         try {
             $rows = DB::select(
                 <<<SQL
+                WITH semantic_search AS (
+                    SELECT id, (1 - (embedding <=> ?::vector)) AS score,
+                           ROW_NUMBER() OVER (ORDER BY embedding <=> ?::vector) as rank
+                    FROM content_chunks
+                    WHERE embedding_status = 'ready'
+                      AND embedding IS NOT NULL
+                      AND book_id IN (SELECT id FROM books WHERE status = 'published')
+                      AND (page_number IS NULL OR page_number > 8)
+                      AND chunk_text NOT ILIKE '%table of contents%'
+                      AND chunk_text NOT ILIKE '%list of figures%'
+                      AND chunk_text NOT ILIKE '%list of tables%'
+                    ORDER BY rank
+                    LIMIT 60
+                ),
+                lexical_search AS (
+                    SELECT id, GREATEST(ts_rank(search_vector, websearch_to_tsquery('english', ?)), ts_rank(search_vector, websearch_to_tsquery('english', ?))) AS score,
+                           ROW_NUMBER() OVER (ORDER BY GREATEST(ts_rank(search_vector, websearch_to_tsquery('english', ?)), ts_rank(search_vector, websearch_to_tsquery('english', ?))) DESC) as rank
+                    FROM content_chunks
+                    WHERE embedding_status = 'ready'
+                      AND book_id IN (SELECT id FROM books WHERE status = 'published')
+                      AND (search_vector @@ websearch_to_tsquery('english', ?) OR search_vector @@ websearch_to_tsquery('english', ?))
+                      AND (page_number IS NULL OR page_number > 8)
+                      AND chunk_text NOT ILIKE '%table of contents%'
+                      AND chunk_text NOT ILIKE '%list of figures%'
+                      AND chunk_text NOT ILIKE '%list of tables%'
+                    ORDER BY rank
+                    LIMIT 60
+                )
                 SELECT
-                    cc.id,
-                    cc.chunk_text,
-                    cc.section_id,
-                    cc.token_count,
-                    (1 - (cc.embedding <=> ?::vector)) AS similarity,
-                    s.title  AS section_title,
-                    s.chapter_id,
-                    ch.title AS chapter_title
-                FROM content_chunks cc
-                JOIN sections  s  ON s.id  = cc.section_id
-                JOIN chapters  ch ON ch.id = s.chapter_id
-                WHERE cc.embedding_status = 'ready'
-                  AND cc.embedding IS NOT NULL
-                  AND (1 - (cc.embedding <=> ?::vector)) >= ?
-                  $scopeSql
-                ORDER BY cc.embedding <=> ?::vector
+                    c.id, c.chunk_text, c.book_id, c.page_number, c.structural_context,
+                    COALESCE(s.score, 0) as vector_score,
+                    COALESCE(l.score, 0) as keyword_score,
+                    COALESCE(s.rank, 1000) as vector_rank,
+                    COALESCE(l.rank, 1000) as keyword_rank,
+                    (
+                        (CASE WHEN s.rank IS NOT NULL THEN 1.0 / (? + s.rank) ELSE 0 END) +
+                        (CASE WHEN l.rank IS NOT NULL THEN 1.0 / (? + l.rank) ELSE 0 END)
+                    ) as rrf_score
+                FROM content_chunks c
+                LEFT JOIN semantic_search s ON s.id = c.id
+                LEFT JOIN lexical_search l ON l.id = c.id
+                WHERE s.id IS NOT NULL OR l.id IS NOT NULL
+                ORDER BY rrf_score DESC
                 LIMIT ?
                 SQL,
-                $bindings
+                [
+                    // semantic bindings
+                    $vectorStr, $vectorStr,
+                    // lexical bindings (original, normalized, original, normalized, original, normalized)
+                    $originalQuery, $normalizedQuery, $originalQuery, $normalizedQuery, $originalQuery, $normalizedQuery,
+                    // RRF bindings
+                    $k_rrf, $k_rrf,
+                    // limit
+                    $limit
+                ]
             );
         } catch (\Throwable $e) {
-            Log::error('RetrievalService: pgvector query failed', [
-                'error'     => $e->getMessage(),
-                'query'     => substr($query, 0, 80),
-                'threshold' => $threshold,
-                'chapterId' => $chapterId,
-                'k'         => $k,
+            Log::error('RetrievalService: Hybrid RRF query failed', [
+                'error' => $e->getMessage(),
+                'query' => substr($originalQuery, 0, 80),
             ]);
-            return ['chunks' => [], 'grounded' => false];
-        }
-
-        if (empty($rows)) {
-            Log::info('RetrievalService: no chunks above threshold', [
-                'query'     => substr($query, 0, 80),
-                'threshold' => $threshold,
-                'chapterId' => $chapterId,
-                'k'         => $k,
-            ]);
-            return ['chunks' => [], 'grounded' => false];
+            return collect([]);
         }
 
         $chunks = array_map(fn ($row) => [
-            'id'            => $row->id,
-            'chunk_text'    => $row->chunk_text,
-            'similarity'    => round((float) $row->similarity, 4),
-            'section_id'    => $row->section_id,
-            'section_title' => $row->section_title,
-            'chapter_id'    => $row->chapter_id,
-            'chapter_title' => $row->chapter_title,
+            'id'                 => $row->id,
+            'chunk_text'         => $row->chunk_text,
+            'rrf_score'          => round((float) $row->rrf_score, 4),
+            'vector_score'       => round((float) $row->vector_score, 4),
+            'keyword_score'      => round((float) $row->keyword_score, 4),
+            'vector_rank'        => (int) $row->vector_rank,
+            'keyword_rank'       => (int) $row->keyword_rank,
+            'book_id'            => $row->book_id,
+            'page_number'        => $row->page_number,
+            'structural_context' => is_string($row->structural_context) ? json_decode($row->structural_context, true) : $row->structural_context,
         ], $rows);
 
-        Log::info('RetrievalService: retrieved chunks', [
-            'query'      => substr($query, 0, 80),
-            'count'      => count($chunks),
-            'top_score'  => $chunks[0]['similarity'] ?? null,
-            'chapter_id' => $chapterId,
+        Log::info('RetrievalService: retrieved chunks via Hybrid Search', [
+            'query'     => substr($originalQuery, 0, 80),
+            'count'     => count($chunks),
+            'top_score' => $chunks[0]['rrf_score'] ?? null,
         ]);
 
-        return ['chunks' => $chunks, 'grounded' => true];
+        return collect($chunks)->values();
+    }
+
+    public function getChapterChunks(int $chapterNumber): \Illuminate\Support\Collection
+    {
+        $rows = DB::table('content_chunks')
+            ->join('sections', 'content_chunks.section_id', '=', 'sections.id')
+            ->join('chapters', 'sections.chapter_id', '=', 'chapters.id')
+            ->join('books', 'content_chunks.book_id', '=', 'books.id')
+            ->where('books.status', 'published')
+            ->where(function($query) use ($chapterNumber) {
+                $query->whereRaw("chapters.title ~* ('^' || ? || '\s+')", [$chapterNumber])
+                      ->orWhere('chapters.order', $chapterNumber);
+            })
+            ->where('content_chunks.embedding_status', 'ready')
+            ->orderBy('sections.order')
+            ->orderBy('content_chunks.chunk_index')
+            ->select('content_chunks.*', 'chapters.title as chapter_title', 'sections.title as section_title')
+            ->get();
+
+        return $rows->map(function ($row) {
+            $context = is_string($row->structural_context) ? json_decode($row->structural_context, true) : [];
+            if (!isset($context['heading'])) {
+                $context['heading'] = $row->section_title ?: $row->chapter_title;
+            }
+            return [
+                'id'                 => $row->id,
+                'chunk_text'         => $row->chunk_text,
+                'rrf_score'          => 1.0,
+                'book_id'            => $row->book_id,
+                'page_number'        => $row->page_number,
+                'structural_context' => $context,
+            ];
+        });
+    }
+
+    public function getChunksByIds(array $ids): \Illuminate\Support\Collection
+    {
+        if (empty($ids)) {
+            return collect();
+        }
+        
+        $rows = DB::table('content_chunks')
+            ->whereIn('id', $ids)
+            ->get();
+
+        return $rows->map(function ($row) {
+            return [
+                'id'                 => $row->id,
+                'chunk_text'         => $row->chunk_text,
+                'rrf_score'          => 0.0,
+                'vector_score'       => 0.0,
+                'keyword_score'      => 0.15, // Moderate continuity boost
+                'book_id'            => $row->book_id,
+                'page_number'        => $row->page_number,
+                'structural_context' => is_string($row->structural_context) ? json_decode($row->structural_context, true) : $row->structural_context,
+            ];
+        });
     }
 }

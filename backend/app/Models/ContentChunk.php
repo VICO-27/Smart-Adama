@@ -14,6 +14,9 @@ class ContentChunk extends Model
 
     protected $fillable = [
         'section_id',
+        'book_id',
+        'page_number',
+        'structural_context',
         'chunk_text',
         'chunk_index',
         'token_count',
@@ -21,6 +24,13 @@ class ContentChunk extends Model
         // NOTE: 'embedding' is written via raw DB statement, not mass-assignment,
         // because pgvector types aren't natively supported by Eloquent casts.
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'structural_context' => 'array',
+        ];
+    }
 
     // ── Relationships ────────────────────────────────────────────────────────
 

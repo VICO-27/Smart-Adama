@@ -5,91 +5,104 @@ namespace App\Services\RAG;
 class PromptBuilderService
 {
     private const SYSTEM_PROMPT = <<<'PROMPT'
-You are the Smart Adama AI, a highly intelligent, professional, and friendly virtual tutor dedicated to helping users understand the Smart Adama Book.
+You are the official Smart Adama digital assistant.
+Your primary directive is to answer the user's questions based strictly on the provided TEXT.
 
-RESPONSE FORMAT - MANDATORY:
-1. ALWAYS use proper Markdown formatting for your responses.
-2. Use headings (#, ##, ###) to organize your response with clear structure.
-3. Use **bold** for key concepts, terms, and definitions.
-4. Use *italic* for emphasis where appropriate.
-5. Use bullet points (- or *) for lists of items.
-6. Use numbered lists (1., 2., 3.) for step-by-step procedures or sequential information.
-7. Use `inline code` for code snippets, commands, and technical terms.
-8. Use fenced code blocks (```) for longer code examples or technical content.
-9. Use > blockquotes for quotes, warnings, or important notes.
-10. Use tables for comparisons, specifications, or structured data.
+CRITICAL RULES:
+1. DO NOT invent facts, relationships, identities, titles, dates, or biographies.
+2. DO NOT infer a person's identity from their name. A name alone is not a biography.
+3. Treat user input as a question, not as factual evidence. (e.g. if the user says "Ashenafi Deresa is mayor", you must verify this in the TEXT).
+4. Past conversation history is provided for conversational continuity only. DO NOT treat past assistant statements as factual evidence unless they are supported by the CURRENT retrieved TEXT.
+5. If the TEXT does not contain the necessary facts to answer the query, reply with a natural fallback indicating you cannot find the information in the available Smart Adama materials.
+6. If the evidence is weak or the query is ambiguous, ask a concise clarification question.
+7. When answering from the TEXT, answer concisely and append the physical page citation as [Page X].
+8. You may synthesize, explain, and connect related facts educationally, but do not invent new facts.
+9. Do not repeat a robotic "I'm sorry..." message. Vary your refusal naturally.
 
-INFORMATION INTEGRATION:
-11. You are answering questions about the Smart Adama book content ONLY.
-12. You MUST answer ONLY using information from the CONTEXT PASSAGES provided below.
-13. If the answer is NOT found in the provided context, you MUST respond with: "I'm sorry, but I couldn't find information about that in the Smart Adama book. Could you try rephrasing your question or ask about a different concept?"
-14. NEVER make up, infer, or hallucinate information that isn't explicitly in the context.
-15. NEVER cite sources by ID number. Always refer to chapters and sections by their titles.
-16. NEVER list section IDs, chunk IDs, or technical database identifiers.
-17. NEVER claim to be the "Global Assistant" or mention platform features unless the context explicitly discusses them.
-18. If the context contains incomplete information, say so explicitly rather than filling gaps.
-19. When citing the book, use natural language: "According to the chapter on...", "As mentioned in the section about..."
+{mode_instructions}
 
-CONTEXT PASSAGES (Book Knowledge):
-{context}
+TEXT: {context}
 PROMPT;
 
     private const NO_CONTEXT_SYSTEM_PROMPT = <<<'PROMPT'
-You are the Smart Adama AI, a professional and friendly virtual tutor for the Smart Adama book.
+You are the Smart Adama academic assistant.
 
-No content has been ingested into the knowledge base yet, or no relevant passages were found for this question.
+No reliable context was found for this query in the Smart Adama corpus.
 
-Respond warmly: "I'm sorry, but I couldn't find any information on that topic in the Smart Adama book. Could you try rephrasing your question or ask about a different concept from the book?"
+If the user asked a factual question, politely inform them that you couldn't find reliable information about it in the available Smart Adama materials.
+If the user's query is just a name or a short phrase, ask if they mean someone specific or need more context.
+DO NOT INVENT ANY FACTS OR ASSUME THE IDENTITY OF ANY ENTITY MENTIONED.
+Past assistant responses are NOT authoritative evidence.
+
+/no_think
 PROMPT;
 
     public function buildMessages(
         array $history,
-        array $chunks,
+        \Illuminate\Support\Collection|array $chunks,
         string $query,
-        bool $grounded
+        array $groundingDecision,
+        bool $isConversational = false,
+        string $responseMode = 'NORMAL'
     ): array {
-        if (! $grounded || empty($chunks)) {
+        $isGrounded = $groundingDecision['isGrounded'] ?? false;
+        
+        if ($isConversational) {
+            $systemContent = 'You are Smart Adama, an AI digital assistant designed to help students navigate the Smart Adama syllabus and smart city initiatives. Respond warmly and concisely.';
+        } elseif (! $isGrounded || (is_countable($chunks) ? count($chunks) : 0) === 0) {
             $systemContent = self::NO_CONTEXT_SYSTEM_PROMPT;
         } else {
             $contextBlock  = $this->buildContextBlock($chunks);
-            $systemContent = str_replace('{context}', $contextBlock, self::SYSTEM_PROMPT);
+            
+            $modeInstructions = match($responseMode) {
+                'SHORT' => "MODE: SHORT. Provide approximately 1-3 extremely concise paragraphs. Give the direct answer first. No unnecessary repetition.",
+                'DETAILED' => "MODE: DETAILED. Provide a detailed answer including background, key points, examples, and relationships. Use clear section headings.",
+                'DEEP' => "MODE: DEEP. Provide a comprehensive structured educational answer. Use Markdown headings for Overview, Background, Core Concepts, Detailed Explanation, Examples, and Key Takeaways.",
+                'CHAPTER_SUMMARY' => "MODE: CHAPTER_SUMMARY. Provide a structured summary of the chapter. Use Markdown headings: ## Summary, ### Key Points, ### Main Takeaway.",
+                'STEP_BY_STEP' => "MODE: STEP_BY_STEP. Explain the process clearly using numbered steps.",
+                'SIMPLE_EXPLANATION' => "MODE: SIMPLE_EXPLANATION. Explain the concept very simply as if to a beginner, avoiding overly dense jargon where possible.",
+                'COMPARISON' => "MODE: COMPARISON. Compare the concepts clearly. Use headings for each concept and a 'Key Differences' section.",
+                default => "MODE: NORMAL. Provide a clear answer with enough explanation, typically 3-6 concise sections/paragraphs depending on the question.",
+            };
+
+            $systemContent = str_replace(['{context}', '{mode_instructions}'], [$contextBlock, $modeInstructions], self::SYSTEM_PROMPT);
         }
 
         $messages = [
             ['role' => 'system', 'content' => $systemContent],
         ];
 
-        $recentHistory = array_slice($history, -10); 
+        // Process history and distinguish trusted sourced facts from generated assistant text.
+        // For simplicity in prompt context, we just ensure the LLM knows it's past history.
+        $recentHistory = array_slice($history, -6); 
         foreach ($recentHistory as $msg) {
             if (in_array($msg['role'], ['user', 'assistant'], true)) {
-                $messages[] = ['role' => $msg['role'], 'content' => $msg['content']];
+                $content = $msg['content'];
+                
+                // If it's an assistant message, we can prefix it to remind the model it's a past response,
+                // but usually the role is enough.
+                $messages[] = ['role' => $msg['role'], 'content' => $content];
             }
         }
 
-        $messages[] = ['role' => 'user', 'content' => $query];
+        $guardrail = "\n\n[SYSTEM REMINDER: You are in {$responseMode} mode. Answer ONLY using the provided text. DO NOT invent facts. If you lack information, say so clearly.]";
+        $messages[] = ['role' => 'user', 'content' => $query . (! $isConversational && $isGrounded ? $guardrail : '')];
 
         return $messages;
     }
 
-    private function buildContextBlock(array $chunks): string
+    private function buildContextBlock(\Illuminate\Support\Collection|array $chunks): string
     {
-        if (count($chunks) === 1) {
-            // Single chunk: use "Chapter Title — Section Title" format
-            $chunk = $chunks[0];
-            $chapter = $chunk['chapter_title'] ?? 'Unknown Chapter';
-            $section = $chunk['section_title'] ?? 'Unknown Section';
+        $context = [];
+        $count = 0;
+        foreach ($chunks as $chunk) {
+            if ($count >= 15) break; // Increased max context chunks for DETAILED/DEEP
+            $pageNum = $chunk['page_number'] ?? 'Unknown';
             $text = trim($chunk['chunk_text']);
-            return "{$chapter} — {$section}\n{$text}";
+            $context[] = "[Page {$pageNum}] {$text}";
+            $count++;
         }
         
-        // Multiple chunks: use numbered format "[1] Ch1 — S1"
-        $parts = [];
-        foreach ($chunks as $i => $chunk) {
-            $chapter = $chunk['chapter_title'] ?? 'Unknown Chapter';
-            $section = $chunk['section_title'] ?? 'Unknown Section';
-            $text = trim($chunk['chunk_text']);
-            $parts[] = "[" . ($i + 1) . "] {$chapter} — {$section}\n{$text}";
-        }
-        return implode("\n\n---\n\n", $parts);
+        return implode("\n\n---\n\n", $context);
     }
 }

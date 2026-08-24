@@ -11,7 +11,7 @@ export const useChatStore = defineStore('chat', () => {
   const error           = ref<string | null>(null)
 
   // Expose the composable's reactive state at store level
-  const { streaming, accumulatedText: streamingContent, streamError, stream } = useChatStream()
+  const { streaming, accumulatedText: streamingContent, streamError, stream, activityPayload, cancel } = useChatStream()
 
   // ── Session CRUD ───────────────────────────────────────────────────────────
 
@@ -29,6 +29,9 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   async function loadSession(sessionId: string): Promise<App.ChatSession> {
+    if (streaming.value && currentSession.value?.id === sessionId) {
+      return currentSession.value // Lock out stale DB fetches during active stream
+    }
     const { data } = await chatApi.getSession(sessionId)
     currentSession.value = data.session
     return data.session
@@ -105,6 +108,10 @@ export const useChatStore = defineStore('chat', () => {
     )
   }
 
+  function cancelStream() {
+    cancel()
+  }
+
   return {
     sessions,
     currentSession,
@@ -113,11 +120,13 @@ export const useChatStore = defineStore('chat', () => {
     streaming,
     streamingContent,
     streamError,
+    activityPayload,
     loadSessions,
     createSession,
     loadSession,
     renameSession,
     deleteSession,
     sendMessage,
+    cancelStream,
   }
 })

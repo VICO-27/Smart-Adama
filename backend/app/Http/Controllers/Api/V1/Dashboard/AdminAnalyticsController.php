@@ -37,8 +37,13 @@ class AdminAnalyticsController extends Controller
 
             $totalBadgesAwarded = UserBadge::count();
 
+            $totalBooks = \App\Models\Book::count();
+            $totalChunks = \App\Models\ContentChunk::count();
+
             return [
                 'total_users'           => $totalUsers,
+                'total_books'           => $totalBooks,
+                'total_chunks'          => $totalChunks,
                 'total_chapters'        => $totalChapters,
                 'avg_completion_pct'    => $avgCompletion,
                 'total_quiz_attempts'   => $totalAttempts,

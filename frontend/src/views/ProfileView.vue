@@ -2944,6 +2944,12 @@ onUnmounted(() => {
 
   margin:
     0 auto;
+
+  position:
+    relative;
+
+  z-index:
+    10;
 }
 
 

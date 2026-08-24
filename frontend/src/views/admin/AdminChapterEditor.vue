@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { booksApi } from '@/api/books'
-import AppShell from '@/components/layout/AppShell.vue'
+
 import SaCard from '@/components/ui/SaCard.vue'
 import SaButton from '@/components/ui/SaButton.vue'
 
@@ -144,7 +144,7 @@ onMounted(() => loadChapter())
 </script>
 
 <template>
-  <AppShell>
+
     <div class="max-w-5xl mx-auto space-y-6">
       <div class="flex items-center justify-between">
         <div>
@@ -230,5 +230,5 @@ onMounted(() => loadChapter())
         </form>
       </div>
     </div>
-  </AppShell>
+
 </template>

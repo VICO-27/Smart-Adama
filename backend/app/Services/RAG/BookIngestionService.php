@@ -92,8 +92,8 @@ class BookIngestionService
         $errors = [];
 
         // Check chapter number
-        if (!isset(self::CANONICAL_CHAPTERS[$chapterNumber])) {
-            $errors[] = "Invalid chapter number: $chapterNumber. Must be 1-11.";
+        if ($chapterNumber < 1 || $chapterNumber > 11) {
+            $errors[] = "Invalid chapter number: $chapterNumber. Must be between 1 and 11.";
         }
 
         // Check content is not empty
@@ -393,9 +393,9 @@ class BookIngestionService
         // Get or create chapter
         $chapter = Chapter::firstOrNew(
             ['book_id' => $book->id, 'order' => $chapterNumber],
-            ['title' => self::CANONICAL_CHAPTERS[$chapterNumber]]
+            ['title' => self::CANONICAL_CHAPTERS[$chapterNumber] ?? "Chapter {$chapterNumber}"]
         );
-        $chapter->title = self::CANONICAL_CHAPTERS[$chapterNumber];
+        $chapter->title = self::CANONICAL_CHAPTERS[$chapterNumber] ?? "Chapter {$chapterNumber}";
         $chapter->ingestion_status = 'draft';
         $chapter->save();
 
@@ -478,12 +478,11 @@ class BookIngestionService
 
         // Check for invalid chapters
         $invalidChapters = $chapters->filter(function($c) {
-            return $c->order < 1 || $c->order > 11;
+            return $c->order < 1;
         })->count();
 
         $isComplete = (
-            $chapters->count() === $canonicalCount &&
-            $populatedCount === $canonicalCount &&
+            $chapters->count() >= 1 &&
             $totalChunks > 0 &&
             $readyChunks === $totalChunks &&
             $pendingChunks === 0 &&

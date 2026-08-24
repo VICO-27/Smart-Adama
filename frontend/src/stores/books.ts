@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { booksApi } from '@/api/books'
 import apiClient from '@/api/client'
 
@@ -10,6 +10,7 @@ export const useBooksStore = defineStore('books', () => {
   const bestAttempt = ref<any>(null)
   const chapterProgress = ref<any>(null)
   const loading = ref(false)
+  const currentBook = computed(() => books.value[0] || null)
 
   async function loadBooks() {
     loading.value = true
@@ -63,6 +64,7 @@ export const useBooksStore = defineStore('books', () => {
 
   return {
     books,
+    currentBook,
     currentChapter,
     currentQuiz,
     bestAttempt,

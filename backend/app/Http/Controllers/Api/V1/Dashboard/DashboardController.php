@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1\Dashboard;
 
 use App\Http\Controllers\Controller;
 use App\Models\Book;
+use App\Models\Chapter;
 use App\Models\QuizAttempt;
 use App\Models\UserProgress;
 use Illuminate\Http\JsonResponse;
@@ -24,7 +25,7 @@ class DashboardController extends Controller
         $data = Cache::remember($cacheKey, 60, function () use ($user) {
             // 1. Identify canonical scope
             $canonicalBook = Book::canonical();
-            $canonicalChapterIds = $canonicalBook ? $canonicalBook->chapters()->pluck('id') : collect();
+            $canonicalChapterIds = $canonicalBook ? $canonicalBook->chapters()->pluck('id') : Chapter::pluck('id');
             
             $totalChapters = $canonicalChapterIds->count();
 

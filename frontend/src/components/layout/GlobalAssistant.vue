@@ -493,7 +493,15 @@ marked.setOptions({
 
 
 const parseMarkdown = (rawText: string) => {
-  return marked.parse(rawText) as string
+  let processed = rawText
+  
+  processed = processed.replace(/<think>([\s\S]*?)<\/think>/g, '<details class="thinking-block"><summary>Thinking Process...</summary>\n\n$1\n\n</details>')
+  
+  if (processed.includes('<think>') && !processed.includes('</think>')) {
+      processed = processed.replace(/<think>([\s\S]*)$/g, '<details class="thinking-block" open><summary>Thinking...</summary>\n\n$1\n\n</details>')
+  }
+  
+  return marked.parse(processed) as string
 }
 
 
@@ -2251,6 +2259,12 @@ onUnmounted(() => {
   border-color: var(--assistant-border);
 }
 
+@media (hover: none) and (pointer: coarse) {
+  .assistant-toggle:hover {
+    transform: scale(1);
+  }
+}
+
 .assistant-toggle:hover {
   transform: translateY(-2px);
   box-shadow: 0 18px 42px rgba(0,0,0,0.15);
@@ -2554,5 +2568,29 @@ onUnmounted(() => {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+:deep(.thinking-block) {
+  margin: 8px 0;
+  padding: 8px 12px;
+  background-color: rgba(0,0,0,0.03);
+  border-left: 2px solid rgba(0,0,0,0.1);
+  border-radius: 4px;
+  font-size: 0.9em;
+  color: #64748b;
+}
+:global(html.dark) :deep(.thinking-block) {
+  background-color: rgba(255,255,255,0.05);
+  border-left-color: rgba(255,255,255,0.1);
+  color: #94a3b8;
+}
+:deep(.thinking-block summary) {
+  cursor: pointer;
+  font-weight: 500;
+  user-select: none;
+  opacity: 0.8;
+}
+:deep(.thinking-block summary:hover) {
+  opacity: 1;
 }
 </style>

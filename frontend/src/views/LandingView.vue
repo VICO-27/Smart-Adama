@@ -1710,7 +1710,7 @@ html.dark .landing-page {
     min(100%, 1180px);
 
   min-height:
-    380px;
+    320px;
 
   margin:
     0 auto;
@@ -1742,7 +1742,7 @@ html.dark .landing-page {
     2fr 3fr;
 
   min-height:
-    380px;
+    320px;
 }
 
 
@@ -1990,7 +1990,7 @@ html.dark .landing-page {
     100%;
 
   min-height:
-    450px;
+    320px;
 
   overflow:
     hidden;

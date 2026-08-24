@@ -41,7 +41,7 @@ beforeEach(function () {
     config([
         'ai.rag.chunk_target_tokens' => 100,
         'ai.rag.chunk_overlap_ratio' => 0.15,
-        'ai.voyage.dimension'        => 1024,
+        'ai.ollama.embedding_dimension' => 1024,
     ]);
 });
 

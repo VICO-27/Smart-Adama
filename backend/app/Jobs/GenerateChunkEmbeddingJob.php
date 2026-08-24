@@ -107,6 +107,26 @@ class GenerateChunkEmbeddingJob implements ShouldQueue
             Log::info('Chapter fully ingested and ready', [
                 'chapter_id' => $this->chapterId,
             ]);
+
+            $this->maybeMarkBookReady($chapter->book_id);
+        }
+    }
+
+    private function maybeMarkBookReady(string $bookId): void
+    {
+        $book = \App\Models\Book::with('chapters')->find($bookId);
+        if (! $book) {
+            return;
+        }
+
+        $allReady = $book->chapters->every(fn ($c) => $c->ingestion_status === 'ready');
+
+        if ($allReady) {
+            $book->update(['status' => 'published']);
+
+            Log::info('Book fully ingested and published', [
+                'book_id' => $bookId,
+            ]);
         }
     }
 }

@@ -3,16 +3,21 @@ import { ref, type Ref } from 'vue'
 /**
  * SSE Event types
  */
-type SSEEvent = 'delta' | 'done' | 'error'
+type SSEEvent = 'token' | 'complete' | 'activity' | 'error'
 
 /**
  * SSE Event payloads
  */
-interface DeltaEvent {
-  token: string
+interface TokenEvent {
+  content: string
 }
 
-interface DoneEvent {
+interface ActivityEvent {
+  stage: string
+  message: string
+}
+
+interface CompleteEvent {
   message_id: string
   grounded: boolean
   citations: Citation[]
@@ -37,13 +42,14 @@ interface Citation {
 /**
  * Combined payload types
  */
-type SSEPayload = DeltaEvent | DoneEvent | ErrorEvent
+type SSEPayload = TokenEvent | CompleteEvent | ActivityEvent | ErrorEvent
 
 export function useChatStream() {
   const streaming = ref(false)
   const accumulatedText = ref('')
   const streamError = ref<string | null>(null)
-  const donePayload = ref<DoneEvent | null>(null)
+  const activityPayload = ref<ActivityEvent | null>(null)
+  const donePayload = ref<CompleteEvent | null>(null)
   const abortController = ref<AbortController | null>(null)
 
   async function stream(
@@ -51,7 +57,7 @@ export function useChatStream() {
     token: string,
     content: string,
     onToken?: (token: string) => void,
-    onDone?: (payload: DoneEvent) => void,
+    onDone?: (payload: CompleteEvent) => void,
     onError?: (error: ErrorEvent) => void
   ): Promise<void> {
     if (abortController.value) {
@@ -63,6 +69,7 @@ export function useChatStream() {
     streaming.value = true
     accumulatedText.value = ''
     streamError.value = null
+    activityPayload.value = null
     donePayload.value = null
 
     try {
@@ -93,21 +100,26 @@ export function useChatStream() {
       while (true) {
         const { done, value } = await reader.read()
 
-        if (done) {
-          break
+        if (value) {
+          buffer += decoder.decode(value, { stream: !done })
         }
-
-        buffer += decoder.decode(value, { stream: true })
 
         // Process blocks split by double newline (SSE standard)
         const events = buffer.split(/\n\n/)
-        // Keep incomplete block in buffer
-        buffer = events.pop() || '' 
+        
+        if (done) {
+          // If the stream is done, treat whatever is left in the buffer as the final event
+          events.push(events.pop() || '')
+          buffer = ''
+        } else {
+          // Keep incomplete block in buffer
+          buffer = events.pop() || '' 
+        }
 
         for (const eventBlock of events) {
           if (!eventBlock.trim()) continue
 
-          let eventType: SSEEvent = 'delta'
+          let eventType: SSEEvent = 'token'
           let eventData: any = null
 
           const lines = eventBlock.split('\n')
@@ -127,10 +139,12 @@ export function useChatStream() {
           }
 
           if (eventData) {
-            if (eventType === 'delta') {
-              accumulatedText.value += eventData.token
-              onToken?.(eventData.token)
-            } else if (eventType === 'done') {
+            if (eventType === 'token') {
+              accumulatedText.value += eventData.content
+              onToken?.(eventData.content)
+            } else if (eventType === 'activity') {
+              activityPayload.value = eventData
+            } else if (eventType === 'complete') {
               donePayload.value = eventData
               onDone?.(eventData)
             } else if (eventType === 'error') {
@@ -139,13 +153,44 @@ export function useChatStream() {
             }
           }
         }
+        
+        if (done) {
+          // If the stream finished without a complete event, synthesize one to prevent the text from vanishing
+          if (!donePayload.value && accumulatedText.value) {
+            const synthesizedComplete: CompleteEvent = {
+              message_id: crypto.randomUUID(),
+              grounded: false,
+              citations: [],
+              html_content: accumulatedText.value
+            }
+            donePayload.value = synthesizedComplete
+            onDone?.(synthesizedComplete)
+          }
+          break
+        }
       }
     } catch (error: any) {
       if (error.name === 'AbortError') {
         return
       }
       
-      streamError.value = error.message || 'Unknown error'
+      if (error.message === 'Failed to fetch' || error.name === 'TypeError') {
+          streamError.value = 'Connection to AI timed out.'
+      } else {
+          streamError.value = error.message || 'Unknown error'
+      }
+      // If we already received partial text before the error, synthesize a complete event to preserve it
+      if (accumulatedText.value && !donePayload.value) {
+        const synthesizedComplete: CompleteEvent = {
+          message_id: crypto.randomUUID(),
+          grounded: false,
+          citations: [],
+          html_content: accumulatedText.value
+        }
+        donePayload.value = synthesizedComplete
+        onDone?.(synthesizedComplete)
+      }
+
       onError?.({ error: { code: 'STREAM_ERROR', message: streamError.value } })
     } finally {
       streaming.value = false
@@ -162,12 +207,13 @@ export function useChatStream() {
     streaming,
     accumulatedText,
     streamError,
+    activityPayload,
     donePayload,
     stream,
     cancel,
   }
 }
 
-// ChatMessageStreamDone is an alias for DoneEvent — exported so stores can import it
-export type ChatMessageStreamDone = DoneEvent
-export type { SSEEvent, DeltaEvent, DoneEvent, ErrorEvent, Citation }
+// ChatMessageStreamDone is an alias for CompleteEvent — exported so stores can import it
+export type ChatMessageStreamDone = CompleteEvent
+export type { SSEEvent, TokenEvent as DeltaEvent, CompleteEvent as DoneEvent, ErrorEvent, Citation }

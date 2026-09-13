@@ -35,10 +35,7 @@ use App\Http\Controllers\Api\V1\Gamification\GameController;
 
 Route::middleware('auth:sanctum')->get('/v1/ai-search', [SearchController::class, 'search']);
 
-Route::prefix('chat')->group(function () {
-    Route::post('sessions', [ChatController::class, 'storeSession']);
-    Route::post('sessions/{session}/messages', [ChatController::class, 'sendMessage']);
-});
+
 
 Route::get('/health', HealthController::class);
 
@@ -47,12 +44,12 @@ Route::prefix('auth')->group(function () {
     Route::post('/login', LoginController::class);
     Route::post('/password/forgot', [PasswordResetController::class, 'forgot']);
     Route::post('/password/reset', [PasswordResetController::class, 'reset']);
-    
+
     // --- NEW: PIN Recovery Routes ---
     Route::post('/pin/forgot', [PinRecoveryController::class, 'verifyPhone']);
     Route::post('/pin/verify-code', [PinRecoveryController::class, 'verifyCode']);
     Route::post('/pin/reset', [PinRecoveryController::class, 'resetPin']);
-    
+
     // --- NEW: Socialite Routes ---
     Route::get('/{provider}/redirect', [SocialAuthController::class, 'redirect']);
     Route::get('/{provider}/callback', [SocialAuthController::class, 'callback']);
@@ -76,10 +73,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('users/me')->group(function () {
         Route::get('/', [UserController::class, 'show']);
         Route::patch('/', [UserController::class, 'update']);
-        
+
         // --- NEW: Password Update Route ---
         Route::put('/password', [UserController::class, 'updatePassword']);
-        
+
         Route::post('/avatar', [UserController::class, 'uploadAvatar']);
         Route::delete('/', [UserController::class, 'destroy']);
         Route::get('/quiz-attempts', [QuizAttemptController::class, 'index']);
@@ -93,6 +90,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('chat/sessions')->group(function () {
         Route::get('/', [ChatSessionController::class, 'index']);
         Route::post('/', [ChatSessionController::class, 'store']);
+        Route::delete('/', [ChatSessionController::class, 'destroyAll']);
         Route::get('/{session}', [ChatSessionController::class, 'show']);
         Route::patch('/{session}', [ChatSessionController::class, 'update']);
         Route::delete('/{session}', [ChatSessionController::class, 'destroy']);
@@ -107,10 +105,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/users/me/badges', [BadgeController::class, 'index']);
     Route::get('/users/me/streak', [StreakController::class, 'show']);
     Route::get('/dashboard', [DashboardController::class, 'show']);
-    
-    // --- NEW: Global Assistant Route ---
-    Route::post('/global-chat', [GlobalChatController::class, 'handle']);
-    
+
     // --- Chat Message Feedback (👍/👎) ---
     Route::prefix('messages/{message}/feedback')->group(function () {
         Route::post('/', [ChatMessageFeedbackController::class, 'store']);
@@ -119,42 +114,46 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 });
 
+// --- Global Assistant Route (Accessible to Guests & Authenticated Users, Rate-Limited) ---
+Route::post('/global-chat', [GlobalChatController::class, 'handle'])
+    ->middleware('throttle.chat');
+
 // ── Admin Routes ─────────────────────────────────────────────────────────────
 Route::prefix('admin')->middleware(['auth:sanctum', 'admin'])->group(function () {
-    
+
     // Analytics
     Route::get('/analytics', AdminAnalyticsController::class);
-    
+
     // Books
     Route::post('/books', [AdminBookController::class, 'store']);
     Route::get('/books/{book}', [AdminBookController::class, 'show']);
     Route::delete('/books/{book}', [AdminBookController::class, 'destroy']);
-    
+
     // Chapters - GET routes must come before POST/PUT/PATCH to avoid matching {chapter} IDs
     Route::get('/chapters/{chapter}/sections', [AdminSectionController::class, 'index']);
     Route::get('/chapters/{chapter}/status', [AdminBookIngestionController::class, 'getChapterStatus']);
-    
+
     // Chapters
     Route::post('/books/{book}/chapters', [AdminChapterController::class, 'store']);
     Route::patch('/chapters/{chapter}', [AdminChapterController::class, 'update']);
     Route::post('/chapters/{chapter}/publish', [AdminChapterController::class, 'publish']);
-    
+
     // Sections
     Route::post('/chapters/{chapter}/sections', [AdminSectionController::class, 'store']);
     Route::patch('/sections/{section}', [AdminSectionController::class, 'update']);
     Route::delete('/sections/{section}', [AdminSectionController::class, 'destroy']);
     Route::patch('/sections/{section}/reorder', [AdminSectionController::class, 'reorder']);
-    
+
     // Quizzes
     Route::post('/chapters/{chapter}/generate-quiz', [AdminQuizController::class, 'generate']);
     Route::post('/chapters/{chapter}/quizzes', [AdminQuizController::class, 'store']);
     Route::post('/quizzes/{quiz}/publish', [AdminQuizController::class, 'publish']);
-    
+
     // Quiz Questions
     Route::post('/quizzes/{quiz}/questions', [AdminQuizQuestionController::class, 'store']);
     Route::patch('/quizzes/{quiz}/questions/{question}', [AdminQuizQuestionController::class, 'update']);
     Route::delete('/quizzes/{quiz}/questions/{question}', [AdminQuizQuestionController::class, 'destroy']);
-    
+
     // Book Ingestion (Manual)
     Route::get('/book-ingestion', [AdminBookIngestionController::class, 'index']);
     Route::put('/chapters/{chapter}/content', [AdminBookIngestionController::class, 'updateChapter']);
@@ -170,6 +169,29 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'admin'])->group(function ()
     // System
     Route::get('/system/health', \App\Http\Controllers\Api\V1\Dashboard\AdminSystemController::class);
     Route::get('/rag/debug-search', [\App\Http\Controllers\Api\V1\RAG\DebugRetrievalController::class, 'search']);
+
+    // Manual Content Authoring
+    Route::post('/manual/books', [\App\Http\Controllers\Api\V1\Dashboard\ManualAuthoringController::class, 'createBook']);
+    Route::get('/manual/books/{book}/tree', [\App\Http\Controllers\Api\V1\Dashboard\ManualAuthoringController::class, 'getTree']);
+    Route::post('/manual/books/{book}/chapters', [\App\Http\Controllers\Api\V1\Dashboard\ManualAuthoringController::class, 'createChapter']);
+    Route::put('/manual/chapters/{chapter}', [\App\Http\Controllers\Api\V1\Dashboard\ManualAuthoringController::class, 'updateChapter']);
+    Route::delete('/manual/chapters/{chapter}', [\App\Http\Controllers\Api\V1\Dashboard\ManualAuthoringController::class, 'deleteChapter']);
+    Route::post('/manual/chapters/{chapter}/sections', [\App\Http\Controllers\Api\V1\Dashboard\ManualAuthoringController::class, 'createSection']);
+    Route::put('/manual/sections/{section}', [\App\Http\Controllers\Api\V1\Dashboard\ManualAuthoringController::class, 'updateSection']);
+    Route::delete('/manual/sections/{section}', [\App\Http\Controllers\Api\V1\Dashboard\ManualAuthoringController::class, 'deleteSection']);
+    Route::post('/manual/books/{book}/pages', [\App\Http\Controllers\Api\V1\Dashboard\ManualAuthoringController::class, 'createPage']);
+    Route::put('/manual/pages/{page}', [\App\Http\Controllers\Api\V1\Dashboard\ManualAuthoringController::class, 'updatePage']);
+    Route::delete('/manual/pages/{page}', [\App\Http\Controllers\Api\V1\Dashboard\ManualAuthoringController::class, 'deletePage']);
+
+    // Ingestion Jobs (SSE & Control)
+    Route::post('/ingestion-jobs/start', [\App\Http\Controllers\Api\V1\Dashboard\IngestionJobController::class, 'start']);
+    Route::get('/ingestion-jobs/active', [\App\Http\Controllers\Api\V1\Dashboard\IngestionJobController::class, 'getActiveJobs']);
+    Route::get('/ingestion-jobs/{job}/logs', [\App\Http\Controllers\Api\V1\Dashboard\IngestionJobController::class, 'getLogs']);
+    Route::get('/ingestion-jobs/stream', [\App\Http\Controllers\Api\V1\Dashboard\IngestionJobController::class, 'streamProgress']);
+    Route::post('/ingestion-jobs/{job}/pause', [\App\Http\Controllers\Api\V1\Dashboard\IngestionJobController::class, 'pause']);
+    Route::post('/ingestion-jobs/{job}/resume', [\App\Http\Controllers\Api\V1\Dashboard\IngestionJobController::class, 'resume']);
+    Route::post('/ingestion-jobs/{job}/cancel', [\App\Http\Controllers\Api\V1\Dashboard\IngestionJobController::class, 'cancel']);
+    Route::post('/ingestion-jobs/{job}/retry', [\App\Http\Controllers\Api\V1\Dashboard\IngestionJobController::class, 'retry']);
 
     // Notifications
     Route::get('/notifications', [\App\Http\Controllers\Api\V1\Admin\AdminNotificationController::class, 'index']);

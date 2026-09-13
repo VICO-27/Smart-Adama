@@ -21,6 +21,8 @@ class ContentChunk extends Model
         'chunk_index',
         'token_count',
         'embedding_status',
+        'embedding_provider',
+        'embedding_model',
         // NOTE: 'embedding' is written via raw DB statement, not mass-assignment,
         // because pgvector types aren't natively supported by Eloquent casts.
     ];

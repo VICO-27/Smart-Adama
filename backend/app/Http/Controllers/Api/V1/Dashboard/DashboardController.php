@@ -23,29 +23,8 @@ class DashboardController extends Controller
         $cacheKey = "dashboard:{$user->id}";
 
         $data = Cache::remember($cacheKey, 60, function () use ($user) {
-            // 1. Identify canonical scope
-            $canonicalBook = Book::canonical();
-            $canonicalChapterIds = $canonicalBook ? $canonicalBook->chapters()->pluck('id') : Chapter::pluck('id');
-            
-            $totalChapters = $canonicalChapterIds->count();
-
-            // 2. Scope progress to only chapters in the canonical book
-            $progressRecords = UserProgress::where('user_id', $user->id)
-                ->whereIn('chapter_id', $canonicalChapterIds)
-                ->get();
-                
-            $completedChapters = $progressRecords->where('is_completed', true)->count();
-            $completionPct     = $totalChapters > 0
-                ? round(($completedChapters / $totalChapters) * 100, 1)
-                : 0;
-
-            $attempts       = QuizAttempt::where('user_id', $user->id)
-                ->whereNotNull('submitted_at')
-                ->get();
-            $quizzesPassed  = $attempts->where('passed', true)->count();
-            $avgQuizScore   = $attempts->isNotEmpty()
-                ? round($attempts->avg('score_pct'), 1)
-                : null;
+            $progressService = app(\App\Services\Progress\ProgressService::class);
+            $summary = $progressService->getSummary($user);
 
             $streak        = $user->streak;
             $currentStreak = $streak?->current_streak ?? 0;
@@ -54,14 +33,17 @@ class DashboardController extends Controller
             $badgeCount = $user->badges()->count();
 
             return [
-                'completion_pct'     => $completionPct,
-                'total_chapters'     => $totalChapters,
-                'completed_chapters' => $completedChapters,
-                'quizzes_passed'     => $quizzesPassed,
-                'average_quiz_score' => $avgQuizScore,
+                'completion_pct'     => $summary['overallPercentage'],
+                'total_chapters'     => $summary['totalChapters'],
+                'completed_chapters' => $summary['completedChapters'],
+                'quizzes_passed'     => $summary['quizzesCompleted'],
+                'average_quiz_score' => $summary['averageQuizScore'],
                 'current_streak'     => $currentStreak,
                 'total_chat_sessions' => $chatCount,
                 'earned_badge_count' => $badgeCount,
+                'current_chapter'    => $summary['currentChapter'],
+                'current_position'   => $summary['currentPosition'],
+                'chapter_progress'   => $summary['chapterProgress'],
             ];
         });
 

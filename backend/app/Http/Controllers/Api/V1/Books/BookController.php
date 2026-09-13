@@ -12,7 +12,11 @@ class BookController extends Controller
     public function index(): JsonResponse
     {
         $books = Book::where('status', 'published')
-            ->with(['chapters.sections'])
+            ->with([
+                'chapters' => function ($query) {
+                    $query->orderBy('order');
+                },
+            ])
             ->latest()
             ->get();
 

@@ -25,6 +25,8 @@
         <env name="BROADCAST_CONNECTION" value="null"/>
         <env name="CACHE_STORE" value="array"/>
         <env name="DB_CONNECTION" value="pgsql"/>
+        <env name="DB_HOST" value="/var/run/postgresql"/>
+        <env name="DB_USERNAME" value="vico"/>
         <env name="DB_DATABASE" value="smart_adama_testing"/>
         <env name="DB_URL" value=""/>
         <env name="MAIL_MAILER" value="array"/>

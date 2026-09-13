@@ -20,12 +20,12 @@ function makeFakeEmbedder(int $dimension = 1024): EmbeddingProviderInterface
     return new class($dimension) implements EmbeddingProviderInterface {
         public function __construct(private int $dim) {}
 
-        public function embed(string $text): array
+        public function embed(string $text, ?string $inputType = null): array
         {
             return array_fill(0, $this->dim, 0.1);
         }
 
-        public function embedBatch(array $texts): array
+        public function embedBatch(array $texts, ?string $inputType = null): array
         {
             return array_map(fn () => array_fill(0, $this->dim, 0.1), $texts);
         }

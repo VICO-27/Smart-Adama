@@ -14,7 +14,7 @@ interface EmbeddingProviderInterface
      * @return float[]  Dense vector of floats with length = configured dimension
      * @throws \App\Exceptions\AiProviderException on permanent failure
      */
-    public function embed(string $text): array;
+    public function embed(string $text, ?string $inputType = null): array;
 
     /**
      * Embed multiple texts in one API call (batched).
@@ -23,7 +23,7 @@ interface EmbeddingProviderInterface
      * @return float[][] Array of vectors, indexed the same as $texts
      * @throws \App\Exceptions\AiProviderException on permanent failure
      */
-    public function embedBatch(array $texts): array;
+    public function embedBatch(array $texts, ?string $inputType = null): array;
 
     /**
      * The dimension of vectors produced by this provider.

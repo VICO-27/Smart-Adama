@@ -25,7 +25,9 @@ class ChapterController extends Controller
      */
     public function show(Request $request, Chapter $chapter): JsonResponse
     {
-        $chapter->load('sections');
+        $chapter->load(['sections' => function ($query) {
+            $query->orderBy('order');
+        }]);
 
         $progress = $request->user()
             ->progress()
@@ -35,21 +37,26 @@ class ChapterController extends Controller
         return response()->json([
             'chapter'  => new ChapterResource($chapter),
             'progress' => $progress ? [
-                'is_completed'       => $progress->is_completed,
+                'status'             => $progress->status,
+                'reading_progress'   => $progress->reading_progress,
                 'best_quiz_score_pct' => $progress->best_quiz_score_pct,
                 'last_read_at'       => $progress->last_read_at?->toISOString(),
+                'last_page'          => $progress->last_page,
             ] : null,
         ]);
     }
 
     /**
      * POST /chapters/{chapter}/read
-     * Explicit "mark as read" signal from the frontend (Req 10.1).
+     * Update reading progress (Req 10.1).
      */
     public function markRead(Request $request, Chapter $chapter): JsonResponse
     {
-        $this->progressService->markChapterRead($request->user(), $chapter);
+        $readingProgress = $request->input('reading_progress', 100);
+        $lastPage = $request->input('last_page');
 
-        return response()->json(['message' => 'Chapter marked as read.']);
+        $this->progressService->updateReadingProgress($request->user(), $chapter, (int)$readingProgress, $lastPage);
+
+        return response()->json(['message' => 'Reading progress updated.']);
     }
 }

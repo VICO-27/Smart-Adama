@@ -58,7 +58,7 @@ class ChatSessionController extends Controller
     {
         $this->authorizeSession($request, $session);
 
-        $session->load(['messages.sources.chunk.section.chapter']);
+        $session->load(['messages.sources.chunk.section.chapter', 'messages.feedbacks']);
 
         return response()->json([
             'session' => new ChatSessionResource($session),
@@ -71,12 +71,21 @@ class ChatSessionController extends Controller
     public function update(UpdateChatSessionRequest $request, ChatSession $session): JsonResponse
     {
         $this->authorizeSession($request, $session);
-
-        $session->update(['title' => $request->title]);
+        $session->update($request->validated());
 
         return response()->json([
             'session' => new ChatSessionResource($session),
         ]);
+    }
+
+    /**
+     * DELETE /chat/sessions — clear all (Req 7.4 bulk)
+     */
+    public function destroyAll(Request $request): JsonResponse
+    {
+        $request->user()->chatSessions()->delete();
+
+        return response()->json(null, 204);
     }
 
     /**

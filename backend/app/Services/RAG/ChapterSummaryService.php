@@ -18,54 +18,25 @@ class ChapterSummaryService
      */
     public function summarize(Collection $chunks): Collection
     {
-        if ($chunks->count() <= 12) {
+        // To hit < 5s latency targets for production, we do not perform map-reduce.
+        // Instead, we take a representative sample of the chapter's chunks.
+        // This relies on the LLM to summarize the core concepts from the beginning and key sections.
+
+        $sampledChunks = collect([]);
+        $chunksList = $chunks->values();
+
+        // Take up to 6 chunks evenly spaced to get a high-level overview without map-reduce
+        $total = $chunksList->count();
+        if ($total <= 6) {
             return $chunks;
         }
 
-        $batches = $chunks->chunk(8);
-        $compressedChunks = collect([]);
-        
-        foreach ($batches as $batch) {
-            $messages = $this->promptBuilder->buildMessages(
-                [], 
-                $batch, 
-                'Summarize the core concepts in this section of the text concisely. Do not invent facts.', 
-                ['isGrounded' => true], 
-                false, 
-                'SUMMARY'
-            );
-            
-            $summaryText = $this->llm->chat($messages);
-            
-            $firstChunk = $batch->first();
-            $compressedChunks->push([
-                'id' => $firstChunk['id'],
-                'chunk_text' => $summaryText,
-                'page_number' => $firstChunk['page_number'],
-                'structural_context' => $firstChunk['structural_context'],
-                'rrf_score' => 1.0,
-                'keyword_score' => 1.0,
-                'vector_score' => 1.0,
-            ]);
+        $step = max(1, floor($total / 6));
+        for ($i = 0; $i < $total; $i += $step) {
+            $sampledChunks->push($chunksList[$i]);
+            if ($sampledChunks->count() >= 6) break;
         }
-        
-        if ($compressedChunks->count() > 1) {
-            $synthesisPrompt = "Synthesize these summaries into one cohesive chapter summary, ensuring the most important points from ALL sections are preserved. Do not omit major sections. Do not invent facts.";
-            $messages = $this->promptBuilder->buildMessages([], $compressedChunks, $synthesisPrompt, ['isGrounded' => true], false, 'SUMMARY');
-            $finalSummaryText = $this->llm->chat($messages);
-            
-            $firstChunk = $compressedChunks->first();
-            return collect([[
-                'id' => $firstChunk['id'],
-                'chunk_text' => $finalSummaryText,
-                'page_number' => $firstChunk['page_number'],
-                'structural_context' => $firstChunk['structural_context'],
-                'rrf_score' => 1.0,
-                'keyword_score' => 1.0,
-                'vector_score' => 1.0,
-            ]]);
-        }
-        
-        return $compressedChunks;
+
+        return $sampledChunks;
     }
 }

@@ -6,29 +6,71 @@ return [
     |--------------------------------------------------------------------------
     | LLM Provider
     |--------------------------------------------------------------------------
-    | Default: "ollama".
+    | Default: "gemini".
     */
-    'llm_provider' => env('AI_LLM_PROVIDER', 'ollama'),
+    'llm_provider' => env('AI_LLM_PROVIDER', 'gemini'),
 
     'ollama' => [
         'llm_base_url' => env('AI_LLM_BASE_URL', 'http://127.0.0.1:11434'),
         'llm_model'    => env('AI_LLM_MODEL', 'qwen2.5:0.5b'),
         'max_tokens'   => (int) env('AI_LLM_MAX_TOKENS', 2048),
-        
+
         'embedding_base_url'  => env('AI_EMBEDDING_BASE_URL', 'http://127.0.0.1:11434'),
         'embedding_model'     => env('AI_EMBEDDING_MODEL', 'qwen3-embedding:0.6b'),
         'embedding_dimension' => (int) env('AI_EMBEDDING_DIMENSIONS', 1024),
-        
+
         'timeout' => 120,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | LLM Timeouts (Seconds)
+    |--------------------------------------------------------------------------
+    | Default connect timeout: 5s. Default read/first token timeout: 8s.
+    | Prevents long hangs during provider degradation or rate limiting.
+    */
+    'llm_timeout'         => (int) env('AI_LLM_TIMEOUT', 20),
+    'llm_connect_timeout' => (int) env('AI_LLM_CONNECT_TIMEOUT', 10),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Embedding Timeouts (Seconds)
+    |--------------------------------------------------------------------------
+    */
+    'embedding_timeout'         => (int) env('AI_EMBEDDING_TIMEOUT', 20),
+    'embedding_connect_timeout' => (int) env('AI_EMBEDDING_CONNECT_TIMEOUT', 10),
+
+    'gemini' => [
+        'api_key'             => env('GEMINI_API_KEY', ''),
+        'llm_model'           => env('GEMINI_LLM_MODEL', 'gemini-3.5-flash-lite'),
+        'embedding_model'     => env('GEMINI_EMBEDDING_MODEL', 'gemini-embedding-001'),
+        'embedding_dimension' => (int) env('GEMINI_EMBEDDING_DIMENSION', 1024),
+        'timeout'             => (int) env('GEMINI_TIMEOUT', 20),
+        'connect_timeout'     => (int) env('GEMINI_CONNECT_TIMEOUT', 10),
+    ],
+
+    'groq' => [
+        'api_key'         => env('GROQ_API_KEY', ''),
+        'llm_model'       => env('GROQ_LLM_MODEL', 'qwen/qwen3.8-27b'),
+        'timeout'         => (int) env('GROQ_TIMEOUT', 20),
+        'connect_timeout' => (int) env('GROQ_CONNECT_TIMEOUT', 10),
+    ],
+
+    'voyage' => [
+        'api_key'             => env('VOYAGE_API_KEY', ''),
+        'embedding_model'     => env('VOYAGE_MODEL', 'voyage-large-2-instruct'),
+        'embedding_dimension' => (int) env('VOYAGE_EMBEDDING_DIMENSION', 1024),
+        'timeout'             => (int) env('VOYAGE_TIMEOUT', 6),
+        'connect_timeout'     => (int) env('VOYAGE_CONNECT_TIMEOUT', 3),
     ],
 
     /*
     |--------------------------------------------------------------------------
     | Embedding Provider
     |--------------------------------------------------------------------------
-    | Default: "ollama".
+    | Default: "voyage".
     */
-    'embedding_provider' => env('AI_EMBEDDING_PROVIDER', 'ollama'),
+    'embedding_provider' => env('AI_EMBEDDING_PROVIDER', 'voyage'),
 
     /*
     |--------------------------------------------------------------------------

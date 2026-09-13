@@ -29,4 +29,9 @@ class ChatMessage extends Model
     {
         return $this->hasMany(ChatMessageSource::class);
     }
+
+    public function feedbacks(): HasMany
+    {
+        return $this->hasMany(ChatMessageFeedback::class);
+    }
 }

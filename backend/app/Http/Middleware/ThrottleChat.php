@@ -20,7 +20,8 @@ class ThrottleChat
         $decayMinutes = (int) config('ai.chat_rate_limit.decay_minutes', 5);
         $decaySeconds = $decayMinutes * 60;
 
-        $key = 'chat:' . $request->user()?->id;
+        $user = $request->user('sanctum') ?? $request->user();
+        $key = 'chat:' . ($user ? 'user:' . $user->id : 'ip:' . $request->ip());
 
         if (RateLimiter::tooManyAttempts($key, $maxAttempts)) {
             $retryAfter = RateLimiter::availableIn($key);

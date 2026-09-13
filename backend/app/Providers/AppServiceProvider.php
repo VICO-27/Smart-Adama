@@ -15,14 +15,14 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        // LLM Gateway — exclusively using Ollama for fully local architecture
+        // LLM Gateway — uses LLMProviderManager for fallback and configuration
         $this->app->bind(LLMGatewayInterface::class, function ($app) {
-            return $app->make(\App\Services\AI\OllamaLLMGateway::class);
+            return $app->make(\App\Services\AI\LLMProviderManager::class);
         });
 
-        // Embedding Provider — exclusively using Ollama for fully local architecture
+        // Embedding Provider — uses EmbeddingProviderManager for dynamic selection
         $this->app->bind(EmbeddingProviderInterface::class, function ($app) {
-            return $app->make(\App\Services\AI\OllamaEmbeddingProvider::class);
+            return $app->make(\App\Services\AI\EmbeddingProviderManager::class);
         });
     }
 
@@ -34,6 +34,9 @@ class AppServiceProvider extends ServiceProvider
             $frontend = rtrim(config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:5173')), '/');
             return "{$frontend}/reset-password?token={$token}&email=" . urlencode($notifiable->getEmailForPasswordReset());
         });
+
+        // Use custom PersonalAccessToken model supporting standard tokens and Supabase JWTs
+        Sanctum::usePersonalAccessTokenModel(\App\Models\PersonalAccessToken::class);
 
         // Sanctum must not authenticate soft-deleted users (Req 2.4).
         Sanctum::authenticateAccessTokensUsing(

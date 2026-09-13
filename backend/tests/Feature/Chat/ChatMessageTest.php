@@ -38,8 +38,8 @@ function bindFakeEmbedder(): void
 {
     app()->bind(EmbeddingProviderInterface::class, function () {
         return new class implements EmbeddingProviderInterface {
-            public function embed(string $text): array { return array_fill(0, 1024, 0.1); }
-            public function embedBatch(array $texts): array {
+            public function embed(string $text, ?string $inputType = null): array { return array_fill(0, 1024, 0.1); }
+            public function embedBatch(array $texts, ?string $inputType = null): array {
                 return array_map(fn () => array_fill(0, 1024, 0.1), $texts);
             }
             public function getDimension(): int { return 1024; }

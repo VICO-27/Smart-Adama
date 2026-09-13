@@ -14,11 +14,29 @@ class Section extends Model
 
     protected $fillable = [
         'chapter_id',
+        'parent_id',
         'section_number',
         'title',
         'order',
         'raw_text',
     ];
+
+    // ── Relationships ────────────────────────────────────────────────────────
+
+    public function parent(): BelongsTo
+    {
+        return $this->belongsTo(Section::class, 'parent_id');
+    }
+
+    public function children(): HasMany
+    {
+        return $this->hasMany(Section::class, 'parent_id')->orderBy('order');
+    }
+
+    public function descendants(): HasMany
+    {
+        return $this->children()->with('descendants');
+    }
 
     // ── Relationships ────────────────────────────────────────────────────────
 

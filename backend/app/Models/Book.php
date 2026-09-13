@@ -14,6 +14,8 @@ class Book extends Model
     protected $fillable = [
         'title',
         'status',
+        'source_type',
+        'version',
         'source_file_path',
         'source_file_type',
         'processing_metadata',
@@ -39,7 +41,7 @@ class Book extends Model
             'level' => $level,
             'message' => $message,
         ];
-        
+
         $this->update(['processing_metadata' => $metadata]);
     }
 
@@ -58,5 +60,10 @@ class Book extends Model
     public function chapters(): HasMany
     {
         return $this->hasMany(Chapter::class)->orderBy('order');
+    }
+
+    public function ingestionJobs(): HasMany
+    {
+        return $this->hasMany(IngestionJob::class)->orderByDesc('created_at');
     }
 }

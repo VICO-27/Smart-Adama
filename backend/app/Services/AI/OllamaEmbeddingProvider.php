@@ -21,8 +21,8 @@ class OllamaEmbeddingProvider implements EmbeddingProviderInterface
 
         $this->client = new Client([
             'base_uri' => $baseUrl . '/',
-            'timeout'  => 120,
-            'connect_timeout' => 15,
+            'timeout'  => 600,
+            'connect_timeout' => 30,
             'headers'  => [
                 'Content-Type' => 'application/json',
                 'Accept'       => 'application/json',
@@ -33,12 +33,12 @@ class OllamaEmbeddingProvider implements EmbeddingProviderInterface
         $this->dimension = (int) config('ai.ollama.embedding_dimension', 1024);
     }
 
-    public function embed(string $text): array
+    public function embed(string $text, ?string $inputType = null): array
     {
         return $this->embedBatch([$text])[0];
     }
 
-    public function embedBatch(array $texts): array
+    public function embedBatch(array $texts, ?string $inputType = null): array
     {
         if (empty($texts)) {
             return [];

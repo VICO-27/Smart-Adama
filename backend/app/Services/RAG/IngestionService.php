@@ -48,9 +48,9 @@ class IngestionService
             return;
         }
 
-        // Batch embed all chunk texts in one API call
+        // Batch embed all chunk texts in one API call with 'document' input_type
         $texts      = array_column($chunks, 'chunk_text');
-        $embeddings = $this->embedder->embedBatch($texts);
+        $embeddings = $this->embedder->embedBatch($texts, 'document');
 
         DB::transaction(function () use ($section, $chunks, $embeddings) {
             // Delete stale chunks for this section (Req 4.5)
@@ -67,13 +67,18 @@ class IngestionService
                     continue;
                 }
 
+                $activeProvider = \App\Models\AdminSetting::where('key', 'ai_embedding_provider')->first()?->value ?: config('ai.embedding_provider', 'voyage');
+                $activeModel = config("ai.{$activeProvider}.embedding_model", $activeProvider === 'voyage' ? 'voyage-4' : 'qwen3-embedding:0.6b');
+
                 // Insert the chunk first via Eloquent (no vector yet)
                 $contentChunk = ContentChunk::create([
-                    'section_id'       => $section->id,
-                    'chunk_text'       => $chunk['chunk_text'],
-                    'chunk_index'      => $chunk['chunk_index'],
-                    'token_count'      => $chunk['token_count'],
-                    'embedding_status' => 'ready',
+                    'section_id'         => $section->id,
+                    'chunk_text'         => $chunk['chunk_text'],
+                    'chunk_index'        => $chunk['chunk_index'],
+                    'token_count'        => $chunk['token_count'],
+                    'embedding_status'   => 'ready',
+                    'embedding_provider' => $activeProvider,
+                    'embedding_model'    => $activeModel,
                 ]);
 
                 // Update the pgvector column via raw SQL
@@ -83,6 +88,24 @@ class IngestionService
                     'UPDATE content_chunks SET embedding = ? WHERE id = ?',
                     [$vectorStr, $contentChunk->id]
                 );
+
+                if ($activeProvider === 'voyage') {
+                    DB::statement(
+                        "INSERT INTO content_chunk_embeddings (id, chunk_id, provider, model, dimension, embedding, created_at, updated_at)
+                         VALUES (?, ?, ?, ?, ?, ?::vector, ?, ?)
+                         ON CONFLICT (chunk_id, provider, model) DO UPDATE SET embedding = EXCLUDED.embedding, dimension = EXCLUDED.dimension, updated_at = EXCLUDED.updated_at",
+                        [
+                            (string) \Illuminate\Support\Str::uuid(),
+                            $contentChunk->id,
+                            'voyage',
+                            $activeModel,
+                            1024,
+                            $vectorStr,
+                            now(),
+                            now()
+                        ]
+                    );
+                }
             }
         });
 

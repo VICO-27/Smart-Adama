@@ -17,6 +17,7 @@ class QuizAttempt extends Model
         'quiz_id',
         'score_pct',
         'passed',
+        'attempt_number',
         'started_at',
         'submitted_at',
     ];

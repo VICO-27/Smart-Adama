@@ -26,7 +26,7 @@ class IngestBookChunksJob implements ShouldQueue
     public int $tries = 3;
     public int $timeout = 7200; // 2 hours max
     public bool $failOnTimeout = true;
-    
+
     public string $bookId = '';
     public bool $resume = false;
 
@@ -82,7 +82,7 @@ class IngestBookChunksJob implements ShouldQueue
 
             // 2. Persist Structure & Chunking
             $book->logProgress('Persisting hierarchy and generating chunks...', 'info');
-            
+
             $globalChunkIndex = 0;
             $allChunks = [];
 
@@ -118,7 +118,7 @@ class IngestBookChunksJob implements ShouldQueue
                 ];
 
                 $chunks = $chunkingService->chunk($fullText, $metadata);
-                
+
                 foreach ($chunks as $chunkData) {
                     $allChunks[] = [
                         'book_id' => $chunkData['book_id'],
@@ -205,19 +205,19 @@ class IngestBookChunksJob implements ShouldQueue
 
             // 3. Batch Embedding Generation
             $book->logProgress('Generating embeddings for ' . count($allChunks) . ' chunks via Ollama...', 'info');
-            
+
             $batchSize = 20; // Batches for Ollama
             $chunkBatches = array_chunk($allChunks, $batchSize);
-            
+
             $embeddedCount = 0;
             $failedCount = 0;
 
             foreach ($chunkBatches as $idx => $batch) {
                 $texts = array_column($batch, 'chunk_text');
                 $book->logProgress("Embedding batch " . ($idx + 1) . " of " . count($chunkBatches) . "...", 'info');
-                
+
                 try {
-                    $embeddings = $embeddingProvider->embedBatch($texts);
+                    $embeddings = $embeddingProvider->embedBatch($texts, 'document');
                 } catch (\Exception $e) {
                     Log::error("Embedding batch failed", ['error' => $e->getMessage()]);
                     $failedCount += count($batch);
@@ -238,13 +238,20 @@ class IngestBookChunksJob implements ShouldQueue
                     }
 
                     $vectorStr = '[' . implode(',', $embeddingVector) . ']';
-                    
+
+                    $providerName = config('ai.embedding_provider', 'voyage');
+                    $setting = \App\Models\AdminSetting::where('key', 'ai_embedding_provider')->first();
+                    if ($setting) $providerName = $setting->value;
+                    $modelName = config("ai.{$providerName}.embedding_model", $providerName === 'voyage' ? 'voyage-4' : 'qwen3-embedding:0.6b');
+
+                    $chunkUuid = (string) Str::uuid();
+
                     DB::statement(
-                        "INSERT INTO content_chunks 
-                        (id, book_id, section_id, page_number, structural_context, chunk_text, chunk_index, token_count, embedding_status, embedding, created_at, updated_at) 
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?::vector, ?, ?)",
+                        "INSERT INTO content_chunks
+                        (id, book_id, section_id, page_number, structural_context, chunk_text, chunk_index, token_count, embedding_status, embedding, embedding_provider, embedding_model, created_at, updated_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?::vector, ?, ?, ?, ?)",
                         [
-                            Str::uuid(),
+                            $chunkUuid,
                             $chunkData['book_id'],
                             $chunkData['section_id'],
                             $chunkData['page_number'],
@@ -254,10 +261,30 @@ class IngestBookChunksJob implements ShouldQueue
                             $chunkData['token_count'],
                             'ready',
                             $vectorStr,
+                            $providerName,
+                            $modelName,
                             now(),
                             now(),
                         ]
                     );
+
+                    if ($providerName === 'voyage') {
+                        DB::statement(
+                            "INSERT INTO content_chunk_embeddings (id, chunk_id, provider, model, dimension, embedding, created_at, updated_at)
+                             VALUES (?, ?, ?, ?, ?, ?::vector, ?, ?)
+                             ON CONFLICT (chunk_id, provider, model) DO UPDATE SET embedding = EXCLUDED.embedding, dimension = EXCLUDED.dimension, updated_at = EXCLUDED.updated_at",
+                            [
+                                (string) Str::uuid(),
+                                $chunkUuid,
+                                'voyage',
+                                $modelName,
+                                1024,
+                                $vectorStr,
+                                now(),
+                                now()
+                            ]
+                        );
+                    }
                     $embeddedCount++;
                 }
             }
@@ -275,7 +302,7 @@ class IngestBookChunksJob implements ShouldQueue
                 // Publish new book
                 $book->update(['status' => 'published']);
             });
-            
+
             $book->logProgress('Document atomically activated!', 'success');
 
         } catch (Throwable $e) {
@@ -304,7 +331,7 @@ class IngestBookChunksJob implements ShouldQueue
                 return $pageNum;
             }
         }
-        
+
         return $section->startPage;
     }
 

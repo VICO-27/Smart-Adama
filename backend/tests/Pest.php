@@ -11,4 +11,5 @@ use Tests\TestCase;
 | The 'api' dataset tag groups all API feature tests for filtering.
 */
 
-uses(TestCase::class, RefreshDatabase::class)->in('Feature', 'Unit');
+uses(TestCase::class, RefreshDatabase::class)->in('Feature', 'Unit/Quiz', 'Unit/RAG', 'Unit/Gamification');
+uses(TestCase::class)->in('Unit/AI');

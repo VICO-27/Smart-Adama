@@ -16,12 +16,16 @@ class ChatSession extends Model
     protected $fillable = [
         'user_id',
         'title',
+        'is_pinned',
+        'is_archived',
         'last_activity_at',
     ];
 
     protected function casts(): array
     {
         return [
+            'is_pinned' => 'boolean',
+            'is_archived' => 'boolean',
             'last_activity_at' => 'datetime',
         ];
     }

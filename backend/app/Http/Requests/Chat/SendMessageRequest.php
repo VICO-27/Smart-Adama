@@ -15,6 +15,7 @@ class SendMessageRequest extends FormRequest
     {
         return [
             'content' => ['required', 'string', 'min:1', 'max:4000'],
+            'context' => ['nullable', 'array'],
         ];
     }
 }

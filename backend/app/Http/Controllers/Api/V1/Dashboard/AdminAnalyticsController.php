@@ -40,16 +40,66 @@ class AdminAnalyticsController extends Controller
             $totalBooks = \App\Models\Book::count();
             $totalChunks = \App\Models\ContentChunk::count();
 
+            // Real trend calculations
+            $usersLastMonthCount = User::whereNull('deleted_at')->where('created_at', '<', now()->subMonth())->count();
+            $usersTrendPct = $usersLastMonthCount > 0 ? round((($totalUsers - $usersLastMonthCount) / $usersLastMonthCount) * 100, 1) : 0;
+
+            $booksThisWeek = \App\Models\Book::where('created_at', '>=', now()->subWeek())->count();
+            $chunksSinceYesterday = \App\Models\ContentChunk::where('created_at', '>=', now()->subDay())->count();
+
+            $timeline = [];
+            $startDate = now()->subDays(29)->startOfDay();
+            for ($i = 0; $i < 30; $i++) {
+                $dateStr = $startDate->clone()->addDays($i)->format('Y-m-d');
+                $timeline[$dateStr] = [
+                    'date' => $dateStr,
+                    'users' => 0,
+                    'queries' => 0,
+                    'quizzes' => 0,
+                ];
+            }
+
+            // Fill Queries (chat messages)
+            $queries = \App\Models\ChatMessage::where('created_at', '>=', $startDate)
+                ->where('role', 'user')
+                ->selectRaw('DATE(created_at) as date, count(*) as count')
+                ->groupBy('date')
+                ->pluck('count', 'date');
+
+            // Fill Quizzes
+            $quizzes = \App\Models\QuizAttempt::where('created_at', '>=', $startDate)
+                ->selectRaw('DATE(created_at) as date, count(*) as count')
+                ->groupBy('date')
+                ->pluck('count', 'date');
+
+            // Calculate Active Users (mock based on active users that day or just general activity)
+            // Let's use active distinct users from both tables
+            $activeUsers = \Illuminate\Support\Facades\DB::table('chat_sessions')
+                ->where('created_at', '>=', $startDate)
+                ->selectRaw('DATE(created_at) as date, COUNT(DISTINCT user_id) as count')
+                ->groupBy('date')
+                ->pluck('count', 'date');
+
+            foreach ($timeline as $date => &$tData) {
+                $tData['queries'] = $queries[$date] ?? 0;
+                $tData['quizzes'] = $quizzes[$date] ?? 0;
+                $tData['users'] = $activeUsers[$date] ?? 0;
+            }
+
             return [
                 'total_users'           => $totalUsers,
+                'users_trend_pct'       => $usersTrendPct,
                 'total_books'           => $totalBooks,
+                'books_this_week'       => $booksThisWeek,
                 'total_chunks'          => $totalChunks,
+                'chunks_since_yesterday'=> $chunksSinceYesterday,
                 'total_chapters'        => $totalChapters,
                 'avg_completion_pct'    => $avgCompletion,
                 'total_quiz_attempts'   => $totalAttempts,
                 'total_quizzes_passed'  => $passedAttempts,
                 'avg_quiz_score'        => $avgScore,
                 'total_badges_awarded'  => $totalBadgesAwarded,
+                'timeline'              => array_values($timeline)
             ];
         });
 

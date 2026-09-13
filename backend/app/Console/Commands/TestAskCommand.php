@@ -26,7 +26,7 @@ class TestAskCommand extends Command
 
         $startTime = microtime(true);
         $this->info("[1/4] Searching the knowledge base...");
-        
+
         $chunks = $retrievalService->search($query, $limit);
         $grounded = $chunks->isNotEmpty();
 
@@ -44,14 +44,14 @@ class TestAskCommand extends Command
             [], // Empty history for CLI test
             $chunks,
             $query,
-            $grounded
+            ['isGrounded' => $grounded]
         );
 
-        $this->info("\n[3/4] Generating response via Ollama LLM...");
+        $this->info("\n[3/4] Generating response via configured LLM...");
         $this->line("----------------------------------------");
-        
+
         $responseContent = '';
-        
+
         try {
             foreach ($llm->streamChat($messages) as $token) {
                 echo $token;
@@ -61,9 +61,9 @@ class TestAskCommand extends Command
             $this->error("\nLLM Generation failed: " . $e->getMessage());
             return 1;
         }
-        
+
         $this->line("\n----------------------------------------");
-        
+
         $duration = microtime(true) - $startTime;
         $this->info("\n[4/4] Complete! Total time: " . number_format($duration, 2) . "s");
 

@@ -14,7 +14,11 @@ class UserProgress extends Model
     protected $fillable = [
         'user_id',
         'chapter_id',
-        'is_completed',
+        'is_completed', // Keep for backward compatibility/migration, but use status
+        'status',
+        'reading_progress',
+        'last_page',
+        'started_at',
         'best_quiz_score_pct',
         'completed_at',
         'last_read_at',
@@ -24,7 +28,9 @@ class UserProgress extends Model
     {
         return [
             'is_completed'       => 'boolean',
+            'reading_progress'   => 'integer',
             'best_quiz_score_pct' => 'float',
+            'started_at'         => 'datetime',
             'completed_at'       => 'datetime',
             'last_read_at'       => 'datetime',
         ];

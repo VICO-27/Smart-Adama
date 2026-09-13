@@ -43,6 +43,39 @@ class HealthController extends Controller
             $checks['queue'] = 'fail';
         }
 
+        $checks['application'] = 'ok';
+
+        // Vector store (pgvector)
+        try {
+            DB::select("SELECT 1 FROM pg_extension WHERE extname = 'vector'");
+            $checks['vector_store'] = 'ok';
+        } catch (\Throwable $e) {
+            $checks['vector_store'] = 'fail';
+        }
+
+        // Providers
+        $checks['gemini_llm'] = !empty(config('ai.gemini.api_key')) ? 'configured' : 'missing_key';
+        $checks['groq_llm'] = !empty(config('ai.groq.api_key')) ? 'configured' : 'missing_key';
+        $checks['voyage_embedding'] = !empty(config('ai.voyage.api_key')) ? 'configured' : 'missing_key';
+        $checks['gemini_embedding'] = !empty(config('ai.gemini.api_key')) ? 'configured' : 'missing_key';
+
+        try {
+            $response = \Illuminate\Support\Facades\Http::timeout(2)->get(config('ai.ollama.llm_base_url'));
+            $checks['ollama_llm'] = $response->successful() ? 'available' : 'unavailable';
+            $checks['ollama_embedding'] = $response->successful() ? 'available' : 'unavailable';
+        } catch (\Throwable $e) {
+            $checks['ollama_llm'] = 'unavailable';
+            $checks['ollama_embedding'] = 'unavailable';
+        }
+
+        // Active State
+        $checks['active_llm_provider'] = \App\Models\AdminSetting::where('key', 'ai_llm_provider')->first()?->value ?: config('ai.llm_provider', 'gemini');
+        $checks['active_embedding_provider'] = \App\Models\AdminSetting::where('key', 'ai_embedding_provider')->first()?->value ?: config('ai.embedding_provider', 'voyage');
+
+        $checks['active_vector_index'] = \App\Models\ContentChunk::whereNotNull('embedding')
+            ->where('embedding_status', 'ready')
+            ->first()?->embedding_provider ?? 'none';
+
         $allOk = ! in_array('fail', $checks, true);
 
         return response()->json([

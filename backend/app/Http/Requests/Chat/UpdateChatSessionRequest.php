@@ -14,7 +14,9 @@ class UpdateChatSessionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'title' => ['required', 'string', 'min:1', 'max:255'],
+            'title' => ['sometimes', 'required', 'string', 'min:1', 'max:255'],
+            'is_pinned' => ['sometimes', 'boolean'],
+            'is_archived' => ['sometimes', 'boolean'],
         ];
     }
 }

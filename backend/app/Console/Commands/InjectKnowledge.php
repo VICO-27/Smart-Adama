@@ -87,25 +87,46 @@ class InjectKnowledge extends Command
         // 5. Send it to Voyage AI (1 API request, virtually instant)
         try {
             $texts = array_column($allChunks, 'chunk_text');
-            $embeddings = $embedder->embedBatch($texts);
+            $embeddings = $embedder->embedBatch($texts, 'document');
 
             DB::transaction(function () use ($allChunks, $embeddings) {
+                $provider = 'voyage';
+                $model = config('ai.voyage.embedding_model', env('VOYAGE_MODEL', 'voyage-4'));
+
                 foreach ($allChunks as $i => $chunkData) {
                     $vector = $embeddings[$i] ?? null;
                     if (!$vector) continue;
 
                     $contentChunk = ContentChunk::create([
-                        'section_id'       => $chunkData['section_id'],
-                        'chunk_text'       => $chunkData['chunk_text'],
-                        'chunk_index'      => $chunkData['chunk_index'],
-                        'token_count'      => $chunkData['token_count'],
-                        'embedding_status' => 'ready',
+                        'section_id'         => $chunkData['section_id'],
+                        'chunk_text'         => $chunkData['chunk_text'],
+                        'chunk_index'        => $chunkData['chunk_index'],
+                        'token_count'        => $chunkData['token_count'],
+                        'embedding_status'   => 'ready',
+                        'embedding_provider' => $provider,
+                        'embedding_model'    => $model,
                     ]);
 
                     $vectorStr = '[' . implode(',', $vector) . ']';
                     DB::statement(
                         'UPDATE content_chunks SET embedding = ? WHERE id = ?',
                         [$vectorStr, $contentChunk->id]
+                    );
+
+                    DB::statement(
+                        "INSERT INTO content_chunk_embeddings (id, chunk_id, provider, model, dimension, embedding, created_at, updated_at)
+                         VALUES (?, ?, ?, ?, ?, ?::vector, ?, ?)
+                         ON CONFLICT (chunk_id, provider, model) DO UPDATE SET embedding = EXCLUDED.embedding, dimension = EXCLUDED.dimension, updated_at = EXCLUDED.updated_at",
+                        [
+                            (string) \Illuminate\Support\Str::uuid(),
+                            $contentChunk->id,
+                            $provider,
+                            $model,
+                            1024,
+                            $vectorStr,
+                            now(),
+                            now()
+                        ]
                     );
                 }
             });

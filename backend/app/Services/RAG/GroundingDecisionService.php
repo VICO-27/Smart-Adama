@@ -35,8 +35,8 @@ class GroundingDecisionService
             $isStrongSemantic = $chunk['vector_score'] >= $semanticThreshold;
             $isStrongRrf = $chunk['rrf_score'] >= $rrfThreshold;
 
-            // If it's a short entity lookup, lexical match is highly trusted even if semantic is weak
-            if ($understanding['is_entity_lookup'] && $isStrongLexical) {
+            // If it's an excerpt or short entity lookup, lexical match is highly trusted
+            if ((!empty($understanding['is_excerpt']) || $understanding['is_entity_lookup']) && ($isStrongLexical || $chunk['keyword_score'] > 0)) {
                 $selectedSources[] = $chunk;
                 $strongCount++;
                 continue;
@@ -56,12 +56,13 @@ class GroundingDecisionService
 
         // Limit context dynamically based on response mode
         $maxChunks = match($responseMode) {
-            'SHORT' => 3,
-            'NORMAL' => 5,
-            'DETAILED', 'DEEP', 'STEP_BY_STEP', 'COMPARISON' => 12,
-            default => 5,
+            'SHORT' => 2,
+            'NORMAL' => 4,
+            'CHAPTER_QUIZ', 'QUIZ' => 5,
+            'EXCERPT_EXPLANATION', 'DETAILED', 'DEEP', 'STEP_BY_STEP', 'COMPARISON' => 4,
+            default => 4,
         };
-        
+
         $selectedSources = array_slice($selectedSources, 0, $maxChunks);
 
         if ($strongCount > 0) {

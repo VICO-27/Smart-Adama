@@ -21,7 +21,9 @@ class AdminUserController extends Controller
             });
         }
 
-        // Note: User model does not have a status column. We can handle active/inactive based on deleted_at later if needed.
+        if ($request->has('status') && $request->status !== 'All Statuses') {
+            $query->where('status', strtolower($request->status));
+        }
 
         $users = $query->orderBy('created_at', 'desc')->paginate(20);
 
@@ -55,8 +57,8 @@ class AdminUserController extends Controller
 
     public function show(User $user): JsonResponse
     {
-        $user->load(['quizAttempts.quiz', 'chapterProgress.chapter']);
-        
+        $user->load(['quizAttempts.quiz', 'progress.chapter']);
+
         $progress = min(100, max(0, ($user->level * 5) + ($user->quizAttempts()->count() * 2)));
 
         return response()->json([
@@ -71,7 +73,7 @@ class AdminUserController extends Controller
                 'xp' => $user->xp,
                 'overall_progress' => $progress,
                 'quiz_attempts' => $user->quizAttempts,
-                'chapter_progress' => $user->chapterProgress,
+                'chapter_progress' => $user->progress,
             ]
         ]);
     }

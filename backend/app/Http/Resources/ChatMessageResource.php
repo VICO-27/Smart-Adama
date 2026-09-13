@@ -24,6 +24,10 @@ class ChatMessageResource extends JsonResource
                     'excerpt'         => mb_substr($source->chunk?->chunk_text ?? '', 0, 200),
                 ]);
             }),
+            'feedback'   => $this->whenLoaded('feedbacks', function () {
+                $fb = $this->feedbacks->first();
+                return $fb ? ['feedback' => $fb->feedback] : null;
+            }),
         ];
     }
 }

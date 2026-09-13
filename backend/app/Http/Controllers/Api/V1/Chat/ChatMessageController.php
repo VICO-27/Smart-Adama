@@ -50,7 +50,12 @@ class ChatMessageController extends Controller
             ]);
         });
 
-        return new StreamedResponse(function () use ($session, $userContent, $userMessage, $assistantMessage) {
+        $context = $request->context ?? [];
+        $context['request_id'] = $request->header('X-Request-ID')
+            ?? $context['client_request_id']
+            ?? (string) \Illuminate\Support\Str::uuid();
+
+        return new StreamedResponse(function () use ($session, $userContent, $userMessage, $assistantMessage, $context) {
             ignore_user_abort(true);
             ob_implicit_flush(1);
             while (ob_get_level() > 0) {
@@ -68,7 +73,7 @@ class ChatMessageController extends Controller
                     Log::warning('SSE activity JSON encoding failed', ['error' => $e->getMessage()]);
                 }
             };
-            
+
             $emitToken = function (string $token) {
                 try {
                     $json = json_encode(['content' => $token], JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE);
@@ -80,10 +85,10 @@ class ChatMessageController extends Controller
                     Log::warning('SSE token JSON encoding failed', ['error' => $e->getMessage()]);
                 }
             };
-            
-            $emitError = function (string $code, string $message) {
+
+            $emitError = function (string $code, string $message, bool $hasPartial = false) {
                 try {
-                    $json = json_encode(['error' => ['code' => $code, 'message' => $message]], JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE);
+                    $json = json_encode(['error' => ['code' => $code, 'message' => $message, 'has_partial' => $hasPartial]], JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE);
                     echo 'event: error' . "\n";
                     echo 'data: ' . $json . "\n\n";
                     @ob_flush();
@@ -92,8 +97,8 @@ class ChatMessageController extends Controller
                     Log::error('SSE error JSON encoding failed', ['error' => $e->getMessage()]);
                 }
             };
-            
-            $emitComplete = function (int $messageId, bool $grounded, array $citations, string $finalHtml) {
+
+            $emitComplete = function (string $messageId, bool $grounded, array $citations, string $finalHtml) {
                 try {
                     $json = json_encode([
                         'message_id'   => $messageId,
@@ -116,6 +121,7 @@ class ChatMessageController extends Controller
                 $userContent,
                 $userMessage,
                 $assistantMessage,
+                $context,
                 $emitActivity,
                 $emitToken,
                 $emitError,

@@ -37,9 +37,9 @@ class GenerateQuizzes extends Command
 
             // Aggregate chapter content to feed to the AI
             $content = $chapter->sections->pluck('raw_text')->join("\n\n");
-            
+
             // Limit content size just to prevent token overflow if a chapter is huge
-            $content = substr($content, 0, 15000); 
+            $content = substr($content, 0, 15000);
 
             if (empty(trim($content))) {
                 $this->error("No content found for {$chapter->title}. Skipping.");
@@ -74,10 +74,10 @@ TEXT;
 
             try {
                 $this->line("Requesting Groq AI generation for {$chapter->title}...");
-                
+
                 // CHANGED: Hitting Groq's API directly
                 $response = Http::withToken($apiKey)->timeout(60)->post("https://api.groq.com/openai/v1/chat/completions", [
-                    'model' => 'llama-3.3-70b-versatile',
+                    'model' => 'mixtral-8x7b-32768',
                     'messages' => [
                         ['role' => 'user', 'content' => $prompt]
                     ],
@@ -92,7 +92,7 @@ TEXT;
 
                 $responseData = $response->json();
                 $jsonStr = $responseData['choices'][0]['message']['content'] ?? '';
-                
+
                 $parsed = json_decode($jsonStr, true);
                 $questionsData = $parsed['questions'] ?? null;
 
@@ -135,11 +135,11 @@ TEXT;
                 });
 
                 $this->info("✅ Successfully generated and saved quiz for {$chapter->title}!");
-                
-                // 21-second buffer to prevent rate limiting!
-                $this->line("Waiting 21 seconds for API rate limits...");
-                sleep(21); 
-                
+
+                // 5-second buffer to prevent rate limiting!
+                $this->line("Waiting 5 seconds for API rate limits...");
+                sleep(5);
+
             } catch (\Exception $e) {
                 $this->error("Error generating quiz for {$chapter->title}: " . $e->getMessage());
             }

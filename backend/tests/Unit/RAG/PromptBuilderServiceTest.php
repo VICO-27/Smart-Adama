@@ -26,7 +26,7 @@ it('appends the user query as the last message', function () {
 it('uses the no-context system prompt when grounded=false', function () {
     $messages = $this->builder->buildMessages([], [], 'Some query', ['isGrounded' => false], false);
 
-    expect($messages[0]['content'])->toContain('No reliable context was found');
+    expect($messages[0]['content'])->toContain('NO TEXT EVIDENCE was retrieved');
 });
 
 it('uses the full system prompt with context when grounded=true', function () {
@@ -39,9 +39,9 @@ it('uses the full system prompt with context when grounded=true', function () {
     $messages = $this->builder->buildMessages([], $chunks, 'Tell me about Smart Adama', ['isGrounded' => true], false);
 
     expect($messages[0]['content'])
-        ->toContain('TEXT: ')
+        ->toContain('TEXT EVIDENCE:')
         ->toContain('Smart Adama is a visionary framework.')
-        ->toContain('[Page 42]');
+        ->toContain('Page 42]');
 });
 
 it('injects conversation history between system and current user message', function () {
@@ -80,6 +80,8 @@ it('builds a context block from multiple chunks with page numbers and headings',
     $messages = $this->builder->buildMessages([], $chunks, 'query', ['isGrounded' => true], false);
 
     expect($messages[0]['content'])
-        ->toContain('[Page 10] First chunk text.')
-        ->toContain('[Page 12] Second chunk text.');
+        ->toContain('Page 10]')
+        ->toContain('First chunk text.')
+        ->toContain('Page 12]')
+        ->toContain('Second chunk text.');
 });

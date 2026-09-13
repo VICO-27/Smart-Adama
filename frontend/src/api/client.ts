@@ -33,12 +33,9 @@ apiClient.interceptors.response.use(
   (error: AxiosError<ApiErrorEnvelope>) => {
     const status = error.response?.status
 
-    // 401 — clear token and redirect to login (unless already there)
+    // 401 — clear token (do not redirect to non-existent /login route)
     if (status === 401) {
       localStorage.removeItem('sa_token')
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login'
-      }
     }
 
     // Attach normalised error fields directly onto the error object

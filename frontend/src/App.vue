@@ -3,15 +3,18 @@
   <ErrorBoundary>
     <router-view v-slot="{ Component, route }">
       <transition name="page" mode="out-in">
-        <component :is="Component" :key="route.fullPath" />
+        <component :is="Component" :key="route.name === 'study' ? 'study-view' : route.fullPath" />
       </transition>
     </router-view>
 
     <!-- The ONE and ONLY Global Assistant rendered globally -->
-    <GlobalAssistant v-if="authStore.isAuthenticated && route.name !== 'study' && route.name !== 'study-session'" />
+    <GlobalAssistant v-if="authStore.isAuthenticated && route.name !== 'study'" />
 
     <!-- Global Auth Modal -->
     <AuthModal v-if="authStore.isAuthModalOpen" />
+
+    <!-- Global Confirm Modal -->
+    <GlobalConfirmModal />
   </ErrorBoundary>
 </template>
 
@@ -21,6 +24,7 @@ import { useRoute } from 'vue-router'
 import GlobalAssistant from '@/components/layout/GlobalAssistant.vue'
 import AuthModal from '@/components/auth/AuthModal.vue'
 import ErrorBoundary from '@/components/ErrorBoundary.vue'
+import GlobalConfirmModal from '@/components/ui/GlobalConfirmModal.vue'
 
 const authStore = useAuthStore()
 const route = useRoute()
@@ -37,7 +41,7 @@ const route = useRoute()
 }
 #app {
   width: 100%;
-  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
 }

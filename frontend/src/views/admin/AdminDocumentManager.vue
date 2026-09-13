@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import apiClient from '@/api/client'
+import { useConfirm } from '@/composables/useConfirm'
 import {
   FileText,
+  FileEdit,
   UploadCloud,
   CheckCircle,
   AlertTriangle,
@@ -13,6 +15,8 @@ import {
   Terminal
 } from 'lucide-vue-next'
 
+const { confirm } = useConfirm()
+
 // Types
 interface Document {
   id: string
@@ -22,6 +26,7 @@ interface Document {
   total_pages: number
   total_chunks: number
   created_at: string
+  source_type?: string
   processing_metadata?: any
 }
 
@@ -102,7 +107,7 @@ const handleFileUpload = async (event: Event) => {
     const { data } = await apiClient.post('/admin/books', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
-    
+
     // Select the new document to start polling
     await fetchDocuments()
     const newDoc = documents.value.find(d => d.id === data.book.id)
@@ -121,7 +126,7 @@ const handleFileUpload = async (event: Event) => {
 const selectDocument = async (doc: Document) => {
   selectedDocument.value = doc
   liveProgress.value = null
-  
+
   if (pollInterval) clearInterval(pollInterval)
 
   // Start polling if document is processing
@@ -138,7 +143,7 @@ const fetchProgress = async (id: string) => {
   try {
     const { data } = await apiClient.get(`/admin/rag/documents/${id}/progress`)
     liveProgress.value = data
-    
+
     // Stop polling if complete or failed
     if (['ingested', 'ready', 'failed', 'ocr_required'].includes(data.status)) {
       if (pollInterval) clearInterval(pollInterval)
@@ -176,8 +181,14 @@ const closeInspector = () => {
 }
 
 const deleteDocument = async (id: string) => {
-  if (!confirm('Are you sure you want to delete this document? This will also stop any ongoing ingestion.')) return
-  
+  const isConfirmed = await confirm({
+    title: 'Delete Document',
+    message: 'Are you sure you want to delete this document? This will also stop any ongoing ingestion.',
+    confirmText: 'Delete',
+    confirmColor: 'red'
+  })
+  if (!isConfirmed) return
+
   try {
     // We reuse the Books API for deleting
     await apiClient.delete(`/admin/books/${id}`)
@@ -201,31 +212,41 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="h-[calc(100vh-8rem)] flex flex-col xl:flex-row gap-6 pb-6">
-    
+  <div class="h-[calc(100dvh-8rem)] flex flex-col xl:flex-row gap-6 pb-6">
+
     <!-- Left Pane: Document List -->
     <div class="flex-1 flex flex-col bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-      
+
       <!-- Header -->
       <div class="p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between bg-slate-50 gap-4">
         <div>
           <h2 class="text-lg font-semibold text-slate-900">Document Pipeline</h2>
           <p class="text-sm text-slate-500 mt-1">Upload PDFs to automatically extract, chunk, and embed them.</p>
         </div>
-        
-        <button 
-          @click="triggerUpload"
-          :disabled="isUploading"
-          class="inline-flex shrink-0 items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 disabled:opacity-50 transition"
-        >
-          <UploadCloud v-if="!isUploading" class="h-4 w-4" />
-          <RefreshCw v-else class="h-4 w-4 animate-spin" />
-          {{ isUploading ? 'Uploading...' : 'Upload PDF' }}
-        </button>
-        <input 
-          type="file" 
-          ref="fileInput" 
-          class="hidden" 
+
+        <div class="flex items-center gap-3">
+          <router-link
+            :to="{ name: 'admin.manual-authoring' }"
+            class="inline-flex shrink-0 items-center gap-2 rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 transition"
+          >
+            <FileText class="h-4 w-4" />
+            Manual
+          </router-link>
+
+          <button
+            @click="triggerUpload"
+            :disabled="isUploading"
+            class="inline-flex shrink-0 items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 disabled:opacity-50 transition"
+          >
+            <UploadCloud v-if="!isUploading" class="h-4 w-4" />
+            <RefreshCw v-else class="h-4 w-4 animate-spin" />
+            {{ isUploading ? 'Uploading...' : 'Upload PDF' }}
+          </button>
+        </div>
+        <input
+          type="file"
+          ref="fileInput"
+          class="hidden"
           accept="application/pdf"
           @change="handleFileUpload"
         />
@@ -243,16 +264,16 @@ onUnmounted(() => {
           <RefreshCw class="h-8 w-8 animate-spin mx-auto text-slate-300" />
           <p class="mt-4 text-sm font-medium">Loading documents...</p>
         </div>
-        
+
         <ul v-else-if="documents.length > 0" class="divide-y divide-slate-100">
           <li v-for="doc in documents" :key="doc.id">
-            <button 
+            <button
               @click="selectDocument(doc)"
               class="w-full text-left transition-colors p-4 sm:px-6 flex items-center justify-between group"
               :class="selectedDocument?.id === doc.id ? 'bg-smart-blue-50/50 hover:bg-smart-blue-50' : 'hover:bg-slate-50'"
             >
               <div class="flex items-start gap-4">
-                <div 
+                <div
                   class="h-10 w-10 rounded-xl border flex items-center justify-center flex-shrink-0 transition-colors"
                   :class="selectedDocument?.id === doc.id ? 'bg-white border-smart-blue-200 text-smart-blue-600 shadow-sm' : 'bg-slate-50 border-slate-200 text-slate-500 group-hover:bg-white'"
                 >
@@ -267,7 +288,7 @@ onUnmounted(() => {
                   </div>
                 </div>
               </div>
-              
+
               <div class="flex items-center gap-4 shrink-0">
                 <span :class="[
                   'inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ring-1 ring-inset',
@@ -276,8 +297,18 @@ onUnmounted(() => {
                   <RefreshCw v-if="!['draft', 'ingested', 'ready', 'failed', 'ocr_required'].includes(doc.status)" class="h-3 w-3 mr-1.5 animate-spin" />
                   {{ getStatusLabel(doc.status) }}
                 </span>
-                
-                <button 
+
+                <router-link
+                  v-if="doc.source_type === 'manual'"
+                  :to="{ name: 'admin.manual-authoring', params: { id: doc.id } }"
+                  @click.stop
+                  class="p-1.5 rounded hover:bg-emerald-50 text-slate-300 hover:text-emerald-500 transition-colors opacity-0 group-hover:opacity-100 hidden sm:block"
+                  title="Edit Document"
+                >
+                  <FileEdit class="w-4 h-4" />
+                </router-link>
+
+                <button
                   @click.stop="deleteDocument(doc.id)"
                   class="p-1.5 rounded hover:bg-red-50 text-slate-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 hidden sm:block"
                   title="Delete Document"
@@ -304,8 +335,8 @@ onUnmounted(() => {
     </div>
 
     <!-- Right Pane: Live Inspector -->
-    <div 
-      v-if="selectedDocument" 
+    <div
+      v-if="selectedDocument"
       class="w-full xl:w-[450px] 2xl:w-[500px] flex-shrink-0 bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm flex flex-col"
     >
       <div class="p-5 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
@@ -318,7 +349,7 @@ onUnmounted(() => {
       </div>
 
       <div class="p-6 overflow-y-auto flex-1 bg-white space-y-8">
-        
+
         <!-- Header Info -->
         <div>
           <h4 class="text-lg font-bold text-slate-900 break-words">{{ selectedDocument.title }}</h4>
@@ -337,7 +368,7 @@ onUnmounted(() => {
             </span>
           </div>
           <div class="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
-            <div 
+            <div
               class="h-2.5 rounded-full transition-all duration-500 ease-out"
               :class="[
                 liveProgress.status === 'failed' || liveProgress.status === 'ocr_required' ? 'bg-red-500' : 'bg-emerald-500'
@@ -350,13 +381,13 @@ onUnmounted(() => {
         <!-- Pipeline Stages -->
         <div v-if="liveProgress" class="space-y-4">
           <h5 class="text-xs font-bold uppercase tracking-wider text-slate-400">Pipeline Stages</h5>
-          
+
           <div class="relative pl-3">
             <!-- Vertical Line -->
             <div class="absolute left-[15px] top-4 bottom-4 w-px bg-slate-200 -z-10"></div>
-            
+
             <ul class="space-y-6">
-              
+
               <!-- 1. Extraction -->
               <li class="flex items-start gap-4">
                 <div class="h-6 w-6 rounded-full flex items-center justify-center bg-white shadow-sm ring-1 ring-slate-200 mt-0.5">
@@ -399,7 +430,7 @@ onUnmounted(() => {
               <!-- 4. Local Embedding -->
               <li class="flex items-start gap-4">
                 <div class="h-6 w-6 rounded-full flex items-center justify-center bg-white shadow-sm ring-1 ring-slate-200 mt-0.5">
-                  <CheckCircle v-if="['ingested', 'ready'].includes(liveProgress.status)" class="h-4 w-4 text-emerald-500" />
+                  <CheckCircle v-if="['ingested', 'ready', 'published'].includes(liveProgress.status)" class="h-4 w-4 text-emerald-500" />
                   <div v-else-if="liveProgress.status === 'ingesting'" class="h-2.5 w-2.5 rounded-full bg-smart-blue-500 animate-pulse"></div>
                   <div v-else class="h-2 w-2 rounded-full bg-slate-300"></div>
                 </div>
@@ -415,7 +446,7 @@ onUnmounted(() => {
 
         <!-- Warning / Error Inspector -->
         <div v-if="liveProgress?.metadata" class="space-y-3 pt-4 border-t border-slate-100">
-          
+
           <div v-if="liveProgress.status === 'failed' || liveProgress.status === 'ocr_required'" class="rounded-lg bg-red-50 p-4 border border-red-200">
             <div class="flex items-start">
               <AlertTriangle class="h-5 w-5 text-red-600 mt-0.5" />
@@ -437,7 +468,7 @@ onUnmounted(() => {
               </div>
             </div>
           </div>
-          
+
           <div v-if="liveProgress.metadata.duration_seconds" class="flex justify-between text-xs text-slate-500">
             <span>Processing Time</span>
             <span class="font-medium text-slate-700">{{ liveProgress.metadata.duration_seconds }}s</span>
@@ -457,8 +488,8 @@ onUnmounted(() => {
               <div class="h-2.5 w-2.5 rounded-full bg-slate-700"></div>
             </div>
           </div>
-          <div 
-            ref="logsContainer" 
+          <div
+            ref="logsContainer"
             class="p-4 h-64 overflow-y-auto font-mono text-[11px] leading-relaxed space-y-2 custom-scrollbar bg-[#0d1117]"
           >
             <div v-for="(log, idx) in liveProgress.metadata.logs" :key="idx" class="flex items-start gap-3">
@@ -472,7 +503,7 @@ onUnmounted(() => {
                 {{ log.message }}
               </span>
             </div>
-            
+
             <div v-if="liveProgress.status === 'ingesting' || liveProgress.status === 'extracting' || liveProgress.status === 'ready_for_chunking'" class="flex items-center gap-2 text-slate-500 mt-3 pt-2 border-t border-slate-800/50">
               <span class="h-2 w-1.5 bg-emerald-500 animate-pulse inline-block"></span>
               <span class="text-slate-400 italic">Listening for output...</span>
@@ -482,7 +513,7 @@ onUnmounted(() => {
 
       </div>
     </div>
-    
+
   </div>
 </template>
 

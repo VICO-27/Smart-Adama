@@ -1,12 +1,15 @@
 <script setup lang="ts">
+import AppFooter from '@/components/layout/AppFooter.vue'
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useProgressStore } from '@/stores/progress'
-import AppShell from '@/components/layout/AppShell.vue'
+import AppNav from '@/components/layout/AppNav.vue'
+import { useI18n } from 'vue-i18n'
 
 const auth = useAuthStore()
 const progress = useProgressStore()
+const { t } = useI18n()
 
 const d = computed(() => progress.dashboard)
 const badges = computed(() => progress.badges || [])
@@ -39,7 +42,7 @@ const gameModes = ref<GameMode[]>([
   {
     id: 'quick-quiz',
     title: 'Quick Quiz',
-    description: 'Test your retention with focused questions from your recent learning.',
+    description: 'Test your knowledge.',
     difficulty: 'Medium',
     xpReward: 100,
     duration: '5 min',
@@ -49,7 +52,7 @@ const gameModes = ref<GameMode[]>([
   {
     id: 'chapter-challenge',
     title: 'Chapter Challenge',
-    description: 'Go deeper into a chapter and master its core concepts.',
+    description: 'Master core concepts.',
     difficulty: 'Hard',
     xpReward: 150,
     duration: '15 min',
@@ -59,7 +62,7 @@ const gameModes = ref<GameMode[]>([
   {
     id: 'speed-round',
     title: 'Speed Round',
-    description: 'Answer as many Smart City questions as possible against the clock.',
+    description: 'Race against the clock.',
     difficulty: 'Expert',
     xpReward: 250,
     duration: '3 min',
@@ -69,7 +72,7 @@ const gameModes = ref<GameMode[]>([
   {
     id: 'memory-match',
     title: 'Concept Memory',
-    description: 'Match civic ideas, infrastructure types, and urban terminology.',
+    description: 'Match civic ideas.',
     difficulty: 'Easy',
     xpReward: 50,
     duration: '5 min',
@@ -93,43 +96,32 @@ onMounted(() => {
 </script>
 
 <template>
-  <AppShell>
+  <div class="game-page-wrapper">
+    <AppNav />
     <main class="game-page">
-      <!-- DIAGONAL VIDEO BACKGROUND -->
-      <div class="global-bg-video">
-        <video 
-          autoplay 
-          loop 
-          muted 
-          playsinline 
-          poster="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1'%3E%3C/svg%3E"
-          src="/videos/smart-adama-book.mp4"
-        ></video>
-        <div class="global-bg-overlay-fade"></div>
-      </div>
+
 
       <section class="game-hero">
         <div class="hero-grid">
           <div class="hero-copy">
-            <span class="eyebrow">Smart Adama Interactive</span>
+            <span class="eyebrow">{{ $t('game.header') }}</span>
             <h1>
-              Learn.
-              <span>Challenge.</span>
-              Master.
+              {{ $t('game.learn') }}
+              <span>{{ $t('game.challenge') }}</span>
+              {{ $t('game.master') }}
             </h1>
             <p>
-              Turn what you've learned into challenges, build your streak,
-              and make measurable progress through the Smart Adama learning experience.
+              {{ $t('game.interactive') }}
             </p>
             <div class="hero-actions">
               <RouterLink to="/quizzes" class="hero-primary">
-                Start a challenge
+                {{ $t('game.start') }}
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M5 12h14" stroke-linecap="round"/>
                   <path d="m13 6 6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
               </RouterLink>
-              <RouterLink to="/study" class="hero-secondary">Continue studying</RouterLink>
+              <RouterLink to="/study" class="hero-secondary">{{ $t('game.continue_study') }}</RouterLink>
             </div>
           </div>
 
@@ -137,16 +129,20 @@ onMounted(() => {
             <div class="hero-orbit orbit-one"></div>
             <div class="hero-orbit orbit-two"></div>
             <div class="hero-orbit orbit-three"></div>
-            <div class="hero-core">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
-                <path d="M12 3v5M7.5 5.5 10 8M16.5 5.5 14 8" stroke-linecap="round"/>
-                <circle cx="12" cy="12" r="4.5"/>
-                <path d="M12 16.5v4.5M8.5 18.5h7" stroke-linecap="round"/>
-              </svg>
+            <div class="hero-core" style="overflow: hidden; padding: 0;">
+              <video
+                autoplay
+                loop
+                muted
+                playsinline
+                poster="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1'%3E%3C/svg%3E"
+                src="/videos/smart-adama-book.mp4"
+                style="width: 100%; height: 100%; object-fit: cover; border-radius: 2rem;"
+              ></video>
             </div>
-            <span class="hero-orbit-label label-one">XP</span>
-            <span class="hero-orbit-label label-two">QUIZ</span>
-            <span class="hero-orbit-label label-three">STREAK</span>
+            <span class="hero-orbit-label label-one">{{ $t('game.xp') }}</span>
+            <span class="hero-orbit-label label-two">{{ $t('game.quiz') }}</span>
+            <span class="hero-orbit-label label-three">{{ $t('game.streak') }}</span>
           </div>
         </div>
       </section>
@@ -168,11 +164,11 @@ onMounted(() => {
           </div>
 
           <div class="stat-group">
-            <div class="game-stat"><span>Streak</span><strong>{{ d?.current_streak || 0 }}</strong><small>days</small></div>
+            <div class="game-stat"><span>{{ $t('game.streak_val') }}</span><strong>{{ d?.current_streak || 0 }}</strong><small>{{ $t('game.days') }}</small></div>
             <div class="stat-separator"></div>
-            <div class="game-stat"><span>Badges</span><strong>{{ d?.earned_badge_count || 0 }}</strong><small>earned</small></div>
+            <div class="game-stat"><span>{{ $t('game.badges') }}</span><strong>{{ d?.earned_badge_count || 0 }}</strong><small>{{ $t('game.earned') }}</small></div>
             <div class="stat-separator"></div>
-            <div class="game-stat"><span>Quizzes</span><strong>{{ d?.quizzes_passed || 0 }}</strong><small>passed</small></div>
+            <div class="game-stat"><span>{{ $t('game.quizzes') }}</span><strong>{{ d?.quizzes_passed || 0 }}</strong><small>{{ $t('game.passed') }}</small></div>
           </div>
         </div>
       </section>
@@ -182,30 +178,28 @@ onMounted(() => {
           <section class="content-section">
             <div class="section-heading">
               <div>
-                <span class="section-label">Today's priority</span>
-                <h2>Daily challenge</h2>
+                <h2>{{ $t('game.daily') }}</h2>
               </div>
-              <span class="reward-pill">+150 XP</span>
+              <span class="reward-pill">{{ $t('game.xp_gain') }}</span>
             </div>
 
             <article class="daily-challenge">
               <div class="daily-content">
-                <span class="challenge-kicker">Smart Adama Challenge</span>
-                <h3>The Smart City Quiz</h3>
+                <span class="challenge-kicker">{{ $t('game.sa_challenge') }}</span>
+                <h3>{{ $t('game.quiz_title') }}</h3>
                 <p>
-                  Test your knowledge of e-Governance, Enterprise, Innovation,
-                  and the core ideas behind Adama's smart city ecosystem.
+                  {{ $t('game.quiz_desc') }}
                 </p>
                 <div class="challenge-meta">
-                  <span>10 questions</span>
-                  <span>~5 minutes</span>
-                  <span>Mixed difficulty</span>
+                  <span>{{ $t('game.q10') }}</span>
+                  <span>{{ $t('game.min5') }}</span>
+                  <span>{{ $t('game.mixed') }}</span>
                 </div>
               </div>
               <div class="daily-action">
                 <div class="challenge-ring"><div class="challenge-ring-inner">5m</div></div>
                 <RouterLink to="/quizzes" class="challenge-button">
-                  Start challenge
+                  {{ $t('game.start_challenge') }}
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M5 12h14" stroke-linecap="round"/>
                     <path d="m13 6 6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/>
@@ -218,10 +212,9 @@ onMounted(() => {
           <section class="content-section">
             <div class="section-heading">
               <div>
-                <span class="section-label">Game room</span>
-                <h2>Choose your challenge</h2>
+                <h2>{{ $t('game.choose') }}</h2>
               </div>
-              <span class="section-note">2 available</span>
+              <span class="section-note">{{ $t('game.avail') }}</span>
             </div>
 
             <div class="game-mode-grid">
@@ -282,13 +275,13 @@ onMounted(() => {
                         <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
                       </svg>
                     </div>
-                    <span class="coming-soon">Coming soon</span>
+                    <span class="coming-soon">{{ $t('game.coming') }}</span>
                   </div>
                   <div class="mode-content">
                     <h3>{{ mode.title }}</h3>
                     <p>{{ mode.description }}</p>
                   </div>
-                  <div class="mode-footer"><span class="development-note">In development</span></div>
+                  <div class="mode-footer"><span class="development-note">{{ $t('game.in_dev') }}</span></div>
                 </article>
               </template>
             </div>
@@ -298,13 +291,13 @@ onMounted(() => {
         <aside class="game-side-column">
           <section class="side-section">
             <div class="section-heading compact">
-              <div><span class="section-label">Competition</span><h2>Leaderboard</h2></div>
+              <div><h2>{{ $t('game.leader') }}</h2></div>
             </div>
 
             <article class="leaderboard-card">
               <div class="leaderboard-header">
-                <span>Global ranking</span>
-                <span class="status-label">Coming soon</span>
+                <span>{{ $t('game.global') }}</span>
+                <span class="status-label">{{ $t('game.coming') }}</span>
               </div>
 
               <div class="leaderboard-empty">
@@ -314,8 +307,8 @@ onMounted(() => {
                     <path d="M4 13a8.1 8.1 0 0 0 14.9 4M20 19v-4h-4" stroke-linecap="round" stroke-linejoin="round"/>
                   </svg>
                 </div>
-                <strong>Multiplayer rankings are coming.</strong>
-                <p>Your progression is already tracked. Competitive rankings will appear here when the multiplayer service is connected.</p>
+                <strong>{{ $t('game.ranks_coming') }}</strong>
+                <p>{{ $t('game.track_prog') }}</p>
               </div>
 
               <div class="current-player">
@@ -331,8 +324,8 @@ onMounted(() => {
 
           <section class="side-section">
             <div class="section-heading compact">
-              <div><span class="section-label">Collection</span><h2>Achievements</h2></div>
-              <RouterLink to="/dashboard" class="view-all">View all</RouterLink>
+              <div><h2>{{ $t('game.achieve') }}</h2></div>
+              <RouterLink to="/dashboard" class="view-all">{{ $t('game.view_all') }}</RouterLink>
             </div>
 
             <article class="achievement-card">
@@ -368,8 +361,8 @@ onMounted(() => {
                     <circle cx="12" cy="8" r="4"/><path d="m9 12-2 8 5-3 5 3-2-8"/>
                   </svg>
                 </div>
-                <strong>Your first badge is waiting.</strong>
-                <p>Complete learning milestones to unlock achievements.</p>
+                <strong>{{ $t('game.unlock') }}</strong>
+                <p>{{ $t('game.complete_miles') }}</p>
               </div>
             </article>
           </section>
@@ -379,62 +372,9 @@ onMounted(() => {
       <!-- ======================================================
            CITY FOOTER
       ======================================================= -->
-      <footer class="city-footer">
-        <div class="city-footer-main">
-          <div class="footer-brand">
-            <div class="footer-logo"><img src="/logo.png" alt="Smart Adama" /></div>
-            <div><strong>Smart Adama</strong><span>Smart City Learning Platform</span></div>
-          </div>
-
-          <p class="footer-description">
-            A digital learning platform for understanding Adama's smart city vision,
-            initiatives, services, and civic development.
-          </p>
-
-          <div class="footer-column">
-            <h3>Platform</h3>
-            <RouterLink to="/dashboard">Dashboard</RouterLink>
-            <RouterLink to="/study">Study</RouterLink>
-            <RouterLink to="/game">Game</RouterLink>
-            <RouterLink to="/profile">Profile</RouterLink>
-          </div>
-
-          <div class="footer-column">
-            <h3>Resources</h3>
-            <a href="/books/SA-Book.pdf" target="_blank" rel="noopener noreferrer">Smart Adama Book</a>
-            <RouterLink to="/quizzes">Challenges</RouterLink>
-            <RouterLink to="/study">Learning Center</RouterLink>
-            <RouterLink to="/profile">Account Settings</RouterLink>
-          </div>
-
-          <div class="footer-column">
-            <h3>Smart Adama City</h3>
-            <span>Learning</span>
-            <span>Technology</span>
-            <span>Innovation</span>
-            <span>Community</span>
-          </div>
-        </div>
-
-        <div class="city-government-bar">
-          <div class="city-government-inner">
-            <div class="government-identity">
-              <span class="government-line"></span>
-              <span>Smart Adama City</span>
-              <span class="government-separator">/</span>
-              <span>Digital Learning Platform</span>
-            </div>
-            <span class="government-message">Public Service · Learning · Innovation</span>
-          </div>
-        </div>
-
-        <div class="city-footer-bottom">
-          <span>© {{ new Date().getFullYear() }} Smart Adama City</span>
-          <span>English · Afaan Oromoo · Amharic</span>
-        </div>
-      </footer>
+      <AppFooter />
     </main>
-  </AppShell>
+  </div>
 </template>
 
 <style scoped>
@@ -451,7 +391,7 @@ onMounted(() => {
   --brand: #395886;
   --brand-mid: #638ECB;
   --brand-soft: #8AAEE0;
-  min-height: 100vh;
+  min-height: 100dvh;
   background: var(--page-bg);
   color: var(--text);
 }
@@ -519,14 +459,14 @@ onMounted(() => {
 .hero-actions { display:flex; gap:.65rem; margin-top:1.5rem; flex-wrap:wrap; }
 .hero-primary,.hero-secondary {
   display:inline-flex; align-items:center; justify-content:center; gap:.4rem;
-  min-height:3rem; padding:.75rem 1rem; border-radius:.8rem; font-size:.62rem; font-weight:800;
+  min-height:3rem; padding:.75rem 1rem; border-radius:.8rem; font-size:.85rem; font-weight:800;
   text-decoration:none; transition:.25s ease;
 }
 .hero-primary { color:#fff; background:var(--brand); border:1px solid var(--brand); box-shadow:0 12px 28px rgba(57,88,134,.22); }
 .hero-primary:hover { transform:translateY(-2px); background:var(--brand-mid); }
 .hero-secondary { color:var(--text); background:var(--surface); border:1px solid var(--border-strong); }
 .hero-secondary:hover { transform:translateY(-2px); border-color:var(--brand-mid); color:var(--brand); }
-.hero-primary svg { width:.9rem; height:.9rem; }
+.hero-primary svg { width:1.1rem; height:1.1rem; }
 
 .hero-visual { position:relative; width:min(100%,390px); aspect-ratio:1; margin:0 auto; }
 .hero-orbit { position:absolute; left:50%; top:50%; border:1px solid rgba(99,142,203,.24); border-radius:50%; transform:translate(-50%,-50%); }
@@ -563,52 +503,91 @@ onMounted(() => {
 .level-copy p { margin-top:.3rem; color:var(--text-muted); font-size:.45rem; }
 .stat-group { display:flex; align-items:center; gap:1.4rem; }
 .game-stat { min-width:4.1rem; }
-.game-stat span { display:block; color:var(--text-muted); font-size:.44rem; font-weight:800; letter-spacing:.09em; text-transform:uppercase; }
-.game-stat strong { color:var(--text); font-size:1.15rem; line-height:1; font-weight:800; }
-.game-stat small { color:var(--text-muted); font-size:.43rem; }
+.game-stat span { display:block; color:var(--text-muted); font-size:.65rem; font-weight:800; letter-spacing:.09em; text-transform:uppercase; }
+.game-stat strong { color:var(--text); font-size:1.6rem; line-height:1; font-weight:800; }
+.game-stat small { color:var(--text-muted); font-size:.65rem; }
 .stat-separator { width:1px; height:2rem; background:var(--border); }
 
-.game-container { width:min(100%,1160px); margin:0 auto; padding:3rem 1rem 4rem; display:grid; grid-template-columns:minmax(0,1.65fr) minmax(300px,.85fr); gap:3rem; }
+.game-container { width:min(100%,1160px); margin:0 auto; padding:3rem 1rem 7rem; display:grid; grid-template-columns:minmax(0,1.65fr) minmax(300px,.85fr); gap:3rem; }
 .game-main-column,.game-side-column { min-width:0; }
 .game-main-column,.game-side-column { display:flex; flex-direction:column; gap:3rem; }
 .content-section,.side-section{min-width:0}
 .section-heading { display:flex; align-items:flex-end; justify-content:space-between; gap:1rem; margin-bottom:.85rem; }
 .section-heading.compact{margin-bottom:.7rem}
-.section-label { display:block; color:var(--text-muted); font-size:.48rem; font-weight:800; letter-spacing:.14em; text-transform:uppercase; }
-.section-heading h2 { margin-top:.2rem; color:var(--text); font-size:1.22rem; line-height:1.1; font-weight:800; letter-spacing:-.03em; }
-.section-note { color:var(--text-muted); font-size:.45rem; font-weight:800; letter-spacing:.1em; text-transform:uppercase; }
-.reward-pill,.xp-pill { display:inline-flex; align-items:center; padding:.34rem .52rem; border:1px solid rgba(99,142,203,.2); border-radius:999px; background:rgba(99,142,203,.07); color:var(--brand-mid); font-size:.48rem; font-weight:800; }
+.section-label { display:inline-block; color:var(--sa-text-secondary); background:var(--sa-surface-muted); font-size:0.75rem; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; padding:6px 14px; border-radius:9999px; border:1px solid var(--sa-border); margin-bottom:8px; }
+.section-heading h2 { margin-top:.2rem; color:var(--text); font-size:1.5rem; line-height:1.1; font-weight:800; letter-spacing:-.03em; }
+.section-note { color:var(--text-muted); font-size:.65rem; font-weight:800; letter-spacing:.1em; text-transform:uppercase; }
+.reward-pill,.xp-pill { display:inline-flex; align-items:center; padding:.34rem .52rem; border:1px solid rgba(99,142,203,.2); border-radius:999px; background:rgba(99,142,203,.07); color:var(--brand-mid); font-size:.7rem; font-weight:800; }
 
-.daily-challenge { position:relative; overflow:hidden; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:1.5rem; padding:1.35rem; border:1px solid var(--border); border-radius:1.35rem; background:linear-gradient(135deg,var(--surface),var(--surface-soft)); box-shadow:0 12px 30px rgba(15,23,42,.04); transition:.25s ease; }
-.daily-challenge:hover { transform:translateY(-2px); box-shadow:0 18px 40px rgba(15,23,42,.07); border-color:var(--border-strong); }
+.daily-challenge { position:relative; overflow:hidden; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:1.5rem; padding:1.35rem; border:1px solid var(--border); border-radius:1.35rem; background:var(--surface); box-shadow:0 12px 30px rgba(15,23,42,.08); transition:.25s ease; opacity: 1; z-index: 2; }
+.daily-challenge:hover { transform:translateY(-2px); box-shadow:0 18px 40px rgba(15,23,42,.12); border-color:var(--border-strong); }
 .daily-challenge::after { content:''; position:absolute; width:16rem; height:16rem; right:-7rem; top:-8rem; border-radius:50%; background:rgba(99,142,203,.1); filter:blur(4rem); pointer-events:none; }
-.daily-content{position:relative;z-index:2}.challenge-kicker{display:inline-flex;color:var(--brand-mid);font-size:.48rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
-.daily-content h3{margin-top:.5rem;color:var(--text);font-size:1.35rem;font-weight:800;letter-spacing:-.03em}.daily-content p{max-width:620px;margin-top:.45rem;color:var(--text-muted);font-size:.6rem;line-height:1.65}
-.challenge-meta{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.8rem}.challenge-meta span{padding:.3rem .48rem;border:1px solid var(--border);border-radius:999px;color:var(--text-muted);font-size:.44rem;font-weight:700;background:var(--surface)}
+.daily-content{position:relative;z-index:2}.challenge-kicker{display:inline-flex;color:var(--brand-mid);font-size:.65rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
+.daily-content h3{margin-top:.5rem;color:var(--text);font-size:1.6rem;font-weight:800;letter-spacing:-.03em}.daily-content p{max-width:620px;margin-top:.45rem;color:var(--text-muted);font-size:.85rem;line-height:1.65}
+.challenge-meta{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.8rem}.challenge-meta span{padding:.3rem .48rem;border:1px solid var(--border);border-radius:999px;color:var(--text-muted);font-size:.65rem;font-weight:700;background:var(--surface)}
 .daily-action{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.8rem;min-width:8.5rem}
-.challenge-ring{width:5.3rem;height:5.3rem;display:flex;align-items:center;justify-content:center;border:5px solid rgba(99,142,203,.12);border-top-color:var(--brand-mid);border-right-color:var(--brand);border-radius:50%;transform:rotate(-25deg)}
-.challenge-ring-inner{width:3.7rem;height:3.7rem;display:flex;align-items:center;justify-content:center;border-radius:50%;background:var(--surface);color:var(--brand);font-size:.72rem;font-weight:800;transform:rotate(25deg)}
-.challenge-button{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;width:100%;min-height:2.7rem;padding:.6rem .8rem;border-radius:.7rem;background:var(--brand);color:#fff;font-size:.58rem;font-weight:800;text-decoration:none;transition:.2s ease}.challenge-button:hover{transform:translateY(-2px);background:var(--brand-mid)}.challenge-button svg{width:.8rem;height:.8rem}
+.challenge-ring{width:6.3rem;height:6.3rem;display:flex;align-items:center;justify-content:center;border:5px solid rgba(99,142,203,.12);border-top-color:var(--brand-mid);border-right-color:var(--brand);border-radius:50%;transform:rotate(-25deg)}
+.challenge-ring-inner{width:4.7rem;height:4.7rem;display:flex;align-items:center;justify-content:center;border-radius:50%;background:var(--surface);color:var(--brand);font-size:.9rem;font-weight:800;transform:rotate(25deg)}
+.challenge-button{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;width:100%;min-height:2.7rem;padding:.6rem .8rem;border-radius:.7rem;background:var(--brand);color:#fff;font-size:.85rem;font-weight:800;text-decoration:none;transition:.2s ease}.challenge-button:hover{transform:translateY(-2px);background:var(--brand-mid)}.challenge-button svg{width:1rem;height:1rem}
 
 .game-mode-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.7rem}.mode-card{position:relative;min-width:0;min-height:15.5rem;display:flex;flex-direction:column;padding:1rem;border:1px solid var(--border);border-radius:1.1rem;background:var(--surface);color:var(--text);text-decoration:none;transition:.25s ease}.mode-card.available:hover{transform:translateY(-4px);border-color:var(--border-strong);box-shadow:0 16px 34px rgba(15,23,42,.06)}.mode-card.disabled{opacity:.62;cursor:not-allowed}
 .mode-top{display:flex;align-items:flex-start;justify-content:space-between;gap:.6rem}.mode-icon{width:2.7rem;height:2.7rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid rgba(99,142,203,.13);border-radius:.75rem;background:rgba(99,142,203,.07);color:var(--brand-mid);transition:.25s cubic-bezier(.34,1.56,.64,1)}.mode-card.available:hover .mode-icon{transform:scale(1.08) rotate(3deg)}.mode-icon svg{width:1.25rem;height:1.25rem}.mode-card.disabled .mode-icon{color:var(--text-muted);background:var(--surface-muted)}
-.mode-content{flex:1;margin-top:1.3rem}.mode-content h3{color:var(--text);font-size:.92rem;font-weight:800}.mode-content p{margin-top:.42rem;color:var(--text-muted);font-size:.57rem;line-height:1.65}.mode-footer{display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin-top:1rem;padding-top:.7rem;border-top:1px solid var(--border)}.mode-meta{display:flex;align-items:center;flex-wrap:wrap;gap:.65rem}.mode-meta span{display:inline-flex;align-items:center;gap:.25rem;color:var(--text-muted);font-size:.44rem;font-weight:700}.mode-meta svg{width:.7rem;height:.7rem}.mode-arrow{display:flex;color:var(--brand-mid);opacity:0;transform:translateX(-3px);transition:.2s ease}.mode-card.available:hover .mode-arrow{opacity:1;transform:translateX(0)}.mode-arrow svg{width:1rem;height:1rem}.coming-soon{padding:.3rem .45rem;border:1px solid var(--border);border-radius:999px;background:var(--surface-muted);color:var(--text-muted);font-size:.42rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase}.development-note{color:var(--text-muted);font-size:.44rem;font-weight:700}
+.mode-content{flex:1;margin-top:1.3rem}.mode-content h3{color:var(--text);font-size:1.2rem;font-weight:800}.mode-content p{margin-top:.42rem;color:var(--text-muted);font-size:.8rem;line-height:1.65}.mode-footer{display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin-top:1rem;padding-top:.7rem;border-top:1px solid var(--border)}.mode-meta{display:flex;align-items:center;flex-wrap:wrap;gap:.65rem}.mode-meta span{display:inline-flex;align-items:center;gap:.25rem;color:var(--text-muted);font-size:.65rem;font-weight:700}.mode-meta svg{width:.8rem;height:.8rem}.mode-arrow{display:flex;color:var(--brand-mid);opacity:0;transform:translateX(-3px);transition:.2s ease}.mode-card.available:hover .mode-arrow{opacity:1;transform:translateX(0)}.mode-arrow svg{width:1.2rem;height:1.2rem}.coming-soon{padding:.3rem .45rem;border:1px solid var(--border);border-radius:999px;background:var(--surface-muted);color:var(--text-muted);font-size:.55rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase}.development-note{color:var(--text-muted);font-size:.6rem;font-weight:700}
 
 .leaderboard-card{overflow:hidden;border:1px solid var(--border);border-radius:1.1rem;background:var(--surface);box-shadow:0 8px 26px rgba(15,23,42,.035)}
 .achievement-card{border:1px solid var(--border);border-radius:1.1rem;background:var(--surface);box-shadow:0 8px 26px rgba(15,23,42,.035)}
-.leaderboard-header{display:flex;align-items:center;justify-content:space-between;padding:.9rem;border-bottom:1px solid var(--border);color:var(--text-muted);font-size:.46rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase}.status-label{color:var(--brand-mid);font-size:.42rem;letter-spacing:.07em}
-.leaderboard-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem 1rem;text-align:center}.sync-icon{width:2.6rem;height:2.6rem;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:.8rem;background:var(--surface-soft);color:var(--brand-mid)}.sync-icon svg{width:1.1rem;height:1.1rem}.leaderboard-empty strong{margin-top:.7rem;color:var(--text);font-size:.66rem;font-weight:800}.leaderboard-empty p{max-width:235px;margin-top:.35rem;color:var(--text-muted);font-size:.5rem;line-height:1.6}
-.current-player{display:flex;align-items:center;justify-content:space-between;gap:.7rem;padding:.75rem .9rem;border-top:1px solid var(--border);background:var(--surface-soft)}.player-identity{display:flex;align-items:center;gap:.55rem}.player-rank{color:var(--text-muted);font-size:.55rem;font-weight:800}.player-avatar{width:2rem;height:2rem;display:flex;align-items:center;justify-content:center;border:1px solid rgba(99,142,203,.18);border-radius:50%;background:var(--brand);color:#fff;font-size:.58rem;font-weight:800}.player-identity strong{display:block;color:var(--text);font-size:.58rem;font-weight:800}.player-identity span{display:block;margin-top:.1rem;color:var(--text-muted);font-size:.42rem}.player-xp{color:var(--brand-mid);font-size:.58rem}
+.leaderboard-header{display:flex;align-items:center;justify-content:space-between;padding:.9rem;border-bottom:1px solid var(--border);color:var(--text-muted);font-size:.65rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase}.status-label{color:var(--brand-mid);font-size:.65rem;letter-spacing:.07em}
+.leaderboard-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem 1rem;text-align:center}.sync-icon{width:2.6rem;height:2.6rem;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:.8rem;background:var(--surface-soft);color:var(--brand-mid)}.sync-icon svg{width:1.3rem;height:1.3rem}.leaderboard-empty strong{margin-top:.7rem;color:var(--text);font-size:.9rem;font-weight:800}.leaderboard-empty p{max-width:250px;margin-top:.35rem;color:var(--text-muted);font-size:.75rem;line-height:1.6}
+.current-player{display:flex;align-items:center;justify-content:space-between;gap:.7rem;padding:.75rem .9rem;border-top:1px solid var(--border);background:var(--surface-soft)}.player-identity{display:flex;align-items:center;gap:.55rem}.player-rank{color:var(--text-muted);font-size:.7rem;font-weight:800}.player-avatar{width:2.5rem;height:2.5rem;display:flex;align-items:center;justify-content:center;border:1px solid rgba(99,142,203,.18);border-radius:50%;background:var(--brand);color:#fff;font-size:.9rem;font-weight:800}.player-identity strong{display:block;color:var(--text);font-size:.8rem;font-weight:800}.player-identity span{display:block;margin-top:.1rem;color:var(--text-muted);font-size:.65rem}.player-xp{color:var(--brand-mid);font-size:.8rem}
 
-.achievement-card{padding:.85rem}.achievement-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.45rem}.achievement{position:relative;aspect-ratio:1;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:.75rem;background:var(--surface-muted);color:var(--text-muted);opacity:.55;transition:.22s ease}.achievement.earned{opacity:1;color:var(--brand);background:rgba(99,142,203,.08);border-color:rgba(99,142,203,.2)}:global(html.dark) .achievement.earned{color:#B1C9EF;background:rgba(99,142,203,.12)}.achievement:hover{transform:translateY(-2px);border-color:var(--border-strong);opacity:1}.achievement-icon svg{width:1.25rem;height:1.25rem}
-.achievement-tooltip{position:absolute;left:50%;bottom:calc(100% + .5rem);width:12rem;padding:.65rem;border:1px solid var(--border-strong);border-radius:.7rem;background:var(--surface);color:var(--text);box-shadow:0 15px 35px rgba(15,23,42,.12);opacity:0;visibility:hidden;pointer-events:none;transform:translate(-50%,4px);transition:.18s ease}.achievement:hover .achievement-tooltip{opacity:1;visibility:visible;transform:translate(-50%,0)}.achievement-tooltip strong{display:block;color:var(--text);font-size:.55rem;font-weight:800}.achievement-tooltip small{display:block;margin-top:.22rem;color:var(--text-muted);font-size:.45rem;line-height:1.45}
-.view-all{color:var(--text-muted);font-size:.45rem;font-weight:800;text-decoration:none;letter-spacing:.07em;text-transform:uppercase}.view-all:hover{color:var(--brand-mid)}
-.achievement-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1.6rem 1rem;text-align:center}.achievement-empty-icon{width:2.6rem;height:2.6rem;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:.8rem;background:var(--surface-soft);color:var(--brand-mid)}.achievement-empty-icon svg{width:1.1rem;height:1.1rem}.achievement-empty strong{margin-top:.6rem;color:var(--text);font-size:.62rem;font-weight:800}.achievement-empty p{max-width:220px;margin-top:.35rem;color:var(--text-muted);font-size:.5rem;line-height:1.55}
+.achievement-card{padding:.85rem}.achievement-grid{display:flex;flex-wrap:nowrap;overflow-x:auto;gap:.45rem;padding-bottom:.5rem}.achievement{flex:0 0 auto;width:4.5rem;position:relative;aspect-ratio:1;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:.75rem;background:var(--surface-muted);color:var(--text-muted);opacity:.55;transition:.22s ease}.achievement.earned{opacity:1;color:var(--brand);background:rgba(99,142,203,.08);border-color:rgba(99,142,203,.2)}:global(html.dark) .achievement.earned{color:#B1C9EF;background:rgba(99,142,203,.12)}.achievement:hover{transform:translateY(-2px);border-color:var(--border-strong);opacity:1}.achievement-icon svg{width:1.25rem;height:1.25rem}
+.achievement-tooltip{position:absolute;left:50%;bottom:calc(100% + .5rem);width:14rem;padding:.65rem;border:1px solid var(--border-strong);border-radius:.7rem;background:var(--surface);color:var(--text);box-shadow:0 15px 35px rgba(15,23,42,.12);opacity:0;visibility:hidden;pointer-events:none;transform:translate(-50%,4px);transition:.18s ease}.achievement:hover .achievement-tooltip{opacity:1;visibility:visible;transform:translate(-50%,0)}.achievement-tooltip strong{display:block;color:var(--text);font-size:.8rem;font-weight:800}.achievement-tooltip small{display:block;margin-top:.22rem;color:var(--text-muted);font-size:.65rem;line-height:1.45}
+.view-all{color:var(--text-muted);font-size:.65rem;font-weight:800;text-decoration:none;letter-spacing:.07em;text-transform:uppercase}.view-all:hover{color:var(--brand-mid)}
+.achievement-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1.6rem 1rem;text-align:center}.achievement-empty-icon{width:2.6rem;height:2.6rem;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:.8rem;background:var(--surface-soft);color:var(--brand-mid)}.achievement-empty-icon svg{width:1.3rem;height:1.3rem}.achievement-empty strong{margin-top:.6rem;color:var(--text);font-size:.9rem;font-weight:800}.achievement-empty p{max-width:250px;margin-top:.35rem;color:var(--text-muted);font-size:.75rem;line-height:1.55}
 
-.city-footer{overflow:hidden;background:#243A5A;color:#D5DEEF;border-top:1px solid rgba(255,255,255,.08)}.city-footer-main{width:min(100%,1160px);margin:0 auto;padding:2.5rem 1rem 2rem;display:grid;grid-template-columns:1.45fr 1.3fr .9fr .9fr .9fr;gap:1.5rem}.footer-brand{display:flex;align-items:flex-start;gap:.65rem}.footer-logo{width:2.4rem;height:2.4rem;display:flex;align-items:center;justify-content:center;padding:.25rem;border-radius:.62rem;background:#fff}.footer-logo img{width:100%;height:100%;object-fit:contain}.footer-brand strong{display:block;color:#fff;font-size:.82rem;font-weight:800}.footer-brand span{display:block;margin-top:.12rem;color:#B1C9EF;font-size:.42rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase}.footer-description{max-width:270px;color:#B1C9EF;font-size:.49rem;line-height:1.7}.footer-column{display:flex;flex-direction:column;align-items:flex-start;gap:.45rem}.footer-column h3{margin-bottom:.15rem;color:#fff;font-size:.45rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase}.footer-column a,.footer-column span{color:#B1C9EF;font-size:.47rem;font-weight:600;text-decoration:none;transition:color .18s ease}.footer-column a:hover{color:#fff}.city-government-bar{border-top:1px solid rgba(255,255,255,.09);border-bottom:1px solid rgba(255,255,255,.09);background:#1F334F}.city-government-inner{width:min(100%,1160px);margin:0 auto;padding:.7rem 1rem;display:flex;align-items:center;justify-content:space-between;gap:1rem}.government-identity{display:flex;align-items:center;gap:.4rem;color:#D5DEEF;font-size:.43rem;font-weight:700}.government-line{width:3px;height:1rem;border-radius:2px;background:#638ECB}.government-separator{color:#638ECB}.government-message{color:#8AAEE0;font-size:.41rem;font-weight:600}.city-footer-bottom{width:min(100%,1160px);margin:0 auto;padding:.72rem 1rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;color:#8AAEE0;font-size:.4rem}
+.city-footer{position:relative;z-index:10;overflow:hidden;background-color:#243A5A !important;opacity:1 !important;color:#D5DEEF;border-top:1px solid rgba(255,255,255,.08)}.city-footer-main{width:min(100%,1160px);margin:0 auto;padding:2.5rem 1rem 2rem;display:grid;grid-template-columns:1.45fr 1.3fr .9fr .9fr .9fr;gap:1.5rem}.footer-brand{display:flex;align-items:flex-start;gap:.65rem}.footer-logo{width:2.4rem;height:2.4rem;display:flex;align-items:center;justify-content:center;padding:.25rem;border-radius:.62rem;background:#fff}.footer-logo img{width:100%;height:100%;object-fit:contain}.footer-brand strong{display:block;color:#fff;font-size:.82rem;font-weight:800}.footer-brand span{display:block;margin-top:.12rem;color:#B1C9EF;font-size:.42rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase}.footer-description{max-width:270px;color:#B1C9EF;font-size:.49rem;line-height:1.7}.footer-column{display:flex;flex-direction:column;align-items:flex-start;gap:.45rem}.footer-column h3{margin-bottom:.15rem;color:#fff;font-size:.45rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase}.footer-column a,.footer-column span{color:#B1C9EF;font-size:.47rem;font-weight:600;text-decoration:none;transition:color .18s ease}.footer-column a:hover{color:#fff}.city-government-bar{border-top:1px solid rgba(255,255,255,.09);border-bottom:1px solid rgba(255,255,255,.09);background:#1F334F}.city-government-inner{width:min(100%,1160px);margin:0 auto;padding:.7rem 1rem;display:flex;align-items:center;justify-content:space-between;gap:1rem}.government-identity{display:flex;align-items:center;gap:.4rem;color:#D5DEEF;font-size:.43rem;font-weight:700}.government-line{width:3px;height:1rem;border-radius:2px;background:#638ECB}.government-separator{color:#638ECB}.government-message{color:#8AAEE0;font-size:.41rem;font-weight:600}.city-footer-bottom{width:min(100%,1160px);margin:0 auto;padding:.72rem 1rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;color:#8AAEE0;font-size:.4rem}
 
-@media (max-width:1050px){.hero-grid{grid-template-columns:1fr;gap:2rem}.hero-visual{max-width:320px}.game-container{grid-template-columns:1fr}.game-side-column{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:2rem}.city-footer-main{grid-template-columns:1.4fr 1.2fr .8fr}}
-@media (max-width:760px){.game-hero{padding:5.5rem 1rem 3rem}.hero-copy h1{font-size:3.2rem}.hero-actions{flex-direction:column;align-items:stretch}.hero-primary,.hero-secondary{width:100%}.hero-visual{max-width:280px}.progress-inner{align-items:stretch;flex-direction:column}.stat-group{justify-content:space-between}.game-container{padding:2rem 1rem 3rem}.daily-challenge{grid-template-columns:1fr}.daily-action{align-items:stretch;width:100%}.challenge-ring{margin:0 auto}.game-mode-grid{grid-template-columns:1fr}.game-side-column{grid-template-columns:1fr}.city-footer-main{grid-template-columns:1fr 1fr;padding:2rem 1rem 1.4rem}.footer-brand{grid-column:1/-1}.city-government-inner{align-items:flex-start;flex-direction:column}.city-footer-bottom{align-items:flex-start;flex-direction:column}}
-@media (max-width:500px){.hero-copy h1{font-size:2.65rem}.hero-orbit-label{display:none}.game-stat{min-width:auto}.stat-group{gap:.8rem}.stat-separator{height:1.5rem}.city-footer-main{grid-template-columns:1fr}}
+@media (max-width:1024px){.hero-grid{grid-template-columns:1fr;gap:2rem}.hero-visual{max-width:320px}.game-container{grid-template-columns:1fr}.game-side-column{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:2rem}.city-footer-main{grid-template-columns:1.4fr 1.2fr .8fr}}
+@media (max-width:768px){
+  .game-hero{padding:5.5rem 1rem 3rem}
+  .hero-copy h1{font-size:3.2rem}
+  .hero-actions{flex-direction:row;justify-content:center;gap:.5rem}
+  .hero-primary,.hero-secondary{width:auto;flex:1;min-height:2.4rem;padding:.5rem .65rem;font-size:.78rem}
+  .hero-visual{max-width:280px}
+  .progress-inner{align-items:stretch;flex-direction:column}
+  .stat-group{justify-content:space-between}
+  .game-container{padding:2rem 0.5rem 3rem}
+  .daily-challenge{grid-template-columns:minmax(0, 1.4fr) minmax(0, 1fr);gap:.65rem;padding:.85rem;border-radius:.9rem}
+  .daily-content h3{font-size:1.05rem}
+  .daily-content p{font-size:.7rem;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .challenge-meta{gap:.3rem;margin-top:.5rem}
+  .challenge-meta span{padding:.2rem .35rem;font-size:.55rem}
+  .daily-action{min-width:auto;gap:.4rem}
+  .challenge-ring{width:3.8rem;height:3.8rem;border-width:3px}
+  .challenge-ring-inner{width:2.8rem;height:2.8rem;font-size:.75rem}
+  .challenge-button{min-height:2.1rem;padding:.35rem .5rem;font-size:.7rem;border-radius:.55rem}
+  .game-mode-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:.45rem}
+  .mode-card{min-height:auto;padding:.65rem;border-radius:.85rem}
+  .mode-icon{width:2.2rem;height:2.2rem;border-radius:.6rem}
+  .mode-icon svg{width:1.05rem;height:1.05rem}
+  .mode-content{margin-top:.6rem}
+  .mode-content h3{font-size:.85rem}
+  .mode-content p{font-size:.68rem;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .mode-footer{margin-top:.5rem;padding-top:.4rem}
+  .mode-meta{gap:.35rem}
+  .mode-meta span{font-size:.55rem}
+  .city-footer-main{grid-template-columns:1.2fr 0.9fr 0.9fr 0.9fr;gap:.45rem;padding:1.5rem .6rem 1rem}
+  .footer-brand{grid-column:auto}
+  .city-government-inner{align-items:center;flex-direction:row;justify-content:space-between}
+  .city-footer-bottom{align-items:center;flex-direction:row;justify-content:space-between}
+}
+@media (max-width:640px){
+  .hero-copy h1{font-size:2.65rem}
+  .hero-orbit-label{display:none}
+  .game-stat{min-width:auto}
+  .stat-group{gap:.6rem}
+  .stat-separator{height:1.5rem}
+  .city-footer-main{grid-template-columns:1.2fr 0.9fr 0.9fr 0.9fr;gap:.45rem}
+}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 </style>

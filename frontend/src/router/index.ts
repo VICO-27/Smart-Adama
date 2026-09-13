@@ -20,11 +20,11 @@ import AdminSystemHealthView from '@/views/admin/AdminSystemHealthView.vue'
 import AdminUsersView from '@/views/admin/AdminUsersView.vue'
 import AdminAiSettingsView from '@/views/admin/AdminAiSettingsView.vue'
 import NotFoundView from '@/views/NotFoundView.vue'
-import GameView from '@/views/GameView.vue' 
+import GameView from '@/views/GameView.vue'
 
 const routes: RouteRecordRaw[] = [
   {
-    path: '/game', 
+    path: '/game',
     name: 'game',
     component: GameView,
     meta: { requiresAuth: true },
@@ -36,15 +36,25 @@ const routes: RouteRecordRaw[] = [
     meta: { public: true },
   },
   {
-    path: '/about',               
+    path: '/about',
     name: 'about',
     component: AboutView,
-    meta: { public: true },       
+    meta: { public: true },
   },
   {
     path: '/auth/callback',
     name: 'oauth-callback',
     component: OAuthCallbackView,
+    meta: { public: true },
+  },
+  {
+    // Safety redirect: If magic link or provider callback lands on /login, forward tokens to /auth/callback
+    path: '/login',
+    redirect: (to) => ({
+      path: '/auth/callback',
+      query: to.query,
+      hash: to.hash,
+    }),
     meta: { public: true },
   },
   {
@@ -60,14 +70,8 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true },
   },
   {
-    path: '/study',
+    path: '/study/:sessionId?',
     name: 'study',
-    component: ChatView,
-    meta: { requiresAuth: true, hideNav: true },
-  },
-  {
-    path: '/study/:sessionId',
-    name: 'study-session',
     component: ChatView,
     meta: { requiresAuth: true, hideNav: true },
   },
@@ -108,6 +112,11 @@ const routes: RouteRecordRaw[] = [
         path: 'quizzes',
         name: 'admin-quizzes',
         component: AdminQuizView,
+      },
+      {
+        path: 'manual-authoring/:id?',
+        name: 'admin.manual-authoring',
+        component: () => import('@/views/admin/AdminManualAuthoring.vue'),
       },
       {
         path: 'chapters/:id',
@@ -185,7 +194,7 @@ router.beforeEach(async (to, from) => {
 
   if (to.meta.requiresAdmin && !auth.isAdmin) {
     return { name: 'dashboard' }
-  } 
+  }
 })
 
 // Global Error Catcher: Recovers instantly from any navigation rendering failure

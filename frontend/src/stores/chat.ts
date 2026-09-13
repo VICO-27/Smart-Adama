@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { chatApi } from '@/api/chat'
 import { useAuthStore } from './auth'
 import { useChatStream, type ChatMessageStreamDone } from '@/composables/useChatStream'
@@ -10,8 +10,30 @@ export const useChatStore = defineStore('chat', () => {
   const meta            = ref<App.PaginationMeta | null>(null)
   const error           = ref<string | null>(null)
 
-  // Expose the composable's reactive state at store level
-  const { streaming, accumulatedText: streamingContent, streamError, stream, activityPayload, cancel } = useChatStream()
+  // Expose the composable's reactive state and concurrent runner at store level
+  const {
+    streaming,
+    activeStreams,
+    accumulatedText,
+    streamError,
+    activityPayload,
+    streamRequest,
+    cancelStream,
+    cancel,
+  } = useChatStream()
+
+  // Backwards-compatible streamingContent computed from currently active assistant message
+  const streamingContent = computed(() => {
+    const activeMsg = currentSession.value?.messages?.findLast(
+      (m: App.ChatMessage) => m.role === 'assistant' && m.isStreaming
+    )
+    return activeMsg?.content || accumulatedText.value || ''
+  })
+
+  // ── Getters ────────────────────────────────────────────────────────────────
+  const pinnedSessions = computed(() => sessions.value.filter(s => s.is_pinned && !s.is_archived))
+  const activeSessions = computed(() => sessions.value.filter(s => !s.is_pinned && !s.is_archived))
+  const archivedSessions = computed(() => sessions.value.filter(s => s.is_archived))
 
   // ── Session CRUD ───────────────────────────────────────────────────────────
 
@@ -28,33 +50,74 @@ export const useChatStore = defineStore('chat', () => {
     return data.session
   }
 
+  const pendingRequests = new Map<string, Promise<App.ChatSession>>()
+
   async function loadSession(sessionId: string): Promise<App.ChatSession> {
+    if (currentSession.value?.id !== sessionId) {
+      // Cancel active streams from old session when navigating away
+      cancelAllStreams()
+    }
+
     if (streaming.value && currentSession.value?.id === sessionId) {
       return currentSession.value // Lock out stale DB fetches during active stream
     }
-    const { data } = await chatApi.getSession(sessionId)
-    currentSession.value = data.session
-    return data.session
+
+    if (pendingRequests.has(sessionId)) {
+      return pendingRequests.get(sessionId)!
+    }
+
+    const request = chatApi.getSession(sessionId).then(({ data }) => {
+      currentSession.value = data.session
+      return data.session
+    }).finally(() => {
+      pendingRequests.delete(sessionId)
+    })
+
+    pendingRequests.set(sessionId, request)
+    return request
+  }
+
+  async function updateSession(sessionId: string, data: Partial<App.ChatSession>) {
+    const { data: response } = await chatApi.updateSession(sessionId, data)
+    const idx = sessions.value.findIndex((s) => s.id === sessionId)
+    if (idx !== -1) sessions.value[idx] = response.session
+    if (currentSession.value?.id === sessionId) currentSession.value = response.session
   }
 
   async function renameSession(sessionId: string, title: string) {
-    const { data } = await chatApi.renameSession(sessionId, title)
-    const idx = sessions.value.findIndex((s) => s.id === sessionId)
-    if (idx !== -1) sessions.value[idx] = data.session
-    if (currentSession.value?.id === sessionId) currentSession.value = data.session
+    await updateSession(sessionId, { title })
+  }
+
+  async function togglePinSession(session: App.ChatSession) {
+    await updateSession(session.id, { is_pinned: !session.is_pinned })
+  }
+
+  async function toggleArchiveSession(session: App.ChatSession) {
+    await updateSession(session.id, { is_archived: !session.is_archived, is_pinned: false })
   }
 
   async function deleteSession(sessionId: string) {
+    if (currentSession.value?.id === sessionId) {
+      cancelAllStreams()
+    }
     await chatApi.deleteSession(sessionId)
     sessions.value = sessions.value.filter((s) => s.id !== sessionId)
     if (currentSession.value?.id === sessionId) currentSession.value = null
   }
 
-  // ── Message streaming ──────────────────────────────────────────────────────
+  async function deleteAllSessions() {
+    cancelAllStreams()
+    await chatApi.deleteAllSessions()
+    sessions.value = []
+    currentSession.value = null
+  }
 
-  async function sendMessage(
+  // ── Message streaming with concurrency & discrete IDs ─────────────────────
+
+  function sendMessage(
     sessionId: string,
     content: string,
+    context?: any,
     onToken?: (token: string) => void,
     onDone?:  (payload: ChatMessageStreamDone) => void,
   ) {
@@ -63,53 +126,133 @@ export const useChatStore = defineStore('chat', () => {
 
     error.value = null
 
-    // ── 1. Optimistic user message ─────────────────────────────────────────
+    const clientRequestId = `req_${crypto.randomUUID()}`
+    const userMessageId   = `user_${crypto.randomUUID()}`
+    const assistantMessageId = `asst_${crypto.randomUUID()}`
+
+    // ── 1. Immediately append user message & assistant placeholder ─────────
     if (currentSession.value?.id === sessionId) {
       currentSession.value.messages ??= []
+
+      // Append user message
       currentSession.value.messages.push({
-        id:              crypto.randomUUID(),
+        id:              userMessageId,
         chat_session_id: sessionId,
         role:            'user',
         content,
         created_at:      new Date().toISOString(),
+        clientRequestId,
+      })
+
+      // Append assistant placeholder in strict chronological order
+      currentSession.value.messages.push({
+        id:              assistantMessageId,
+        chat_session_id: sessionId,
+        role:            'assistant',
+        content:         '',
+        created_at:      new Date().toISOString(),
+        clientRequestId,
+        isStreaming:     true,
+        isPending:       true,
+        activity:        null,
+        sources:         [],
+        error:           null,
       })
     }
 
-    // ── 2. SSE stream ──────────────────────────────────────────────────────
+    // ── 2. Launch SSE stream targeting assistant message discrete ID ───────
     const baseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
     const url     = `${baseUrl}/api/v1/chat/sessions/${sessionId}/messages`
 
-    await stream(
+    const streamPromise = streamRequest({
       url,
-      authStore.token,
-      content,
-      onToken,
-      (donePayload) => {
-        // ── 3. Push final assistant message ───────────────────────────────
-        if (currentSession.value?.id === sessionId) {
-          currentSession.value.messages ??= []
-          currentSession.value.messages.push({
-            id:              donePayload.message_id,
-            chat_session_id: sessionId,
-            role:            'assistant',
-            // USE THE COMPILED HTML INSTEAD OF RAW STREAM CONTENT!
-            content:         donePayload.html_content || streamingContent.value,
-            created_at:      new Date().toISOString(),
-            sources:         donePayload.citations,
-          })
+      token: authStore.token,
+      payload: { content, context },
+      clientRequestId,
+      onToken: (token) => {
+        if (currentSession.value?.id === sessionId && currentSession.value.messages) {
+          const msg = currentSession.value.messages.find(
+            (m) => m.role === 'assistant' && (m.id === assistantMessageId || m.clientRequestId === clientRequestId)
+          )
+          if (msg) {
+            msg.content += token
+            msg.isPending = false
+          }
         }
-        // Update session title if it changed (auto-titled from first message)
+        onToken?.(token)
+      },
+      onActivity: (act) => {
+        if (currentSession.value?.id === sessionId && currentSession.value.messages) {
+          const msg = currentSession.value.messages.find(
+            (m) => m.role === 'assistant' && (m.id === assistantMessageId || m.clientRequestId === clientRequestId)
+          )
+          if (msg) {
+            msg.activity = act
+          }
+        }
+      },
+      onDone: (donePayload) => {
+        if (currentSession.value?.id === sessionId && currentSession.value.messages) {
+          const msg = currentSession.value.messages.find(
+            (m) => m.role === 'assistant' && (m.id === assistantMessageId || m.clientRequestId === clientRequestId)
+          )
+          if (msg) {
+            msg.id = donePayload.message_id || assistantMessageId
+            msg.isStreaming = false
+            msg.isPending = false
+            msg.sources = donePayload.citations || []
+            if (donePayload.html_content) {
+              msg.content = donePayload.html_content
+            }
+          }
+        }
         loadSessions(1).catch(() => {})
         onDone?.(donePayload)
       },
-      (errPayload) => {
-        error.value = errPayload.message
+      onError: (errPayload) => {
+        if (currentSession.value?.id === sessionId && currentSession.value.messages) {
+          const msg = currentSession.value.messages.find(
+            (m) => m.role === 'assistant' && (m.id === assistantMessageId || m.clientRequestId === clientRequestId)
+          )
+          if (msg) {
+            msg.isStreaming = false
+            msg.isPending = false
+            msg.error = errPayload.error?.message || 'Failed to generate response'
+          }
+        }
+        error.value = errPayload.error?.message || 'Stream error'
       },
-    )
+    })
+
+    return {
+      clientRequestId,
+      userMessageId,
+      assistantMessageId,
+      streamPromise,
+    }
   }
 
-  function cancelStream() {
-    cancel()
+  function cancelAllStreams() {
+    cancelStream()
+    if (currentSession.value?.messages) {
+      for (const m of currentSession.value.messages) {
+        if (m.isStreaming) {
+          m.isStreaming = false
+          m.isPending = false
+        }
+      }
+    }
+  }
+
+  function cancelSingleStream(clientRequestId: string) {
+    cancelStream(clientRequestId)
+    if (currentSession.value?.messages) {
+      const msg = currentSession.value.messages.find(m => m.clientRequestId === clientRequestId)
+      if (msg) {
+        msg.isStreaming = false
+        msg.isPending = false
+      }
+    }
   }
 
   return {
@@ -121,12 +264,21 @@ export const useChatStore = defineStore('chat', () => {
     streamingContent,
     streamError,
     activityPayload,
+    activeSessions,
+    pinnedSessions,
+    archivedSessions,
     loadSessions,
     createSession,
     loadSession,
+    updateSession,
     renameSession,
+    togglePinSession,
+    toggleArchiveSession,
     deleteSession,
+    deleteAllSessions,
     sendMessage,
     cancelStream,
+    cancelAllStreams,
+    cancelSingleStream,
   }
 })

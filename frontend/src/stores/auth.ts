@@ -3,6 +3,11 @@ import { ref, computed } from 'vue'
 import { authApi, type LoginPayload, type RegisterPayload } from '@/api/auth'
 import { userApi } from '@/api/user'
 import { isApiError, fieldError } from '@/api/client'
+import {
+  isSupabaseConfigured,
+  supabaseAuthService,
+  mapSupabaseUserToProfile,
+} from '@/services/supabaseAuth'
 
 const TOKEN_KEY = 'sa_token'
 
@@ -11,7 +16,7 @@ export const useAuthStore = defineStore('auth', () => {
   const token   = ref<string | null>(localStorage.getItem(TOKEN_KEY))
   const loading = ref(false)
   const error   = ref<string | null>(null)
-  
+
   // Modal State
   const isAuthModalOpen = ref(false)
   const authModalMode = ref<'login' | 'register'>('login')
@@ -99,7 +104,34 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  // ── Realtime Supabase Auth Listener ───────────────────────────────────────
+  if (isSupabaseConfigured()) {
+    try {
+      supabaseAuthService.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+          if (session?.access_token) {
+            setToken(session.access_token)
+          }
+          if (session?.user && !user.value) {
+            user.value = mapSupabaseUserToProfile(session.user)
+          }
+        } else if (event === 'SIGNED_OUT') {
+          clearAuth()
+        }
+      })
+    } catch (e) {
+      console.warn('Could not initialize Supabase auth listener:', e)
+    }
+  }
+
   async function logout() {
+    try {
+      if (isSupabaseConfigured()) {
+        await supabaseAuthService.signOut()
+      }
+    } catch {
+      // Swallow
+    }
     try {
       await authApi.logout()
     } catch {
@@ -111,16 +143,41 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   /**
-   * Restore session on app boot if a token exists in localStorage.
+   * Restore session on app boot if a token exists in localStorage or Supabase.
    * Called once from the router beforeEach guard.
    */
   async function fetchMe() {
+    // 1. Check Supabase active session first
+    if (isSupabaseConfigured()) {
+      try {
+        const session = await supabaseAuthService.getSession()
+        if (session?.access_token) {
+          setToken(session.access_token)
+          if (session.user) {
+            user.value = mapSupabaseUserToProfile(session.user)
+          }
+        }
+      } catch (err) {
+        console.warn('Supabase session fetch error:', err)
+      }
+    }
+
     if (!token.value) return
+
+    // 2. Fetch full backend user profile if available
     try {
       const { data } = await authApi.me()
-      user.value = data.user
+      if (data?.user) {
+        user.value = {
+          ...user.value,
+          ...data.user,
+        }
+      }
     } catch {
-      clearAuth()
+      // If we don't have a Supabase user session either, clear auth
+      if (!user.value) {
+        clearAuth()
+      }
     }
   }
 
@@ -184,6 +241,8 @@ export const useAuthStore = defineStore('auth', () => {
     uploadAvatar,
     deleteAccount,
     clearErrors,
+    setToken,
+    clearAuth,
     isAuthModalOpen,
     authModalMode,
     authRedirectUrl,

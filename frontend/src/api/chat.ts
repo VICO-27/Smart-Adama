@@ -10,11 +10,14 @@ export const chatApi = {
   getSession: (sessionId: string) =>
     apiClient.get<{ session: App.ChatSession }>(`/chat/sessions/${sessionId}`),
 
-  renameSession: (sessionId: string, title: string) =>
-    apiClient.patch<{ session: App.ChatSession }>(`/chat/sessions/${sessionId}`, { title }),
+  updateSession: (sessionId: string, data: Partial<App.ChatSession>) =>
+    apiClient.patch<{ session: App.ChatSession }>(`/chat/sessions/${sessionId}`, data),
 
   deleteSession: (sessionId: string) =>
     apiClient.delete(`/chat/sessions/${sessionId}`),
+
+  deleteAllSessions: () =>
+    apiClient.delete('/chat/sessions'),
 
   /**
    * Returns the raw EventSource URL for SSE streaming.

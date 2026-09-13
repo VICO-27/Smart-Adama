@@ -1,10 +1,12 @@
-<script setup lang="ts">
 import { ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 import { authApi } from '@/api/auth'
 import SaInput  from '@/components/ui/SaInput.vue'
 import SaButton from '@/components/ui/SaButton.vue'
 
+const router  = useRouter()
+const auth    = useAuthStore()
 const email   = ref('')
 const loading = ref(false)
 const sent    = ref(false)
@@ -26,7 +28,7 @@ async function submit() {
 
 <template>
   <div class="min-h-screen bg-[var(--sa-bg)] dark:bg-gray-950 flex items-center justify-center p-4 relative">
-    
+
     <!-- Back Button -->
     <RouterLink to="/" class="absolute top-6 left-6 flex items-center gap-2 text-sm font-medium text-[var(--sa-taupe)] dark:text-gray-400 hover:text-[var(--sa-dark)] dark:hover:text-white transition-colors">
       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
@@ -53,7 +55,7 @@ async function submit() {
       </div>
 
       <p class="mt-6 text-center text-sm text-[var(--sa-taupe)] dark:text-gray-400">
-        <RouterLink to="/login" class="font-medium text-[var(--sa-dark)] dark:text-white hover:underline">← Back to sign in</RouterLink>
+        <button type="button" @click="auth.openAuthModal('login'); router.push('/')" class="font-medium text-[var(--sa-dark)] dark:text-white hover:underline">← Back to sign in</button>
       </p>
     </div>
   </div>

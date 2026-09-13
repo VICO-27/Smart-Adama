@@ -1,7 +1,7 @@
 <template>
   <!-- =========================================================
        SMART ADAMA APP NAVIGATION
-       
+
        PUBLIC:
          Brand | EN | Sign in | Get Started after scroll
 
@@ -135,7 +135,7 @@
                 >
 
                   <span>
-                    English
+                    {{ $t('nav.lang_en') }}
                   </span>
 
                   <svg
@@ -167,7 +167,7 @@
                 >
 
                   <span>
-                    Afaan Oromoo
+                    {{ $t('nav.lang_om') }}
                   </span>
 
                   <svg
@@ -277,149 +277,9 @@
 
           </transition>
 
-
-          <!-- MOBILE MENU -->
-
-          <button
-            type="button"
-            class="mobile-menu-button"
-            :aria-expanded="mobileMenuOpen"
-            aria-label="Open navigation menu"
-            @click.stop="
-              mobileMenuOpen =
-                !mobileMenuOpen
-            "
-          >
-
-            <svg
-              v-if="!mobileMenuOpen"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <path
-                d="M4 7h16M4 12h16M4 17h16"
-                stroke-linecap="round"
-              />
-            </svg>
-
-            <svg
-              v-else
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <path
-                d="M6 6l12 12M18 6 6 18"
-                stroke-linecap="round"
-              />
-            </svg>
-
-          </button>
-
         </div>
 
       </div>
-
-
-      <!-- =====================================================
-           PUBLIC MOBILE MENU
-      ====================================================== -->
-
-      <transition name="mobile-menu">
-
-        <div
-          v-if="mobileMenuOpen"
-          class="mobile-menu-panel"
-        >
-
-          <div class="mobile-section">
-
-            <span class="mobile-section-label">
-              Language
-            </span>
-
-            <div class="mobile-language-grid">
-
-              <button
-                type="button"
-                class="mobile-language-button"
-                :class="{
-                  active:
-                    locale === 'en'
-                }"
-                @click="
-                  changeLanguage('en')
-                "
-              >
-                EN
-              </button>
-
-              <button
-                type="button"
-                class="mobile-language-button"
-                :class="{
-                  active:
-                    locale === 'om'
-                }"
-                @click="
-                  changeLanguage('om')
-                "
-              >
-                OM
-              </button>
-
-              <button
-                type="button"
-                class="mobile-language-button"
-                :class="{
-                  active:
-                    locale === 'am'
-                }"
-                @click="
-                  changeLanguage('am')
-                "
-              >
-                AM
-              </button>
-
-            </div>
-
-          </div>
-
-
-          <div class="mobile-divider"></div>
-
-
-          <div class="mobile-auth-grid">
-
-            <button
-              type="button"
-              class="mobile-signin-button"
-              @click="
-                auth.openAuthModal('login')
-              "
-            >
-              {{ $t('nav.signin') }}
-            </button>
-
-            <button
-              type="button"
-              class="mobile-get-started-button"
-              @click="
-                auth.openAuthModal('register')
-              "
-            >
-              {{ $t('nav.get_started') }}
-            </button>
-
-          </div>
-
-        </div>
-
-      </transition>
 
     </nav>
 
@@ -430,7 +290,8 @@
 
     <div
       v-else
-      class="pointer-events-auto w-full max-w-7xl"
+      ref="navContainerRef"
+      class="pointer-events-auto w-full max-w-[1800px]"
     >
 
       <div class="authenticated-navbar">
@@ -659,7 +520,7 @@
                 >
 
                   <span>
-                    English
+                    {{ $t('nav.lang_en') }}
                   </span>
 
                   <svg
@@ -693,7 +554,7 @@
                 >
 
                   <span>
-                    Afaan Oromoo
+                    {{ $t('nav.lang_om') }}
                   </span>
 
                   <svg
@@ -821,10 +682,7 @@
             class="mobile-menu-button authenticated-mobile-button"
             :aria-expanded="mobileMenuOpen"
             aria-label="Open navigation menu"
-            @click.stop="
-              mobileMenuOpen =
-                !mobileMenuOpen
-            "
+            @click.stop="toggleMobileMenu"
           >
 
             <svg
@@ -884,7 +742,7 @@
           >
 
             <span>
-              Dashboard
+              {{ $t('nav.dashboard') }}
             </span>
 
             <svg
@@ -976,7 +834,7 @@
           >
 
             <span>
-              Profile
+              {{ $t('nav.profile') }}
             </span>
 
             <svg
@@ -1058,6 +916,19 @@
 
     </div>
 
+    <!-- MOBILE MENU BACKDROP -->
+    <teleport to="body">
+      <transition name="nav-backdrop">
+        <div
+          v-if="mobileMenuOpen"
+          class="fixed inset-0 z-30 bg-black/25 backdrop-blur-[2px] cursor-pointer lg:hidden"
+          aria-hidden="true"
+          @click="closeMobileMenu"
+          @touchstart.passive="closeMobileMenu"
+        ></div>
+      </transition>
+    </teleport>
+
   </div>
 </template>
 
@@ -1067,6 +938,7 @@
 import {
   ref,
   computed,
+  watch,
   onMounted,
   onUnmounted,
 } from 'vue'
@@ -1106,6 +978,9 @@ const {
 /* ============================================================
    STATE
 ============================================================ */
+
+const navContainerRef =
+  ref<HTMLElement | null>(null)
 
 const isScrolled =
   ref(false)
@@ -1195,6 +1070,8 @@ const changeLanguage =
 
     langMenuOpen.value =
       false
+
+    closeMobileMenu()
   }
 
 
@@ -1253,6 +1130,10 @@ const isRouteActive =
    MOBILE
 ============================================================ */
 
+const toggleMobileMenu = () => {
+  mobileMenuOpen.value = !mobileMenuOpen.value
+}
+
 const closeMobileMenu =
   () => {
 
@@ -1262,6 +1143,33 @@ const closeMobileMenu =
     langMenuOpen.value =
       false
   }
+
+const handleOutsideInteraction = (event: MouseEvent | TouchEvent) => {
+  if (!mobileMenuOpen.value) return
+  const target = event.target as Node | null
+  if (navContainerRef.value && target && !navContainerRef.value.contains(target)) {
+    closeMobileMenu()
+  }
+}
+
+const handleKeyDown = (event: KeyboardEvent) => {
+  if (event.key === 'Escape' && mobileMenuOpen.value) {
+    closeMobileMenu()
+  }
+}
+
+const handleResize = () => {
+  if (window.innerWidth >= 1024 && mobileMenuOpen.value) {
+    closeMobileMenu()
+  }
+}
+
+watch(
+  () => route.fullPath,
+  () => {
+    closeMobileMenu()
+  },
+)
 
 
 /* ============================================================
@@ -1273,6 +1181,10 @@ const handleScroll =
 
     isScrolled.value =
       window.scrollY > 12
+
+    if (mobileMenuOpen.value) {
+      closeMobileMenu()
+    }
   }
 
 
@@ -1290,6 +1202,11 @@ onMounted(() => {
     },
   )
 
+  document.addEventListener('click', handleOutsideInteraction)
+  document.addEventListener('touchstart', handleOutsideInteraction, { passive: true })
+  document.addEventListener('keydown', handleKeyDown)
+  window.addEventListener('resize', handleResize, { passive: true })
+
   handleScroll()
 })
 
@@ -1300,6 +1217,11 @@ onUnmounted(() => {
     'scroll',
     handleScroll,
   )
+
+  document.removeEventListener('click', handleOutsideInteraction)
+  document.removeEventListener('touchstart', handleOutsideInteraction)
+  document.removeEventListener('keydown', handleKeyDown)
+  window.removeEventListener('resize', handleResize)
 
   if (langTimeout) {
     clearTimeout(
@@ -2680,6 +2602,17 @@ onUnmounted(() => {
   transform:
     translateY(-7px)
     scale(0.985);
+}
+
+
+.nav-backdrop-enter-active,
+.nav-backdrop-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.nav-backdrop-enter-from,
+.nav-backdrop-leave-to {
+  opacity: 0;
 }
 
 

@@ -5,6 +5,9 @@ import { booksApi } from '@/api/books'
 
 import SaCard from '@/components/ui/SaCard.vue'
 import SaButton from '@/components/ui/SaButton.vue'
+import { useConfirm } from '@/composables/useConfirm'
+
+const { confirm } = useConfirm()
 
 const route = useRoute()
 const router = useRouter()
@@ -83,7 +86,14 @@ const saveSection = async () => {
 }
 
 const deleteSection = async (sectionId: string) => {
-  if (!confirm('Are you sure you want to delete this section?')) return
+  const isConfirmed = await confirm({
+    title: 'Delete Section',
+    message: 'Are you sure you want to delete this section?',
+    confirmText: 'Delete',
+    confirmColor: 'red'
+  })
+
+  if (!isConfirmed) return
   try {
     saving.value = true
     errorMessage.value = ''
@@ -124,7 +134,14 @@ const validateChapter = async () => {
 }
 
 const ingestChapter = async () => {
-  if (!confirm('Are you sure you want to ingest this chapter? This will create chunks and queue embeddings.')) return
+  const isConfirmed = await confirm({
+    title: 'Ingest Chapter',
+    message: 'Are you sure you want to ingest this chapter? This will create chunks and queue embeddings.',
+    confirmText: 'Ingest',
+    confirmColor: 'blue'
+  })
+
+  if (!isConfirmed) return
   try {
     isProcessing.value = true
     errorMessage.value = ''

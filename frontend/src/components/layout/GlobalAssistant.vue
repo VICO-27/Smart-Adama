@@ -1,5 +1,5 @@
 <template>
-  <div class="global-assistant" :class="{ 'assistant-open': isOpen }">
+  <div class="global-assistant" :class="{ 'assistant-open': isOpen, 'global-assistant--dark': activeTheme === 'dark' }" :data-theme="activeTheme">
     <!-- =====================================================
          ASSISTANT PANEL
     ====================================================== -->
@@ -45,7 +45,7 @@
             <div class="assistant-title-wrap">
               <div class="assistant-title-row">
                 <h2>
-                  {{ mode === 'hub' ? 'Smart Adama' : mode === 'help' ? 'Quick Help' : 'Learning Assistant' }}
+                  {{ mode === 'hub' ? $t('assistant.title_hub') : mode === 'help' ? $t('assistant.title_help') : $t('assistant.title_chat') }}
                 </h2>
 
                 <span v-if="mode === 'ai'" class="context-badge">
@@ -53,9 +53,9 @@
                 </span>
               </div>
 
-              <p v-if="mode === 'hub'">Your guide across the Smart Adama platform.</p>
-              <p v-else-if="mode === 'help'">Useful answers for the page you are viewing.</p>
-              <p v-else>Ask, explore, and continue the conversation.</p>
+              <p v-if="mode === 'hub'">{{ $t('assistant.desc_hub') }}</p>
+              <p v-else-if="mode === 'help'">{{ $t('assistant.desc_help') }}</p>
+              <p v-else>{{ $t('assistant.desc_chat') }}</p>
             </div>
           </div>
 
@@ -69,7 +69,7 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                 <path d="M4 7h16M9 7v-2h6v2M7 7l1 13h8l1-13M10 11v6M14 11v6" stroke-linecap="round" stroke-linejoin="round" />
               </svg>
-              New
+              {{ $t('assistant.btn_new') }}
             </button>
 
             <button
@@ -102,10 +102,10 @@
             </div>
 
             <div class="hub-copy">
-              <span class="section-kicker">Smart Adama Assistant</span>
-              <h3>What do you need help with?</h3>
+              <span class="section-kicker">{{ $t('assistant.kicker_hub') }}</span>
+              <h3>{{ $t('assistant.question_hub') }}</h3>
               <p>
-                Move between guidance, help, and a full AI conversation without leaving the page.
+                {{ $t('assistant.sub_hub') }}
               </p>
             </div>
           </div>
@@ -119,8 +119,8 @@
                 </svg>
               </span>
               <span class="option-copy">
-                <strong>Meet the developers</strong>
-                <span>See the story behind Smart Adama.</span>
+                <strong>{{ $t('assistant.opt_devs') }}</strong>
+                <span>{{ $t('assistant.opt_devs_desc') }}</span>
               </span>
               <svg class="option-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
                 <path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round" />
@@ -136,8 +136,8 @@
                 </svg>
               </span>
               <span class="option-copy">
-                <strong>Quick help</strong>
-                <span>Get answers based on this page.</span>
+                <strong>{{ $t('assistant.opt_help') }}</strong>
+                <span>{{ $t('assistant.opt_help_desc') }}</span>
               </span>
               <svg class="option-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
                 <path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round" />
@@ -156,8 +156,8 @@
                 </svg>
               </span>
               <span class="ai-entry-copy">
-                <strong>Open learning assistant</strong>
-                <span>Ask follow-up questions and keep the conversation going.</span>
+                <strong>{{ $t('assistant.opt_ai') }}</strong>
+                <span>{{ $t('assistant.opt_ai_desc') }}</span>
               </span>
               <span class="ai-entry-key">⌘</span>
             </button>
@@ -165,21 +165,21 @@
 
           <!-- THEME TOGGLES -->
           <div class="theme-switcher" aria-label="Theme switcher">
-            <button 
-              @click="setTheme('light')" 
-              class="theme-btn" 
+            <button
+              @click="setTheme('light')"
+              class="theme-btn"
               :class="{ 'theme-btn--active': themePreference === 'light' }"
-            >Light</button>
-            <button 
-              @click="setTheme('dark')" 
-              class="theme-btn" 
+            >{{ $t('assistant.theme_light') }}</button>
+            <button
+              @click="setTheme('dark')"
+              class="theme-btn"
               :class="{ 'theme-btn--active': themePreference === 'dark' }"
-            >Dark</button>
-            <button 
-              @click="setTheme('system')" 
-              class="theme-btn" 
+            >{{ $t('assistant.theme_dark') }}</button>
+            <button
+              @click="setTheme('system')"
+              class="theme-btn"
               :class="{ 'theme-btn--active': themePreference === 'system' }"
-            >System</button>
+            >{{ $t('assistant.theme_system') }}</button>
           </div>
         </div>
 
@@ -188,8 +188,8 @@
         ==================================================== -->
         <div v-else-if="mode === 'help'" class="assistant-body help-body">
           <div class="help-intro">
-            <span class="section-kicker">Relevant to this page</span>
-            <h3>Quick answers before you ask AI.</h3>
+            <span class="section-kicker">{{ $t('assistant.kicker_help') }}</span>
+            <h3>{{ $t('assistant.title_help_page') }}</h3>
           </div>
 
           <div class="faq-list">
@@ -209,9 +209,9 @@
           </div>
 
           <div class="help-footer">
-            <span>Still need a deeper answer?</span>
+            <span>{{ $t('assistant.help_footer') }}</span>
             <button type="button" class="help-ai-button" @click="openAi">
-              Ask the learning assistant
+              {{ $t('assistant.help_btn') }}
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                 <path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round" />
               </svg>
@@ -236,10 +236,10 @@
                 </svg>
               </div>
 
-              <span class="section-kicker">Ready when you are</span>
-              <h3>What would you like to understand?</h3>
+              <span class="section-kicker">{{ $t('assistant.kicker_chat') }}</span>
+              <h3>{{ $t('assistant.title_chat_page') }}</h3>
               <p>
-                I can explain concepts, summarize content, guide you through the platform, or answer a follow-up question.
+                {{ $t('assistant.chat_desc') }}
               </p>
 
               <div class="suggestion-grid">
@@ -297,7 +297,7 @@
                       <rect x="9" y="9" width="11" height="11" rx="2" />
                       <path d="M6 15H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1" />
                     </svg>
-                    {{ copiedMessageIndex === index ? 'Copied' : 'Copy' }}
+                    {{ copiedMessageIndex === index ? $t('assistant.btn_copied') : $t('assistant.btn_copy') }}
                   </button>
                 </div>
               </article>
@@ -315,7 +315,7 @@
                 <span></span>
                 <span></span>
                 <span></span>
-                <em>Thinking</em>
+                <em>{{ $t('assistant.thinking') }}</em>
               </div>
             </div>
           </div>
@@ -327,7 +327,7 @@
                 v-model="userInput"
                 rows="1"
                 autocomplete="off"
-                :placeholder="isMobile ? 'Ask Smart Adama…' : 'Ask Smart Adama anything…'"
+                :placeholder="isMobile ? $t('assistant.placeholder_mobile') : $t('assistant.placeholder_desktop')"
                 @keydown="handleKeydown"
                 @input="autoResizeTextarea"
               ></textarea>
@@ -340,7 +340,7 @@
                       <path d="M12 8v4l2.5 2" stroke-linecap="round" stroke-linejoin="round" />
                     </svg>
                   </span>
-                  <span>Enter to send · Shift+Enter for a new line</span>
+                  <span>{{ $t('assistant.hint') }}</span>
                 </div>
 
                 <button
@@ -421,7 +421,7 @@
         class="toggle-tooltip"
         :class="pos.x > windowWidth / 2 ? 'toggle-tooltip--left' : 'toggle-tooltip--right'"
       >
-        Ask Smart Adama
+        {{ $t('assistant.tooltip') }}
       </span>
     </button>
   </div>
@@ -436,6 +436,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { aiApi } from '@/api/ai'
 import { useAuthStore } from '@/stores/auth'
 import { useTheme } from '@/composables/useTheme'
+import { useI18n } from 'vue-i18n'
 
 // DOMPurify Hook to add target="_blank" to parsed links
 DOMPurify.addHook('afterSanitizeAttributes', (node) => {
@@ -447,7 +448,14 @@ DOMPurify.addHook('afterSanitizeAttributes', (node) => {
 
 const auth = useAuthStore()
 const { themePreference, setTheme } = useTheme()
+const { t } = useI18n()
 
+const activeTheme = computed(() => {
+  if (themePreference.value === 'system') {
+    return typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  }
+  return themePreference.value
+})
 
 type AssistantMode = 'hub' | 'help' | 'ai'
 type Message = {
@@ -493,15 +501,19 @@ marked.setOptions({
 
 
 const parseMarkdown = (rawText: string) => {
+  if (!rawText) return ''
+
+  // Defensive client-side stripping of reasoning tags before rendering
   let processed = rawText
-  
-  processed = processed.replace(/<think>([\s\S]*?)<\/think>/g, '<details class="thinking-block"><summary>Thinking Process...</summary>\n\n$1\n\n</details>')
-  
-  if (processed.includes('<think>') && !processed.includes('</think>')) {
-      processed = processed.replace(/<think>([\s\S]*)$/g, '<details class="thinking-block" open><summary>Thinking...</summary>\n\n$1\n\n</details>')
-  }
-  
-  return marked.parse(processed) as string
+    .replace(/<think>[\s\S]*?<\/think>/gi, '')
+    .replace(/<think>[\s\S]*$/gi, '')
+    .replace(/(?:^|\n)(?:[*#_`\s]*)(?:Thinking [Pp]rocess|Thinking|Chain of [Tt]hought|Chain-of-[Tt]hought|Analysis)(?:[*#_`\s]*):?[\s\S]*?\n+(?:[*#_`\s]*)(?:Final Answer|Answer|Response|Reply|Solution):?\s*/gi, '\n')
+    .replace(/^(?:[*#_`\s]*)(?:Thinking [Pp]rocess|Thinking|Chain of [Tt]hought|Chain-of-[Tt]hought|Analysis)(?:[*#_`\s]*):?[\s\S]*?(?=\n\n|\Z)/gi, '')
+    .replace(/^(?:[*#_`\s]*)(?:Final Answer|Answer|Response|Reply)\s*:\s*[*#_`\s]*/gi, '')
+    .trim()
+
+  const html = marked.parse(processed) as string
+  return DOMPurify.sanitize(html)
 }
 
 
@@ -610,16 +622,16 @@ const contextualFaqs = computed(() => {
   ) {
     return [
       {
-        q: 'How does Study Mode work?',
-        a: 'Study Mode lets you read the Smart Adama content, track your progress, and ask the assistant about the material you are viewing.',
+        q: t('assistant.faqs.study_1_q'),
+        a: t('assistant.faqs.study_1_a'),
       },
       {
-        q: 'How do chapter quizzes work?',
-        a: 'Chapter quizzes are used to assess your understanding. Your progress and achievement state are updated from the learning system.',
+        q: t('assistant.faqs.study_2_q'),
+        a: t('assistant.faqs.study_2_a'),
       },
       {
-        q: 'Why might my progress not appear immediately?',
-        a: 'Progress is tied to the learning actions recorded by the application. If a change does not appear, refresh the page and confirm that the action was completed successfully.',
+        q: t('assistant.faqs.study_3_q'),
+        a: t('assistant.faqs.study_3_a'),
       },
     ]
   }
@@ -627,16 +639,16 @@ const contextualFaqs = computed(() => {
   if (path.includes('/dashboard')) {
     return [
       {
-        q: 'What does my learning progress show?',
-        a: 'The dashboard summarizes your completed chapters, overall progress, quiz performance, learning streak, and achievements.',
+        q: t('assistant.faqs.dash_1_q'),
+        a: t('assistant.faqs.dash_1_a'),
       },
       {
-        q: 'How do I earn badges?',
-        a: 'Badges are connected to learning milestones such as completing chapters, maintaining consistency, and performing well in assessments.',
+        q: t('assistant.faqs.dash_2_q'),
+        a: t('assistant.faqs.dash_2_a'),
       },
       {
-        q: 'What should I study next?',
-        a: 'Use the Continue Learning section on the dashboard to return to the next chapter in your learning journey.',
+        q: t('assistant.faqs.dash_3_q'),
+        a: t('assistant.faqs.dash_3_a'),
       },
     ]
   }
@@ -644,32 +656,32 @@ const contextualFaqs = computed(() => {
   if (path.includes('/profile')) {
     return [
       {
-        q: 'How do I change my profile picture?',
-        a: 'Open your profile settings and use the profile picture control to upload a new image.',
+        q: t('assistant.faqs.prof_1_q'),
+        a: t('assistant.faqs.prof_1_a'),
       },
       {
-        q: 'How does dark mode work?',
-        a: 'Appearance is controlled through the application-wide theme system, so the selected theme is shared across Smart Adama pages.',
+        q: t('assistant.faqs.prof_2_q'),
+        a: t('assistant.faqs.prof_2_a'),
       },
       {
-        q: 'Where can I update my account information?',
-        a: 'Use the Personal Information section of your profile page to update your account details.',
+        q: t('assistant.faqs.prof_3_q'),
+        a: t('assistant.faqs.prof_3_a'),
       },
     ]
   }
 
   return [
     {
-      q: 'How do I get started?',
-      a: 'Open the Dashboard to see your progress, or go to Study to begin learning from the Smart Adama content.',
+      q: t('assistant.faqs.gen_1_q'),
+      a: t('assistant.faqs.gen_1_a'),
     },
     {
-      q: 'How does the assistant work?',
-      a: 'The assistant receives the current route and your conversation history so it can provide more relevant answers within the application.',
+      q: t('assistant.faqs.gen_2_q'),
+      a: t('assistant.faqs.gen_2_a'),
     },
     {
-      q: 'Where can I change my account settings?',
-      a: 'Open your Profile page from the navigation bar to manage your profile, security, preferences, and appearance.',
+      q: t('assistant.faqs.gen_3_q'),
+      a: t('assistant.faqs.gen_3_a'),
     },
   ]
 })
@@ -683,32 +695,32 @@ const suggestedPrompts = computed(() => {
     path.includes('/chapter')
   ) {
     return [
-      'Summarize this chapter',
-      'Explain the key concepts',
-      'Quiz me on this topic',
+      t('assistant.prompts.study_1'),
+      t('assistant.prompts.study_2'),
+      t('assistant.prompts.study_3'),
     ]
   }
 
   if (path.includes('/dashboard')) {
     return [
-      'How can I improve my score?',
-      'What should I study next?',
-      'Explain my progress',
+      t('assistant.prompts.dash_1'),
+      t('assistant.prompts.dash_2'),
+      t('assistant.prompts.dash_3'),
     ]
   }
 
   if (path.includes('/profile')) {
     return [
-      'How do I improve my profile?',
-      'How does dark mode work?',
-      'Help me manage my account',
+      t('assistant.prompts.prof_1'),
+      t('assistant.prompts.prof_2'),
+      t('assistant.prompts.prof_3'),
     ]
   }
 
   return [
-    'What is Smart Adama?',
-    'How does the platform work?',
-    'What should I explore first?',
+    t('assistant.prompts.gen_1'),
+    t('assistant.prompts.gen_2'),
+    t('assistant.prompts.gen_3'),
   ]
 })
 
@@ -1115,11 +1127,11 @@ const copyMessage = async (
 
 const handleClickOutside = (event: MouseEvent) => {
   if (!isOpen.value || isDragging.value) return
-  
+
   const path = event.composedPath()
   const clickedInsidePanel = panelRef.value && path.includes(panelRef.value)
   const clickedToggleButton = toggleButtonRef.value && path.includes(toggleButtonRef.value)
-  
+
   if (!clickedInsidePanel && !clickedToggleButton) {
     isOpen.value = false
   }
@@ -1196,50 +1208,96 @@ onUnmounted(() => {
 
 <style scoped>
 /* ============================================================
-   COMPONENT ROOT
+   COMPONENT ROOT & THEME TOKENS INHERITANCE
 ============================================================ */
 
 .global-assistant {
-  --assistant-brand: #395886;
-  --assistant-brand-dark: #304B73;
-  --assistant-brand-light: #638ECB;
-  --assistant-brand-soft: #8AAEE0;
-  --assistant-brand-pale: #B1C9EF;
+  /* Inherit from application active theme tokens (style.css) */
+  --assistant-brand: var(--color-brand-500, #395886);
+  --assistant-brand-dark: #2A4365;
+  --assistant-brand-light: var(--color-brand-400, #638ECB);
+  --assistant-brand-soft: var(--color-brand-300, #8AAEE0);
+  --assistant-brand-pale: var(--color-brand-200, #B1C9EF);
   --assistant-brand-faint: rgba(99, 142, 203, 0.12);
-  --assistant-page: #F0F3FA;
-  --assistant-border: rgba(57, 88, 134, 0.14);
-  --assistant-border-strong: rgba(57, 88, 134, 0.26);
-  --assistant-surface: rgba(255, 255, 255, 0.85);
-  --assistant-surface-soft: rgba(240, 243, 250, 0.70);
-  --assistant-surface-opaque: rgba(255, 255, 255, 0.92);
-  --assistant-surface-bg: linear-gradient(180deg, rgba(240,243,250,0.40), rgba(240,243,250,0.72));
-  --assistant-code-bg: rgba(99,142,203,0.08);
-  --assistant-text: #14243B;
-  --assistant-muted: #64748B;
-  --assistant-faint: #94A3B8;
-  --assistant-shadow: 0 24px 70px rgba(15, 23, 42, 0.17);
-  --assistant-shadow-soft: 0 10px 35px rgba(15, 23, 42, 0.10);
+
+  --assistant-page: var(--sa-bg, #F0F3FA);
+  --assistant-surface: var(--sa-surface, #FFFFFF);
+  --assistant-surface-soft: var(--sa-surface-soft, #F8FAFC);
+  --assistant-surface-muted: var(--sa-surface-muted, #F1F5F9);
+  --assistant-surface-opaque: rgba(255, 255, 255, 0.95);
+  --assistant-surface-bg: var(--sa-surface-soft, #F8FAFC);
+  --assistant-code-bg: var(--sa-surface-muted, #F1F5F9);
+
+  --assistant-border: var(--sa-border, #E2E8F0);
+  --assistant-border-strong: var(--sa-border-strong, #CBD5E1);
+
+  --assistant-text: var(--sa-text, #0F172A);
+  --assistant-text-secondary: var(--sa-text-secondary, #475569);
+  --assistant-muted: var(--sa-text-muted, #64748B);
+  --assistant-faint: var(--sa-text-faint, #94A3B8);
+
+  --assistant-input-bg: var(--sa-input-bg, #FFFFFF);
+  --assistant-input-border: var(--sa-input-border, #E2E8F0);
+  --assistant-input-placeholder: var(--sa-input-placeholder, #94A3B8);
+
+  /* User Bubble Contrast: Navy #395886 with #FFFFFF text = 7.45:1 (WCAG AAA) */
+  --assistant-user-bubble-bg: #395886;
+  --assistant-user-bubble-text: #FFFFFF;
+
+  /* Assistant Bubble Contrast */
+  --assistant-ai-bubble-bg: var(--sa-surface, #FFFFFF);
+  --assistant-ai-bubble-text: var(--sa-text, #0F172A);
+  --assistant-ai-bubble-border: var(--sa-border, #E2E8F0);
+
+  --assistant-shadow: 0 20px 50px rgba(15, 23, 42, 0.14);
+  --assistant-shadow-soft: 0 4px 16px rgba(15, 23, 42, 0.08);
+
   position: relative;
   z-index: 1000;
 }
 
-:global(html.dark) {
-  --assistant-brand: #8AAEE0;
-  --assistant-brand-dark: #638ECB;
-  --assistant-brand-faint: rgba(177, 201, 239, 0.15);
-  --assistant-page: #08101C;
-  --assistant-border: rgba(255, 255, 255, 0.09);
-  --assistant-border-strong: rgba(177, 201, 239, 0.24);
-  --assistant-surface: rgba(11, 15, 25, 0.85);
-  --assistant-surface-soft: rgba(15, 23, 42, 0.70);
-  --assistant-surface-opaque: rgba(11, 15, 25, 0.92);
-  --assistant-surface-bg: linear-gradient(180deg, rgba(3,7,18,0.54), rgba(3,7,18,0.82));
-  --assistant-code-bg: #172337;
-  --assistant-text: #F8FAFC;
-  --assistant-muted: #94A3B8;
-  --assistant-faint: #64748B;
-  --assistant-shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
-  --assistant-shadow-soft: 0 10px 35px rgba(0, 0, 0, 0.28);
+/* Dark theme synchronization */
+.global-assistant[data-theme="dark"],
+.global-assistant.global-assistant--dark,
+:global(.dark) .global-assistant,
+:global([data-theme="dark"]) .global-assistant {
+  --assistant-brand: var(--color-brand-400, #638ECB);
+  --assistant-brand-dark: #1E3A8A;
+  --assistant-brand-light: var(--color-brand-300, #8AAEE0);
+  --assistant-brand-soft: var(--color-brand-200, #B1C9EF);
+  --assistant-brand-faint: rgba(99, 142, 203, 0.18);
+
+  --assistant-page: var(--sa-bg, #020617);
+  --assistant-surface: var(--sa-surface, #0F172A);
+  --assistant-surface-soft: var(--sa-surface-soft, #111827);
+  --assistant-surface-muted: var(--sa-surface-muted, #1E293B);
+  --assistant-surface-opaque: rgba(15, 23, 42, 0.95);
+  --assistant-surface-bg: #0B1220;
+  --assistant-code-bg: #1E293B;
+
+  --assistant-border: var(--sa-border, rgba(255, 255, 255, 0.08));
+  --assistant-border-strong: var(--sa-border-strong, rgba(255, 255, 255, 0.16));
+
+  --assistant-text: var(--sa-text, #F8FAFC);
+  --assistant-text-secondary: var(--sa-text-secondary, #CBD5E1);
+  --assistant-muted: var(--sa-text-muted, #94A3B8);
+  --assistant-faint: var(--sa-text-faint, #64748B);
+
+  --assistant-input-bg: var(--sa-input-bg, #0B1220);
+  --assistant-input-border: var(--sa-input-border, #334155);
+  --assistant-input-placeholder: var(--sa-input-placeholder, #64748B);
+
+  /* User Bubble Contrast: Vibrant Blue #2563EB with #FFFFFF text = 4.56:1 (WCAG AA) */
+  --assistant-user-bubble-bg: #2563EB;
+  --assistant-user-bubble-text: #FFFFFF;
+
+  /* Assistant Bubble Contrast */
+  --assistant-ai-bubble-bg: var(--sa-surface, #0F172A);
+  --assistant-ai-bubble-text: var(--sa-text, #F8FAFC);
+  --assistant-ai-bubble-border: var(--sa-border, rgba(255, 255, 255, 0.1));
+
+  --assistant-shadow: 0 24px 80px rgba(0, 0, 0, 0.52);
+  --assistant-shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.32);
 }
 
 
@@ -1254,7 +1312,7 @@ onUnmounted(() => {
   bottom: 24px;
   transform: translateX(-50%);
   width: min(840px, calc(100vw - 32px));
-  max-height: calc(100vh - 120px);
+  max-height: calc(100dvh - 120px);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -1272,7 +1330,7 @@ onUnmounted(() => {
   bottom: 10px;
   transform: none;
   width: auto;
-  max-height: calc(100vh - 20px);
+  max-height: calc(100dvh - 20px);
   border-radius: 24px;
 }
 
@@ -1314,9 +1372,9 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 13px 14px;
+  padding: 14px 16px;
   border-bottom: 1px solid var(--assistant-border);
-  background: color-mix(in srgb, var(--assistant-surface) 92%, transparent);
+  background: var(--assistant-surface);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
 }
@@ -1325,25 +1383,25 @@ onUnmounted(() => {
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 10px;
 }
 
 .assistant-brand-mark {
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  border: 1px solid rgba(99, 142, 203, 0.22);
-  border-radius: 11px;
-  color: #638ECB;
-  background: rgba(99, 142, 203, 0.08);
+  border: 1px solid var(--assistant-border);
+  border-radius: 12px;
+  color: var(--assistant-brand);
+  background: var(--assistant-brand-faint);
 }
 
 .assistant-brand-mark svg {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
 }
 
 .assistant-title-wrap {
@@ -1354,44 +1412,44 @@ onUnmounted(() => {
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
 }
 
 .assistant-title-wrap h2 {
   overflow: hidden;
   margin: 0;
   color: var(--assistant-text);
-  font-size: 0.80rem;
-  line-height: 1.1;
-  font-weight: 800;
+  font-size: 0.95rem;
+  line-height: 1.25;
+  font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .assistant-title-wrap p {
-  margin: 3px 0 0;
+  margin: 2px 0 0;
   color: var(--assistant-muted);
-  font-size: 0.48rem;
-  line-height: 1.35;
+  font-size: 0.75rem;
+  line-height: 1.4;
 }
 
 .context-badge {
   flex: 0 0 auto;
-  padding: 3px 6px;
-  border: 1px solid rgba(99, 142, 203, 0.20);
+  padding: 3px 8px;
+  border: 1px solid var(--assistant-border);
   border-radius: 999px;
-  color: #638ECB;
-  background: rgba(99, 142, 203, 0.07);
-  font-size: 0.39rem;
-  font-weight: 800;
-  letter-spacing: 0.07em;
+  color: var(--assistant-brand);
+  background: var(--assistant-brand-faint);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
 }
 
 .assistant-header-actions {
   display: flex;
   align-items: center;
-  gap: 3px;
+  gap: 6px;
   flex: 0 0 auto;
 }
 
@@ -1410,33 +1468,33 @@ onUnmounted(() => {
 }
 
 .icon-button {
-  width: 31px;
-  height: 31px;
-  border-radius: 9px;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
 }
 
 .icon-button:hover,
 .header-action:hover {
   color: var(--assistant-text);
-  background: var(--assistant-surface-soft);
+  background: var(--assistant-surface-muted);
 }
 
 .icon-button svg {
-  width: 15px;
-  height: 15px;
+  width: 17px;
+  height: 17px;
 }
 
 .header-action {
-  gap: 4px;
-  padding: 7px 8px;
+  gap: 5px;
+  padding: 6px 10px;
   border-radius: 8px;
-  font-size: 0.45rem;
-  font-weight: 800;
+  font-size: 0.8rem;
+  font-weight: 600;
 }
 
 .header-action svg {
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 14px;
 }
 
 
@@ -1457,7 +1515,7 @@ onUnmounted(() => {
 ============================================================ */
 
 .hub-body {
-  padding: 14px;
+  padding: 16px;
   overflow-y: auto;
 }
 
@@ -1472,7 +1530,7 @@ onUnmounted(() => {
   padding: 18px;
   border: 1px solid var(--assistant-border);
   border-radius: 18px;
-  background: linear-gradient(135deg, rgba(57, 88, 134, 0.97), rgba(99, 142, 203, 0.96));
+  background: linear-gradient(135deg, var(--color-brand-500, #395886), var(--color-brand-400, #638ECB));
   color: white;
 }
 
@@ -1489,7 +1547,7 @@ onUnmounted(() => {
   position: absolute;
   left: 50%;
   top: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.21);
+  border: 1px solid rgba(255, 255, 255, 0.25);
   border-radius: 50%;
   transform: translate(-50%, -50%);
 }
@@ -1502,7 +1560,7 @@ onUnmounted(() => {
 .hub-orbit--two {
   width: 68px;
   height: 68px;
-  border-color: rgba(255, 255, 255, 0.28);
+  border-color: rgba(255, 255, 255, 0.35);
 }
 
 .hub-core {
@@ -1513,15 +1571,15 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(255, 255, 255, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.25);
   border-radius: 13px;
   color: #D5DEEF;
-  background: rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .hub-core svg {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
 }
 
 .hub-copy {
@@ -1531,38 +1589,38 @@ onUnmounted(() => {
 
 .section-kicker {
   display: block;
-  color: #8AAEE0;
-  font-size: 0.43rem;
-  font-weight: 800;
-  letter-spacing: 0.14em;
+  color: var(--assistant-brand-soft);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .hub-copy .section-kicker {
-  color: #B1C9EF;
+  color: #D5DEEF;
 }
 
 .hub-copy h3 {
   margin: 6px 0 0;
   color: white;
-  font-size: 1.2rem;
-  line-height: 1.08;
-  font-weight: 800;
-  letter-spacing: -0.03em;
+  font-size: 1.25rem;
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .hub-copy p {
   margin: 6px 0 0;
-  color: rgba(255,255,255,0.74);
-  font-size: 0.52rem;
-  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.85rem;
+  line-height: 1.5;
 }
 
 .hub-actions {
   display: flex;
   flex-direction: column;
-  gap: 7px;
-  margin-top: 12px;
+  gap: 9px;
+  margin-top: 14px;
 }
 
 .hub-option,
@@ -1570,10 +1628,10 @@ onUnmounted(() => {
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   min-width: 0;
-  padding: 11px;
-  border-radius: 13px;
+  padding: 13px 14px;
+  border-radius: 14px;
   text-align: left;
   cursor: pointer;
   transition:
@@ -1596,19 +1654,19 @@ onUnmounted(() => {
 
 .option-icon,
 .ai-entry-icon {
-  width: 34px;
-  height: 34px;
+  width: 38px;
+  height: 38px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  border-radius: 10px;
+  border-radius: 11px;
 }
 
 .option-icon svg,
 .ai-entry-icon svg {
-  width: 17px;
-  height: 17px;
+  width: 19px;
+  height: 19px;
 }
 
 .option-icon--blue {
@@ -1617,12 +1675,8 @@ onUnmounted(() => {
 }
 
 .option-icon--soft {
-  color: var(--assistant-brand-soft);
-  background: var(--assistant-brand-faint);
-}
-
-:global(html.dark) .option-icon--soft {
   color: var(--assistant-brand);
+  background: var(--assistant-brand-faint);
 }
 
 .option-copy,
@@ -1634,26 +1688,24 @@ onUnmounted(() => {
   gap: 3px;
 }
 
-.option-copy strong,
-.ai-entry-copy strong {
+.option-copy strong {
   overflow: hidden;
   color: var(--assistant-text);
-  font-size: 0.56rem;
-  font-weight: 800;
+  font-size: 0.875rem;
+  font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.option-copy span,
-.ai-entry-copy span {
+.option-copy span {
   color: var(--assistant-muted);
-  font-size: 0.45rem;
+  font-size: 0.775rem;
   line-height: 1.45;
 }
 
 .option-arrow {
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 14px;
   flex: 0 0 auto;
   color: var(--assistant-faint);
 }
@@ -1663,47 +1715,50 @@ onUnmounted(() => {
   align-items: center;
   width: 100%;
   padding: 14px 18px;
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 16px;
-  background: #395886;
-  box-shadow: 0 10px 24px rgba(57, 88, 134, 0.18);
+  background: var(--color-brand-500, #395886);
+  box-shadow: 0 8px 24px rgba(57, 88, 134, 0.22);
   color: white;
   transition: 0.2s ease;
 }
 
 .ai-entry:hover {
   transform: translateY(-1px);
-  background: #304B73;
-  box-shadow: 0 14px 30px rgba(57, 88, 134, 0.22);
+  background: var(--assistant-brand-dark, #2A4365);
+  box-shadow: 0 12px 30px rgba(57, 88, 134, 0.28);
 }
 
 .ai-entry-icon {
   color: #D5DEEF;
-  background: rgba(255,255,255,0.10);
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .ai-entry-copy strong {
   color: white;
+  font-size: 0.95rem;
+  font-weight: 700;
 }
 
 .ai-entry-copy span {
   display: block;
-  font-size: 0.52rem;
+  font-size: 0.8rem;
   font-weight: 500;
   color: #D5DEEF;
   margin-top: 1px;
 }
 
 .ai-entry-key {
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(255,255,255,0.13);
-  border-radius: 6px;
-  color: rgba(255,255,255,0.72);
-  font-size: 0.47rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 7px;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.75rem;
+  font-weight: 600;
 }
 
 
@@ -1716,15 +1771,15 @@ onUnmounted(() => {
 }
 
 .help-intro {
-  padding: 16px 16px 9px;
+  padding: 16px 16px 10px;
 }
 
 .help-intro h3 {
   margin: 5px 0 0;
   color: var(--assistant-text);
-  font-size: 0.95rem;
-  line-height: 1.2;
-  font-weight: 800;
+  font-size: 1.05rem;
+  line-height: 1.3;
+  font-weight: 700;
   letter-spacing: -0.02em;
 }
 
@@ -1732,15 +1787,16 @@ onUnmounted(() => {
   min-height: 0;
   flex: 1;
   overflow-y: auto;
-  padding: 4px 16px 16px;
+  padding: 6px 16px 16px;
 }
 
 .faq-item {
-  margin-bottom: 7px;
+  margin-bottom: 8px;
   overflow: hidden;
   border: 1px solid var(--assistant-border);
   border-radius: 12px;
   background: var(--assistant-surface);
+  transition: border-color 0.16s ease;
 }
 
 .faq-item[open] {
@@ -1752,10 +1808,10 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 11px 12px;
+  padding: 12px 14px;
   color: var(--assistant-text);
-  font-size: 0.56rem;
-  font-weight: 800;
+  font-size: 0.875rem;
+  font-weight: 600;
   line-height: 1.4;
   cursor: pointer;
   list-style: none;
@@ -1767,8 +1823,8 @@ onUnmounted(() => {
 }
 
 .faq-plus {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1776,7 +1832,7 @@ onUnmounted(() => {
   border-radius: 6px;
   color: var(--assistant-brand);
   background: var(--assistant-brand-faint);
-  font-size: 0.75rem;
+  font-size: 0.9rem;
   line-height: 1;
   transition: transform 0.18s ease;
 }
@@ -1786,25 +1842,25 @@ onUnmounted(() => {
 }
 
 .faq-answer {
-  padding: 0 12px 12px;
+  padding: 10px 14px 14px;
   border-top: 1px solid var(--assistant-border);
   color: var(--assistant-muted);
-  font-size: 0.53rem;
-  line-height: 1.65;
+  font-size: 0.825rem;
+  line-height: 1.6;
 }
 
 .help-footer {
   flex: 0 0 auto;
-  padding: 11px 16px 14px;
+  padding: 12px 16px 16px;
   border-top: 1px solid var(--assistant-border);
   background: var(--assistant-surface);
 }
 
 .help-footer > span {
   display: block;
-  margin-bottom: 7px;
+  margin-bottom: 8px;
   color: var(--assistant-muted);
-  font-size: 0.46rem;
+  font-size: 0.775rem;
   text-align: center;
 }
 
@@ -1813,35 +1869,32 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 10px 11px;
-  border: 1px solid var(--assistant-brand-faint);
-  border-radius: 10px;
+  gap: 7px;
+  padding: 11px 12px;
+  border: 1px solid var(--assistant-border);
+  border-radius: 11px;
   color: var(--assistant-brand);
   background: var(--assistant-brand-faint);
-  font-size: 0.52rem;
-  font-weight: 800;
+  font-size: 0.825rem;
+  font-weight: 700;
   cursor: pointer;
   transition: background 0.18s ease, transform 0.18s ease;
-}
-
-:global(html.dark) .help-ai-button {
-  color: var(--assistant-brand);
 }
 
 .help-ai-button:hover {
   transform: translateY(-1px);
   background: var(--assistant-brand-faint);
+  border-color: var(--assistant-border-strong);
 }
 
 .help-ai-button svg {
-  width: 12px;
-  height: 12px;
+  width: 15px;
+  height: 15px;
 }
 
 
 /* ============================================================
-   CHAT
+   CHAT & BUBBLES
 ============================================================ */
 
 .chat-body {
@@ -1863,13 +1916,13 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 22px 12px 16px;
+  padding: 24px 14px 18px;
   text-align: center;
 }
 
 .chat-empty-mark {
-  width: 54px;
-  height: 54px;
+  width: 56px;
+  height: 56px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1881,43 +1934,43 @@ onUnmounted(() => {
 }
 
 .chat-empty-mark svg {
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
 }
 
 .chat-empty h3 {
-  max-width: 250px;
+  max-width: 300px;
   margin: 6px 0 0;
   color: var(--assistant-text);
-  font-size: 1rem;
-  line-height: 1.2;
-  font-weight: 800;
-  letter-spacing: -0.025em;
+  font-size: 1.15rem;
+  line-height: 1.25;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .chat-empty p {
-  max-width: 280px;
-  margin: 7px auto 13px;
+  max-width: 320px;
+  margin: 8px auto 16px;
   color: var(--assistant-muted);
-  font-size: 0.52rem;
-  line-height: 1.65;
+  font-size: 0.875rem;
+  line-height: 1.6;
 }
 
 .suggestion-grid {
-  width: min(100%, 330px);
+  width: min(100%, 380px);
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 6px;
+  gap: 8px;
 }
 
 .suggestion-chip {
   min-width: 0;
-  padding: 9px 10px;
+  padding: 10px 12px;
   border: 1px solid var(--assistant-border);
-  border-radius: 10px;
+  border-radius: 11px;
   color: var(--assistant-text);
   background: var(--assistant-surface);
-  font-size: 0.47rem;
+  font-size: 0.8125rem;
   line-height: 1.4;
   text-align: left;
   cursor: pointer;
@@ -1936,8 +1989,8 @@ onUnmounted(() => {
 .message-row {
   display: flex;
   align-items: flex-end;
-  gap: 7px;
-  margin-bottom: 13px;
+  gap: 8px;
+  margin-bottom: 14px;
 }
 
 .message-row--user {
@@ -1949,54 +2002,55 @@ onUnmounted(() => {
 }
 
 .message-avatar {
-  width: 27px;
-  height: 27px;
+  width: 30px;
+  height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
   border: 1px solid var(--assistant-border);
-  border-radius: 9px;
+  border-radius: 10px;
   color: var(--assistant-brand);
   background: var(--assistant-brand-faint);
 }
 
 .message-avatar svg {
-  width: 13px;
-  height: 13px;
+  width: 15px;
+  height: 15px;
 }
 
 .message-bubble {
   position: relative;
-  max-width: min(84%, 330px);
+  max-width: min(85%, 480px);
   min-width: 0;
-  padding: 10px 11px;
-  border-radius: 14px;
+  padding: 11px 15px;
+  border-radius: 16px;
 }
 
 .message-bubble--user {
   border-bottom-right-radius: 4px;
-  color: white;
-  background: var(--assistant-brand);
-  box-shadow: 0 7px 18px rgba(0,0,0,0.1);
+  color: var(--assistant-user-bubble-text);
+  background: var(--assistant-user-bubble-bg);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
 }
 
 .message-bubble--assistant {
-  border: 1px solid var(--assistant-border);
+  border: 1px solid var(--assistant-ai-bubble-border);
   border-bottom-left-radius: 4px;
-  color: var(--assistant-text);
-  background: var(--assistant-surface);
+  color: var(--assistant-ai-bubble-text);
+  background: var(--assistant-ai-bubble-bg);
   box-shadow: var(--assistant-shadow-soft);
 }
 
 .message-content {
-  font-size: 0.56rem;
-  line-height: 1.65;
+  font-size: 0.9375rem;
+  line-height: 1.6;
   word-break: break-word;
 }
 
 .message-content--user {
   white-space: pre-wrap;
+  color: var(--assistant-user-bubble-text);
 }
 
 .message-actions {
@@ -2016,41 +2070,41 @@ onUnmounted(() => {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 5px;
+  padding: 4px 6px;
   border: 0;
   border-radius: 6px;
   color: var(--assistant-faint);
   background: transparent;
-  font-size: 0.41rem;
-  font-weight: 700;
+  font-size: 0.75rem;
+  font-weight: 600;
   cursor: pointer;
 }
 
 .message-actions button:hover {
   color: var(--assistant-text);
-  background: var(--assistant-surface-soft);
+  background: var(--assistant-surface-muted);
 }
 
 .message-actions svg {
-  width: 10px;
-  height: 10px;
+  width: 12px;
+  height: 12px;
 }
 
 .thinking-bubble {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 10px 11px;
+  gap: 5px;
+  padding: 11px 14px;
   border: 1px solid var(--assistant-border);
-  border-radius: 14px;
+  border-radius: 16px;
   border-bottom-left-radius: 4px;
   background: var(--assistant-surface);
   box-shadow: var(--assistant-shadow-soft);
 }
 
 .thinking-bubble span {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: var(--assistant-brand);
   animation: assistant-bounce 1.1s ease-in-out infinite;
@@ -2065,11 +2119,11 @@ onUnmounted(() => {
 }
 
 .thinking-bubble em {
-  margin-left: 4px;
+  margin-left: 6px;
   color: var(--assistant-muted);
-  font-size: 0.43rem;
+  font-size: 0.8125rem;
   font-style: normal;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 @keyframes assistant-bounce {
@@ -2090,57 +2144,32 @@ onUnmounted(() => {
 
 .composer-wrap {
   flex: 0 0 auto;
-  padding: 10px 12px calc(12px + env(safe-area-inset-bottom));
+  padding: 12px 14px calc(14px + env(safe-area-inset-bottom));
   border-top: 1px solid var(--assistant-border);
   background: var(--assistant-surface);
 }
 
 .composer-shell {
   position: relative;
-  padding: 8px;
+  padding: 10px 12px;
   border-radius: 16px;
+  border: 1px solid var(--assistant-input-border);
   background: var(--assistant-surface-soft);
   z-index: 1;
   overflow: hidden;
+  transition: border-color 0.2s ease;
 }
 
-.composer-shell::before {
-  content: '';
-  position: absolute;
-  top: -100%;
-  left: -100%;
-  width: 300%;
-  height: 300%;
-  z-index: -2;
-  background: conic-gradient(from 0deg, transparent 65%, var(--assistant-brand) 85%, var(--assistant-brand-dark) 100%);
-  animation: composer-spin 2.5s linear infinite;
-  opacity: 0.2;
-  transition: opacity 0.25s ease;
-}
-
-.composer-shell::after {
-  content: '';
-  position: absolute;
-  inset: 1.5px;
-  border-radius: 14.5px;
-  background: var(--assistant-surface);
-  z-index: -1;
-}
-
-.composer-shell:focus-within::before {
-  opacity: 0.9;
-}
-
-@keyframes composer-spin {
-  100% { transform: rotate(360deg); }
+.composer-shell:focus-within {
+  border-color: var(--assistant-brand);
 }
 
 .composer-shell textarea {
   position: relative;
   z-index: 1;
   width: 100%;
-  min-height: 39px;
-  max-height: 132px;
+  min-height: 42px;
+  max-height: 140px;
   display: block;
   resize: none;
   overflow-y: auto;
@@ -2149,12 +2178,13 @@ onUnmounted(() => {
   background: transparent;
   color: var(--assistant-text);
   font-family: inherit;
-  font-size: 0.57rem;
-  line-height: 1.55;
+  font-size: 0.9375rem;
+  line-height: 1.5;
 }
 
 .composer-shell textarea::placeholder {
-  color: var(--assistant-faint);
+  color: var(--assistant-input-placeholder);
+  font-size: 0.9375rem;
 }
 
 .composer-bottom {
@@ -2162,16 +2192,16 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin-top: 4px;
+  margin-top: 6px;
 }
 
 .composer-hint {
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   color: var(--assistant-faint);
-  font-size: 0.39rem;
+  font-size: 0.75rem;
 }
 
 .composer-context-icon {
@@ -2180,21 +2210,21 @@ onUnmounted(() => {
 }
 
 .composer-context-icon svg {
-  width: 11px;
-  height: 11px;
+  width: 13px;
+  height: 13px;
 }
 
 .send-button {
-  width: 31px;
-  height: 31px;
+  width: 34px;
+  height: 34px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
   border: 0;
-  border-radius: 9px;
-  color: var(--assistant-brand);
-  background: var(--assistant-brand-faint);
+  border-radius: 10px;
+  color: var(--assistant-muted);
+  background: var(--assistant-surface-muted);
   cursor: pointer;
   transition:
     transform 0.18s ease,
@@ -2204,13 +2234,13 @@ onUnmounted(() => {
 
 .send-button:disabled {
   cursor: not-allowed;
-  opacity: 0.76;
+  opacity: 0.6;
 }
 
 .send-button--active {
-  color: white;
+  color: #FFFFFF;
   background: var(--assistant-brand);
-  box-shadow: 0 7px 18px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .send-button--active:hover {
@@ -2219,8 +2249,8 @@ onUnmounted(() => {
 }
 
 .send-button svg {
-  width: 15px;
-  height: 15px;
+  width: 17px;
+  height: 17px;
 }
 
 
@@ -2240,7 +2270,7 @@ onUnmounted(() => {
   border-radius: 18px;
   color: var(--assistant-brand);
   background: var(--assistant-surface-opaque);
-  box-shadow: 0 14px 35px rgba(0,0,0,0.1);
+  box-shadow: var(--assistant-shadow);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
   cursor: grab;
@@ -2253,12 +2283,6 @@ onUnmounted(() => {
     color 0.22s ease;
 }
 
-:global(html.dark) .assistant-toggle {
-  color: var(--assistant-brand);
-  background: var(--assistant-surface-opaque);
-  border-color: var(--assistant-border);
-}
-
 @media (hover: none) and (pointer: coarse) {
   .assistant-toggle:hover {
     transform: scale(1);
@@ -2267,7 +2291,7 @@ onUnmounted(() => {
 
 .assistant-toggle:hover {
   transform: translateY(-2px);
-  box-shadow: 0 18px 42px rgba(0,0,0,0.15);
+  box-shadow: var(--assistant-shadow);
 }
 
 .assistant-toggle--open {
@@ -2284,16 +2308,16 @@ onUnmounted(() => {
 .toggle-icon {
   position: relative;
   z-index: 2;
-  width: 23px;
-  height: 23px;
+  width: 24px;
+  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .toggle-icon svg {
-  width: 23px;
-  height: 23px;
+  width: 24px;
+  height: 24px;
 }
 
 .toggle-halo {
@@ -2321,17 +2345,17 @@ onUnmounted(() => {
   top: 50%;
   z-index: 10;
   transform: translateY(-50%);
-  padding: 7px 9px;
+  padding: 8px 12px;
   border-radius: 8px;
   color: white;
-  background: var(--assistant-brand-dark);
-  font-size: 0.48rem;
-  font-weight: 800;
+  background: var(--assistant-brand);
+  font-size: 0.75rem;
+  font-weight: 700;
   white-space: nowrap;
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.16s ease;
-  box-shadow: 0 8px 22px rgba(0,0,0,0.15);
+  box-shadow: var(--assistant-shadow-soft);
 }
 
 .assistant-toggle:hover .toggle-tooltip {
@@ -2352,7 +2376,8 @@ onUnmounted(() => {
 ============================================================ */
 
 .ai-formatted-response :deep(p) {
-  margin: 0 0 0.62rem;
+  margin: 0 0 0.75rem;
+  line-height: 1.6;
 }
 
 .ai-formatted-response :deep(p:last-child) {
@@ -2361,17 +2386,13 @@ onUnmounted(() => {
 
 .ai-formatted-response :deep(strong) {
   color: var(--assistant-brand);
-  font-weight: 800;
-}
-
-:global(html.dark) .ai-formatted-response :deep(strong) {
-  color: var(--assistant-brand);
+  font-weight: 700;
 }
 
 .ai-formatted-response :deep(ul),
 .ai-formatted-response :deep(ol) {
-  margin: 0.45rem 0 0.65rem;
-  padding-left: 1.1rem;
+  margin: 0.5rem 0 0.75rem;
+  padding-left: 1.4rem;
 }
 
 .ai-formatted-response :deep(ul) {
@@ -2383,52 +2404,74 @@ onUnmounted(() => {
 }
 
 .ai-formatted-response :deep(li) {
-  margin-bottom: 0.22rem;
+  margin-bottom: 0.35rem;
+  line-height: 1.55;
 }
 
 .ai-formatted-response :deep(li::marker) {
   color: var(--assistant-brand);
+  font-weight: 700;
 }
 
 .ai-formatted-response :deep(code) {
-  padding: 0.12rem 0.28rem;
-  border-radius: 4px;
+  padding: 0.15rem 0.35rem;
+  border-radius: 5px;
   background: var(--assistant-brand-faint);
-  color: var(--assistant-brand);
+  color: var(--assistant-text);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 0.88em;
-}
-
-:global(html.dark) .ai-formatted-response :deep(code) {
-  color: var(--assistant-brand);
-  background: var(--assistant-brand-faint);
+  font-size: 0.85em;
+  border: 1px solid var(--assistant-border);
 }
 
 .ai-formatted-response :deep(pre) {
-  margin: 0.65rem 0;
+  margin: 0.75rem 0;
   overflow-x: auto;
-  padding: 0.8rem;
-  border-radius: 9px;
+  padding: 0.85rem 1rem;
+  border-radius: 10px;
   background: var(--assistant-code-bg);
-  color: #E2E8F0;
+  border: 1px solid var(--assistant-border);
+  color: var(--assistant-text);
+  font-size: 0.85rem;
+  line-height: 1.5;
 }
 
 .ai-formatted-response :deep(pre code) {
   padding: 0;
+  border: none;
   background: transparent;
   color: inherit;
+  font-size: inherit;
 }
 
 .ai-formatted-response :deep(h1),
 .ai-formatted-response :deep(h2),
 .ai-formatted-response :deep(h3) {
-  margin: 0.75rem 0 0.4rem;
+  margin: 0.85rem 0 0.45rem;
   color: var(--assistant-text);
-  font-weight: 800;
+  font-weight: 700;
+}
+
+.ai-formatted-response :deep(h1) {
+  font-size: 1.15rem;
+}
+
+.ai-formatted-response :deep(h2) {
+  font-size: 1.05rem;
 }
 
 .ai-formatted-response :deep(h3) {
-  font-size: 0.7rem;
+  font-size: 0.95rem;
+}
+
+.ai-formatted-response :deep(a) {
+  color: var(--assistant-brand);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font-weight: 600;
+}
+
+.ai-formatted-response :deep(a:hover) {
+  opacity: 0.85;
 }
 
 
@@ -2440,21 +2483,32 @@ onUnmounted(() => {
 .faq-list,
 .hub-body {
   scrollbar-width: thin;
-  scrollbar-color: var(--assistant-border) transparent;
+  scrollbar-color: var(--assistant-border-strong) transparent;
 }
 
 .chat-scroll::-webkit-scrollbar,
 .faq-list::-webkit-scrollbar,
 .hub-body::-webkit-scrollbar {
-  width: 5px;
+  width: 6px;
 }
 
 .chat-scroll::-webkit-scrollbar-thumb,
 .faq-list::-webkit-scrollbar-thumb,
 .hub-body::-webkit-scrollbar-thumb {
   border-radius: 999px;
-  background: var(--assistant-border);
+  background: var(--assistant-border-strong);
 }
+
+.chat-scroll::-webkit-scrollbar-thumb:hover,
+.faq-list::-webkit-scrollbar-thumb:hover,
+.hub-body::-webkit-scrollbar-thumb:hover {
+  background: var(--assistant-muted);
+}
+
+
+/* ============================================================
+   THEME SWITCHER
+============================================================ */
 
 .theme-switcher {
   display: flex;
@@ -2466,12 +2520,14 @@ onUnmounted(() => {
 }
 
 .theme-btn {
-  font-size: 0.72rem;
-  font-weight: 700;
-  padding: 0.4rem 0.8rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.4rem 0.85rem;
   border-radius: 999px;
   color: var(--assistant-muted);
   background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
   transition: 0.2s ease;
 }
 
@@ -2482,7 +2538,8 @@ onUnmounted(() => {
 
 .theme-btn--active {
   background: var(--assistant-brand-faint);
-  color: var(--assistant-text);
+  color: var(--assistant-brand);
+  border-color: var(--assistant-border);
 }
 
 
@@ -2533,12 +2590,12 @@ onUnmounted(() => {
   }
 
   .hub-core svg {
-    width: 17px;
-    height: 17px;
+    width: 18px;
+    height: 18px;
   }
 
   .hub-copy h3 {
-    font-size: 1.03rem;
+    font-size: 1.05rem;
   }
 
   .suggestion-grid {
@@ -2546,7 +2603,20 @@ onUnmounted(() => {
   }
 
   .message-bubble {
-    max-width: 88%;
+    max-width: 90%;
+    padding: 10px 13px;
+  }
+
+  .message-content {
+    font-size: 0.9375rem;
+  }
+
+  .composer-shell textarea {
+    font-size: 0.9375rem;
+  }
+
+  .composer-shell textarea::placeholder {
+    font-size: 0.875rem;
   }
 
   .message-actions {
@@ -2568,29 +2638,5 @@ onUnmounted(() => {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
-}
-
-:deep(.thinking-block) {
-  margin: 8px 0;
-  padding: 8px 12px;
-  background-color: rgba(0,0,0,0.03);
-  border-left: 2px solid rgba(0,0,0,0.1);
-  border-radius: 4px;
-  font-size: 0.9em;
-  color: #64748b;
-}
-:global(html.dark) :deep(.thinking-block) {
-  background-color: rgba(255,255,255,0.05);
-  border-left-color: rgba(255,255,255,0.1);
-  color: #94a3b8;
-}
-:deep(.thinking-block summary) {
-  cursor: pointer;
-  font-weight: 500;
-  user-select: none;
-  opacity: 0.8;
-}
-:deep(.thinking-block summary:hover) {
-  opacity: 1;
 }
 </style>

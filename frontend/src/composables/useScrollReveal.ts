@@ -60,36 +60,89 @@ export function useScrollReveal(
 
 /**
  * Directive version — v-reveal — for declarative use in templates.
- *
- * Usage in main.ts:
- *   app.directive('reveal', scrollRevealDirective)
- *
- * Usage in template:
- *   <div v-reveal>...</div>
+ * Supports:
+ * - High performance fluid spring animations (cubic-bezier(0.16, 1, 0.3, 1))
+ * - Child stagger cascade via .reveal-child
+ * - Instant animation for elements already in viewport upon mount/refresh
+ * - Respects prefers-reduced-motion automatically
  */
 export const scrollRevealDirective = {
-  mounted(el: HTMLElement) {
+  mounted(el: HTMLElement, binding?: { value?: number | { delay?: number; distance?: number } }) {
     const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
-    el.style.opacity   = '0'
-    el.style.transform = 'translateY(16px)'
-    el.style.transition = 'opacity 0.4s var(--ease-out, ease-out), transform 0.4s var(--ease-out, ease-out)'
-
     if (prefersReduced) {
-      el.style.opacity   = '1'
+      el.style.opacity = '1'
       el.style.transform = 'none'
+      el.classList.add('is-revealed')
       return
     }
 
+    const customDelay = typeof binding?.value === 'number'
+      ? binding.value
+      : (binding?.value?.delay || 0)
+    const customDistance = (typeof binding?.value === 'object' && binding?.value?.distance)
+      ? binding.value.distance
+      : 24
+
+    const children = el.querySelectorAll<HTMLElement>('.reveal-child')
+
+    if (children.length > 0) {
+      // Container remains visible so children can stagger individually
+      el.style.opacity = '1'
+      el.style.transform = 'none'
+      children.forEach((child, idx) => {
+        child.style.opacity = '0'
+        child.style.transform = `translateY(${customDistance}px)`
+        child.style.willChange = 'opacity, transform'
+        child.style.transition = `opacity 0.65s cubic-bezier(0.16, 1, 0.3, 1), transform 0.65s cubic-bezier(0.16, 1, 0.3, 1)`
+        child.style.transitionDelay = `${customDelay + idx * 110}ms`
+      })
+    } else {
+      el.style.opacity = '0'
+      el.style.transform = `translateY(${customDistance}px)`
+      el.style.willChange = 'opacity, transform'
+      el.style.transition = 'opacity 0.65s cubic-bezier(0.16, 1, 0.3, 1), transform 0.65s cubic-bezier(0.16, 1, 0.3, 1)'
+      if (customDelay > 0) {
+        el.style.transitionDelay = `${customDelay}ms`
+      }
+    }
+
+    function revealElement() {
+      if (children.length > 0) {
+        children.forEach((child) => {
+          child.style.opacity = '1'
+          child.style.transform = 'translateY(0)'
+        })
+      } else {
+        el.style.opacity = '1'
+        el.style.transform = 'translateY(0)'
+      }
+      el.classList.add('is-revealed')
+    }
+
+    // If element is already in the viewport on initial mount/refresh, reveal smoothly with RAF
+    const rect = el.getBoundingClientRect()
+    if (rect.top < window.innerHeight - 20 && rect.bottom > 0) {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          revealElement()
+        })
+      })
+      return
+    }
+
+    // Otherwise, observe with IntersectionObserver as the user scrolls
     const obs = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
-          el.style.opacity   = '1'
-          el.style.transform = 'none'
+          revealElement()
           obs.unobserve(el)
         }
       },
-      { threshold: 0.1 },
+      {
+        threshold: 0.08,
+        rootMargin: '0px 0px -40px 0px',
+      },
     )
     obs.observe(el)
   },

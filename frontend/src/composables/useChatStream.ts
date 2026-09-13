@@ -1,37 +1,37 @@
-import { ref, type Ref } from 'vue'
+import { ref, computed } from 'vue'
 
 /**
  * SSE Event types
  */
-type SSEEvent = 'token' | 'complete' | 'activity' | 'error'
+export type SSEEvent = 'token' | 'complete' | 'activity' | 'error'
 
 /**
  * SSE Event payloads
  */
-interface TokenEvent {
+export interface TokenEvent {
   content: string
 }
 
-interface ActivityEvent {
+export interface ActivityEvent {
   stage: string
   message: string
 }
 
-interface CompleteEvent {
+export interface CompleteEvent {
   message_id: string
   grounded: boolean
   citations: Citation[]
   html_content?: string
 }
 
-interface ErrorEvent {
+export interface ErrorEvent {
   error: {
     code: string
     message: string
   }
 }
 
-interface Citation {
+export interface Citation {
   chunk_id: string
   chapter_title: string
   section_title: string
@@ -42,35 +42,49 @@ interface Citation {
 /**
  * Combined payload types
  */
-type SSEPayload = TokenEvent | CompleteEvent | ActivityEvent | ErrorEvent
+export type SSEPayload = TokenEvent | CompleteEvent | ActivityEvent | ErrorEvent
+
+export interface StreamRequestOptions {
+  url: string
+  token: string
+  payload: any
+  clientRequestId?: string
+  onToken?: (token: string) => void
+  onActivity?: (activity: ActivityEvent) => void
+  onDone?: (payload: CompleteEvent) => void
+  onError?: (error: ErrorEvent) => void
+}
 
 export function useChatStream() {
-  const streaming = ref(false)
+  const activeStreams = ref<Map<string, AbortController>>(new Map())
+  const streaming = computed(() => activeStreams.value.size > 0)
+
+  // Legacy state for backward compatibility
   const accumulatedText = ref('')
   const streamError = ref<string | null>(null)
   const activityPayload = ref<ActivityEvent | null>(null)
   const donePayload = ref<CompleteEvent | null>(null)
-  const abortController = ref<AbortController | null>(null)
 
-  async function stream(
-    url: string,
-    token: string,
-    content: string,
-    onToken?: (token: string) => void,
-    onDone?: (payload: CompleteEvent) => void,
-    onError?: (error: ErrorEvent) => void
-  ): Promise<void> {
-    if (abortController.value) {
-      abortController.value.abort()
-    }
+  async function streamRequest(options: StreamRequestOptions): Promise<void> {
+    const {
+      url,
+      token,
+      payload,
+      clientRequestId = crypto.randomUUID(),
+      onToken,
+      onActivity,
+      onDone,
+      onError,
+    } = options
 
-    abortController.value = new AbortController()
+    const controller = new AbortController()
+    // Trigger reactivity on map mutation
+    const newMap = new Map(activeStreams.value)
+    newMap.set(clientRequestId, controller)
+    activeStreams.value = newMap
 
-    streaming.value = true
-    accumulatedText.value = ''
-    streamError.value = null
-    activityPayload.value = null
-    donePayload.value = null
+    let streamAccumulated = ''
+    let isComplete = false
 
     try {
       const response = await fetch(url, {
@@ -80,8 +94,8 @@ export function useChatStream() {
           'Accept': 'text/event-stream',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ content }),
-        signal: abortController.value.signal,
+        body: JSON.stringify(payload),
+        signal: controller.signal,
       })
 
       if (!response.ok) {
@@ -106,14 +120,12 @@ export function useChatStream() {
 
         // Process blocks split by double newline (SSE standard)
         const events = buffer.split(/\n\n/)
-        
+
         if (done) {
-          // If the stream is done, treat whatever is left in the buffer as the final event
           events.push(events.pop() || '')
           buffer = ''
         } else {
-          // Keep incomplete block in buffer
-          buffer = events.pop() || '' 
+          buffer = events.pop() || ''
         }
 
         for (const eventBlock of events) {
@@ -140,29 +152,33 @@ export function useChatStream() {
 
           if (eventData) {
             if (eventType === 'token') {
-              accumulatedText.value += eventData.content
+              streamAccumulated += eventData.content
+              accumulatedText.value = streamAccumulated
               onToken?.(eventData.content)
             } else if (eventType === 'activity') {
               activityPayload.value = eventData
+              onActivity?.(eventData)
             } else if (eventType === 'complete') {
+              isComplete = true
               donePayload.value = eventData
               onDone?.(eventData)
             } else if (eventType === 'error') {
-              streamError.value = eventData.error?.message
+              streamError.value = eventData.error?.message || 'Stream error'
               onError?.(eventData)
             }
           }
         }
-        
+
         if (done) {
-          // If the stream finished without a complete event, synthesize one to prevent the text from vanishing
-          if (!donePayload.value && accumulatedText.value) {
+          // If the stream finished without an explicit complete event, synthesize one to preserve content
+          if (!isComplete && streamAccumulated) {
             const synthesizedComplete: CompleteEvent = {
               message_id: crypto.randomUUID(),
               grounded: false,
               citations: [],
-              html_content: accumulatedText.value
+              html_content: streamAccumulated,
             }
+            isComplete = true
             donePayload.value = synthesizedComplete
             onDone?.(synthesizedComplete)
           }
@@ -173,47 +189,97 @@ export function useChatStream() {
       if (error.name === 'AbortError') {
         return
       }
-      
-      if (error.message === 'Failed to fetch' || error.name === 'TypeError') {
-          streamError.value = 'Connection to AI timed out.'
-      } else {
-          streamError.value = error.message || 'Unknown error'
-      }
+
+      const errorMessage = (error.message === 'Failed to fetch' || error.name === 'TypeError')
+        ? 'Connection to AI timed out.'
+        : (error.message || 'Unknown error')
+
+      streamError.value = errorMessage
+
       // If we already received partial text before the error, synthesize a complete event to preserve it
-      if (accumulatedText.value && !donePayload.value) {
+      if (streamAccumulated && !isComplete) {
         const synthesizedComplete: CompleteEvent = {
           message_id: crypto.randomUUID(),
           grounded: false,
           citations: [],
-          html_content: accumulatedText.value
+          html_content: streamAccumulated,
         }
+        isComplete = true
         donePayload.value = synthesizedComplete
         onDone?.(synthesizedComplete)
       }
 
-      onError?.({ error: { code: 'STREAM_ERROR', message: streamError.value } })
+      onError?.({ error: { code: 'STREAM_ERROR', message: errorMessage } })
     } finally {
-      streaming.value = false
+      const updatedMap = new Map(activeStreams.value)
+      updatedMap.delete(clientRequestId)
+      activeStreams.value = updatedMap
+    }
+  }
+
+  // Legacy stream wrapper for single-stream usage
+  async function stream(
+    url: string,
+    token: string,
+    payload: any,
+    onToken?: (token: string) => void,
+    onDone?: (payload: CompleteEvent) => void,
+    onError?: (error: ErrorEvent) => void
+  ): Promise<void> {
+    const defaultRequestId = 'legacy-default'
+    cancelStream(defaultRequestId)
+
+    accumulatedText.value = ''
+    streamError.value = null
+    activityPayload.value = null
+    donePayload.value = null
+
+    return streamRequest({
+      url,
+      token,
+      payload,
+      clientRequestId: defaultRequestId,
+      onToken,
+      onDone,
+      onError,
+    })
+  }
+
+  function cancelStream(clientRequestId?: string) {
+    if (clientRequestId) {
+      const controller = activeStreams.value.get(clientRequestId)
+      if (controller) {
+        controller.abort()
+        const updatedMap = new Map(activeStreams.value)
+        updatedMap.delete(clientRequestId)
+        activeStreams.value = updatedMap
+      }
+    } else {
+      for (const controller of activeStreams.value.values()) {
+        controller.abort()
+      }
+      activeStreams.value = new Map()
     }
   }
 
   function cancel() {
-    if (abortController.value) {
-      abortController.value.abort()
-    }
+    cancelStream()
   }
 
   return {
     streaming,
+    activeStreams,
     accumulatedText,
     streamError,
     activityPayload,
     donePayload,
     stream,
+    streamRequest,
+    cancelStream,
     cancel,
   }
 }
 
 // ChatMessageStreamDone is an alias for CompleteEvent — exported so stores can import it
 export type ChatMessageStreamDone = CompleteEvent
-export type { SSEEvent, TokenEvent as DeltaEvent, CompleteEvent as DoneEvent, ErrorEvent, Citation }
+export type { TokenEvent as DeltaEvent, CompleteEvent as DoneEvent }

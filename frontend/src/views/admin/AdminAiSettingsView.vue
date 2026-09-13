@@ -5,15 +5,20 @@ import { Cpu, BrainCircuit, Activity, Database, Key, SlidersHorizontal, Settings
 import api from '@/api/client'
 
 const settings = ref({
-  llm_provider: 'groq',
-  embedding_provider: 'ollama',
-  embedding_dimensions: '768',
+  ai_llm_provider: 'gemini',
+  ai_embedding_provider: 'voyage',
+  embedding_dimensions: '1024',
   rag_similarity_threshold: '0.75',
   rag_top_k: '4'
 })
 
 const loading = ref(true)
 const saving = ref(false)
+const providerStatus = ref({
+  gemini: 'unknown',
+  groq: 'unknown',
+  ollama: 'unknown'
+})
 
 const loadSettings = async () => {
   try {
@@ -21,6 +26,19 @@ const loadSettings = async () => {
     settings.value = { ...settings.value, ...res.data.settings }
   } catch (e) {
     console.error('Failed to load settings', e)
+  }
+}
+
+const checkHealth = async () => {
+  try {
+    const res = await api.get('/health')
+    providerStatus.value = {
+      gemini: res.data.checks?.gemini || 'unknown',
+      groq: res.data.checks?.groq || 'unknown',
+      ollama: res.data.checks?.ollama || 'unknown'
+    }
+  } catch (e) {
+    console.error('Failed to check health', e)
   } finally {
     loading.value = false
   }
@@ -39,19 +57,20 @@ const saveSettings = async () => {
   }
 }
 
-onMounted(() => {
-  loadSettings()
+onMounted(async () => {
+  await loadSettings()
+  await checkHealth()
 })
 </script>
 
 <template>
   <div class="space-y-6">
-    <PageHeader 
-      title="AI & RAG Console" 
+    <PageHeader
+      title="AI & RAG Console"
       description="Configure AI providers, LLM models, and tune Retrieval-Augmented Generation parameters."
     >
       <template #actions>
-        <button 
+        <button
           @click="saveSettings"
           :disabled="loading || saving"
           class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 transition-colors disabled:opacity-50"
@@ -64,10 +83,10 @@ onMounted(() => {
     </PageHeader>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      
+
       <!-- Providers Settings -->
       <div class="lg:col-span-2 space-y-6">
-        
+
         <!-- LLM Provider -->
         <div class="rounded-xl border border-slate-200 bg-white shadow-sm">
           <div class="border-b border-slate-200 px-6 py-4 flex items-center justify-between">
@@ -86,11 +105,21 @@ onMounted(() => {
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label class="block text-sm font-medium leading-6 text-slate-900">Provider</label>
-                <select v-model="settings.llm_provider" class="mt-2 block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-slate-900 ring-1 ring-inset ring-slate-300 focus:ring-2 focus:ring-smart-blue-600 sm:text-sm sm:leading-6 bg-white">
-                  <option value="groq">Groq</option>
-                  <option value="openai">OpenAI</option>
+                <select v-model="settings.ai_llm_provider" class="mt-2 block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-slate-900 ring-1 ring-inset ring-slate-300 focus:ring-2 focus:ring-smart-blue-600 sm:text-sm sm:leading-6 bg-white">
+                  <option value="gemini">Gemini (Primary)</option>
+                  <option value="groq">Groq (Fallback)</option>
                   <option value="ollama">Ollama (Local)</option>
                 </select>
+                <div class="mt-2 flex flex-wrap gap-2">
+                  <span v-if="providerStatus.gemini === 'configured'" class="inline-flex items-center rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/20">Gemini: Configured</span>
+                  <span v-else class="inline-flex items-center rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/20">Gemini: Missing Key</span>
+
+                  <span v-if="providerStatus.groq === 'configured'" class="inline-flex items-center rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/20">Groq: Configured</span>
+                  <span v-else class="inline-flex items-center rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/20">Groq: Missing Key</span>
+
+                  <span v-if="providerStatus.ollama === 'available'" class="inline-flex items-center rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/20">Ollama: Available</span>
+                  <span v-else class="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20">Ollama: Unavailable</span>
+                </div>
               </div>
               <div>
                 <label class="block text-sm font-medium leading-6 text-slate-900">API Key</label>
@@ -123,17 +152,17 @@ onMounted(() => {
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label class="block text-sm font-medium leading-6 text-slate-900">Provider</label>
-                <select v-model="settings.embedding_provider" class="mt-2 block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-slate-900 ring-1 ring-inset ring-slate-300 focus:ring-2 focus:ring-smart-blue-600 sm:text-sm sm:leading-6 bg-white">
+                <select v-model="settings.ai_embedding_provider" class="mt-2 block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-slate-900 ring-1 ring-inset ring-slate-300 focus:ring-2 focus:ring-smart-blue-600 sm:text-sm sm:leading-6 bg-white">
+                  <option value="gemini">Gemini</option>
+                  <option value="voyage">Voyage (Existing)</option>
                   <option value="ollama">Ollama (Local)</option>
-                  <option value="openai">OpenAI</option>
-                  <option value="cohere">Cohere</option>
                 </select>
               </div>
               <div>
                 <label class="block text-sm font-medium leading-6 text-slate-900">Dimensions</label>
                 <select v-model="settings.embedding_dimensions" class="mt-2 block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-slate-900 ring-1 ring-inset ring-slate-300 focus:ring-2 focus:ring-smart-blue-600 sm:text-sm sm:leading-6 bg-white">
+                  <option value="1024">1024 (gemini / voyage / qwen)</option>
                   <option value="768">768 (nomic-embed)</option>
-                  <option value="1536">1536 (text-embedding-3)</option>
                 </select>
               </div>
             </div>
@@ -150,7 +179,7 @@ onMounted(() => {
             <h3 class="font-semibold text-slate-900">RAG Parameters</h3>
           </div>
           <div class="p-6 space-y-6">
-            
+
             <div>
               <div class="flex justify-between items-center mb-1">
                 <label class="block text-sm font-medium text-slate-900">Retrieval Top K</label>
@@ -168,7 +197,7 @@ onMounted(() => {
               <p class="text-xs text-slate-500 mb-3">Minimum cosine distance for vector matches</p>
               <input type="range" v-model="settings.rag_similarity_threshold" min="0" max="1" step="0.05" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-smart-blue-600">
             </div>
-            
+
             <div class="pt-4 border-t border-slate-200">
               <label class="block text-sm font-medium leading-6 text-slate-900">Retrieval Strategy</label>
               <select class="mt-2 block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-slate-900 ring-1 ring-inset ring-slate-300 focus:ring-2 focus:ring-smart-blue-600 sm:text-sm sm:leading-6 bg-white">
@@ -177,7 +206,7 @@ onMounted(() => {
                 <option>Lexical Only (BM25)</option>
               </select>
             </div>
-            
+
           </div>
         </div>
 

@@ -5,6 +5,9 @@ import api from '@/api/client'
 import PageHeader from '@/components/admin/PageHeader.vue'
 import StatusBadge from '@/components/admin/StatusBadge.vue'
 import { Plus, Download, BookOpen, Layers, Sparkles, RefreshCw } from 'lucide-vue-next'
+import { useConfirm } from '@/composables/useConfirm'
+
+const { confirm } = useConfirm()
 
 const books = useBooksStore()
 onMounted(() => books.loadBooks())
@@ -12,7 +15,13 @@ onMounted(() => books.loadBooks())
 const isGenerating = ref<Record<string, boolean>>({})
 
 const generateQuiz = async (chapter: any) => {
-  if (!confirm(`Generate a quiz for "${chapter.title}" using AI?`)) return
+  const isConfirmed = await confirm({
+    title: 'Generate Quiz',
+    message: `Generate a quiz for "${chapter.title}" using AI?`,
+    confirmText: 'Generate',
+    confirmColor: 'blue'
+  })
+  if (!isConfirmed) return
   isGenerating.value[chapter.id] = true
   try {
     const res = await api.post(`/admin/chapters/${chapter.id}/generate-quiz`)
@@ -37,8 +46,8 @@ const exportData = () => {
 
 <template>
   <div class="space-y-6">
-    <PageHeader 
-      title="Learning Content & Quizzes" 
+    <PageHeader
+      title="Learning Content & Quizzes"
       description="Manage educational modules, chapters, and the quizzes associated with them."
     >
       <template #actions>
@@ -71,7 +80,7 @@ const exportData = () => {
         <h3 class="text-base font-semibold text-slate-900">No books found</h3>
         <p class="mt-1 text-sm text-slate-500">Ingest a book in the Document Manager first.</p>
       </div>
-      
+
       <div
         v-for="book in books.books"
         :key="book.id"
@@ -81,14 +90,14 @@ const exportData = () => {
           <BookOpen class="h-5 w-5 text-smart-blue-600" />
           <h2 class="font-semibold text-slate-900 text-lg">{{ book.title }}</h2>
         </div>
-        
+
         <div class="p-0">
           <div v-if="!book.chapters || book.chapters.length === 0" class="p-6 text-center text-sm text-slate-500">
             No chapters available for this book yet.
           </div>
-          
+
           <ul v-else class="divide-y divide-slate-100">
-            <li 
+            <li
               v-for="ch in (book.chapters?.data || book.chapters || [])"
               :key="ch.id"
               class="group flex flex-col sm:flex-row sm:items-center justify-between px-6 py-4 hover:bg-slate-50/50 transition-colors gap-4"
@@ -101,26 +110,26 @@ const exportData = () => {
                   <p class="font-medium text-slate-900">{{ ch.title }}</p>
                   <div class="flex items-center gap-2 mt-1">
                     <p class="text-xs text-slate-500">Ingestion Status:</p>
-                    <StatusBadge 
-                      :status="ch.ingestion_status === 'ready' ? 'Ready' : (ch.ingestion_status === 'failed' ? 'Failed' : 'Processing')" 
-                      :variant="ch.ingestion_status === 'ready' ? 'success' : (ch.ingestion_status === 'failed' ? 'error' : 'warning')" 
+                    <StatusBadge
+                      :status="ch.ingestion_status === 'ready' ? 'Ready' : (ch.ingestion_status === 'failed' ? 'Failed' : 'Processing')"
+                      :variant="ch.ingestion_status === 'ready' ? 'success' : (ch.ingestion_status === 'failed' ? 'error' : 'warning')"
                     />
                   </div>
                 </div>
               </div>
-              
+
               <div class="flex items-center gap-3 shrink-0">
                 <div v-if="ch.quiz">
-                   <StatusBadge 
-                     :status="ch.quiz.status === 'published' ? 'Published' : 'Draft'" 
-                     :variant="ch.quiz.status === 'published' ? 'success' : 'neutral'" 
+                   <StatusBadge
+                     :status="ch.quiz.status === 'published' ? 'Published' : 'Draft'"
+                     :variant="ch.quiz.status === 'published' ? 'success' : 'neutral'"
                    />
                 </div>
                 <div v-else class="text-xs font-medium text-slate-400 bg-slate-100 px-2 py-1 rounded">No Quiz</div>
 
                 <div class="h-6 w-px bg-slate-200 mx-2"></div>
-                
-                <button 
+
+                <button
                   v-if="!ch.quiz"
                   @click="generateQuiz(ch)"
                   :disabled="isGenerating[ch.id] || ch.ingestion_status !== 'ready'"
@@ -130,8 +139,8 @@ const exportData = () => {
                   <Sparkles v-else class="h-3.5 w-3.5" />
                   AI Generate
                 </button>
-                
-                <button 
+
+                <button
                   v-if="ch.quiz"
                   @click="manageQuiz(ch)"
                   class="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition-colors"

@@ -41,15 +41,19 @@ declare namespace App {
   }
 
   interface ChapterProgress {
-    is_completed: boolean
+    status: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED'
+    reading_progress: number
     best_quiz_score_pct: number | null
     last_read_at: string | null
+    last_page?: string | null
   }
 
   // ── Chat ──────────────────────────────────────────────────────────────────
   interface ChatSession {
     id: string
     title: string
+    is_pinned: boolean
+    is_archived: boolean
     last_activity_at: string
     created_at: string
     messages?: ChatMessage[]
@@ -71,6 +75,11 @@ declare namespace App {
     created_at: string
     sources?: ChatMessageSource[]
     feedback?: ChatMessageFeedback | null
+    clientRequestId?: string
+    isStreaming?: boolean
+    isPending?: boolean
+    activity?: { stage: string; message: string } | null
+    error?: string | null
   }
 
   interface ChatMessageSource {
@@ -152,10 +161,14 @@ declare namespace App {
 
   // ── Progress & Gamification ───────────────────────────────────────────────
   interface ProgressSummary {
-    total_chapters: number
-    completed_chapters: number
-    completion_pct: number
-    average_quiz_score: number | null
+    totalChapters: number
+    completedChapters: number
+    overallPercentage: number
+    averageQuizScore: number | null
+    quizzesCompleted: number
+    currentChapter: Chapter | null
+    currentPosition: string | null
+    chapterProgress: { chapter_id: string, status: string, reading_progress: number, best_quiz_score_pct: number | null }[]
   }
 
   interface Badge {
@@ -184,6 +197,9 @@ declare namespace App {
     current_streak: number
     total_chat_sessions: number
     earned_badge_count: number
+    current_chapter: Chapter | null
+    current_position: string | null
+    chapter_progress: { chapter_id: string, status: string, reading_progress: number, best_quiz_score_pct: number | null }[]
   }
 
   // ── Shared ────────────────────────────────────────────────────────────────

@@ -4,6 +4,9 @@ import { booksApi } from '@/api/books'
 import SaCard from '@/components/ui/SaCard.vue'
 import SaButton from '@/components/ui/SaButton.vue'
 import { useRouter } from 'vue-router'
+import { useConfirm } from '@/composables/useConfirm'
+
+const { confirm } = useConfirm()
 
 // Canonical chapters (hardcoded - must match backend)
 const CANONICAL_CHAPTERS = {
@@ -81,17 +84,17 @@ const selectChapter = (chapterId: string) => {
 // Save draft
 const saveDraft = async () => {
   if (!selectedChapter.value) return
-  
+
   const chapter = chapters.value.find(c => c.number === selectedChapter.value)
   if (!chapter?.id) {
     errorMessage.value = 'Chapter not found'
     return
   }
-  
+
   errorMessage.value = ''
   successMessage.value = ''
   isProcessing.value = true
-  
+
   try {
     await booksApi.updateChapterContent(chapter.id, { content: chapterContent.value })
     successMessage.value = 'Draft saved successfully'
@@ -109,21 +112,21 @@ const validateContent = async () => {
     errorMessage.value = 'Please enter chapter content first'
     return
   }
-  
+
   const chapter = chapters.value.find(c => c.number === selectedChapter.value)
   if (!chapter?.id) {
     errorMessage.value = 'Chapter not found'
     return
   }
-  
+
   errorMessage.value = ''
   validationResult.value = null
   isProcessing.value = true
-  
+
   try {
     const response = await booksApi.validateChapter(chapter.id, chapterContent.value)
     validationResult.value = response.data
-    
+
     if (response.data.valid) {
       successMessage.value = 'Content validation passed!'
     } else {
@@ -142,18 +145,18 @@ const previewIngestion = async () => {
     errorMessage.value = 'Please enter chapter content first'
     return
   }
-  
+
   const chapter = chapters.value.find(c => c.number === selectedChapter.value)
   if (!chapter?.id) {
     errorMessage.value = 'Chapter not found'
     return
   }
-  
+
   errorMessage.value = ''
   previewResult.value = null
   isProcessing.value = true
   activeTab.value = 'preview'
-  
+
   try {
     const response = await booksApi.previewChapter(chapter.id, chapterContent.value)
     previewResult.value = response.data.preview
@@ -167,21 +170,28 @@ const previewIngestion = async () => {
 // Ingest chapter
 const ingestChapter = async () => {
   if (!selectedChapter.value) return
-  
+
   const chapter = chapters.value.find(c => c.number === selectedChapter.value)
   if (!chapter?.id) {
     errorMessage.value = 'Chapter not found'
     return
   }
-  
-  if (!confirm(`Ingest Chapter ${selectedChapter.value}: ${selectedChapterTitle.value}?\n\nThis will start the embedding process which may take several minutes.`)) {
+
+  const isConfirmed = await confirm({
+    title: 'Ingest Chapter',
+    message: `Ingest Chapter ${selectedChapter.value}: ${selectedChapterTitle.value}?\n\nThis will start the embedding process which may take several minutes.`,
+    confirmText: 'Start Ingestion',
+    confirmColor: 'blue'
+  })
+
+  if (!isConfirmed) {
     return
   }
-  
+
   errorMessage.value = ''
   successMessage.value = ''
   isProcessing.value = true
-  
+
   try {
     // First save content
     await booksApi.updateChapterContent(chapter.id, { content: chapterContent.value })
@@ -203,7 +213,7 @@ const verifyBook = async () => {
     errorMessage.value = 'No book found'
     return
   }
-  
+
   isProcessing.value = true
   try {
     const response = await booksApi.verifyBook(bookId.value)
@@ -224,17 +234,17 @@ onMounted(() => {
 <template>
 
     <div class="max-w-7xl mx-auto space-y-6">
-      
+
       <!-- Header -->
       <div class="flex items-center justify-between">
         <div>
           <h1 class="font-display text-2xl font-semibold text-[var(--sa-dark)]">Book Ingestion</h1>
           <p class="text-sm text-[var(--sa-taupe)] mt-1">Manually enter and ingest Smart Adama Book chapters (1-11)</p>
         </div>
-        <SaButton 
-          @click="verifyBook" 
+        <SaButton
+          @click="verifyBook"
           :disabled="!bookId || isProcessing"
-          variant="primary" 
+          variant="primary"
           class="bg-indigo-600 text-white px-4 py-2 rounded-full text-sm font-medium"
         >
           Verify Book
@@ -245,7 +255,7 @@ onMounted(() => {
       <SaCard v-if="verification" padding="p-6" class="border-2 border-[var(--sa-gray)]">
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-lg font-semibold text-[var(--sa-dark)]">Book Status</h2>
-          <span 
+          <span
             :class="[
               'text-xs px-3 py-1 rounded-full font-semibold uppercase',
               verification.is_complete ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
@@ -284,7 +294,7 @@ onMounted(() => {
 
       <!-- Main Content -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
+
         <!-- Chapter List -->
         <div class="lg:col-span-1">
           <SaCard padding="p-4" class="sticky top-4">

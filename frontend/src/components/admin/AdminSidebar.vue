@@ -1,4 +1,4 @@
-<script setup lang="ts">
+ <script setup lang="ts">
 import { useRoute } from 'vue-router'
 import {
   LayoutDashboard,
@@ -66,22 +66,22 @@ function isActive(path: string) {
 </script>
 
 <template>
-  <aside 
-    class="flex flex-col border-r border-slate-200 bg-[var(--sa-dark)] transition-all duration-300"
+  <aside
+    class="flex flex-col border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 transition-all duration-300"
     :class="isCollapsed ? 'w-20' : 'w-72'"
   >
     <!-- Logo Area -->
-    <div class="flex h-16 shrink-0 items-center justify-between px-6 border-b border-black/10">
+    <div class="flex h-16 shrink-0 items-center justify-between px-6 border-b border-slate-100 dark:border-slate-800">
       <div class="flex items-center gap-3 overflow-hidden whitespace-nowrap">
         <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500 text-white font-display font-bold text-lg shadow-sm">
           S
         </div>
-        <span v-if="!isCollapsed" class="font-display text-lg font-bold text-white tracking-tight">Smart Adama</span>
+        <span v-if="!isCollapsed" class="font-display text-lg font-bold text-slate-900 dark:text-white tracking-tight">Smart Adama</span>
       </div>
-      
+
       <!-- Mobile Close -->
-      <button 
-        class="lg:hidden text-smart-blue-200 hover:text-white"
+      <button
+        class="lg:hidden text-slate-400 hover:text-slate-600 dark:hover:text-white"
         @click="$emit('close')"
       >
         <X class="h-5 w-5" />
@@ -91,34 +91,34 @@ function isActive(path: string) {
     <!-- Navigation -->
     <nav class="flex-1 overflow-y-auto py-6 px-3 custom-scrollbar">
       <div v-for="(group, idx) in navGroups" :key="idx" class="mb-8 last:mb-0">
-        <h3 
-          v-if="!isCollapsed" 
-          class="mb-3 px-3 text-[11px] font-semibold uppercase tracking-wider text-[#D5DEEF]/80"
+        <h3
+          v-if="!isCollapsed"
+          class="mb-3 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"
         >
           {{ group.label }}
         </h3>
-        
+
         <ul class="space-y-1">
           <li v-for="item in group.items" :key="item.path">
             <router-link
               :to="item.path"
               class="group flex items-center rounded-lg px-3 py-2.5 transition-all duration-200"
-              :class="isActive(item.path) 
-                ? 'bg-[#638ECB] text-white shadow-inner' 
-                : 'text-[#D5DEEF] hover:bg-[#8AAEE0]/30 hover:text-white'"
+              :class="isActive(item.path)
+                ? 'bg-[#395886] text-white shadow-sm'
+                : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100'"
               :title="isCollapsed ? item.name : undefined"
             >
-              <component 
-                :is="item.icon" 
+              <component
+                :is="item.icon"
                 class="shrink-0 transition-colors"
                 :class="[
                   isCollapsed ? 'mx-auto h-5 w-5' : 'mr-3 h-5 w-5',
-                  isActive(item.path) ? 'text-white' : 'text-[#B1C9EF] group-hover:text-white'
-                ]" 
-                stroke-width="2" 
+                  isActive(item.path) ? 'text-white' : 'text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-200'
+                ]"
+                stroke-width="2"
               />
-              <span 
-                v-if="!isCollapsed" 
+              <span
+                v-if="!isCollapsed"
                 class="truncate text-sm font-medium"
                 :class="isActive(item.path) ? 'font-semibold' : ''"
               >
@@ -129,15 +129,15 @@ function isActive(path: string) {
         </ul>
       </div>
     </nav>
-    
+
     <!-- Footer settings minimal -->
-    <div class="border-t border-[#638ECB]/30 p-3">
+    <div class="border-t border-slate-100 dark:border-slate-800 p-3">
       <router-link
         to="/dashboard"
-        class="group flex items-center rounded-lg px-3 py-2.5 transition-all duration-200 text-[#D5DEEF] hover:bg-[#8AAEE0]/30 hover:text-white"
+        class="group flex items-center rounded-lg px-3 py-2.5 transition-all duration-200 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100"
         title="Exit Admin"
       >
-        <LayoutDashboard class="shrink-0 h-5 w-5 text-[#B1C9EF] group-hover:text-white" :class="!isCollapsed ? 'mr-3' : 'mx-auto'" />
+        <LayoutDashboard class="shrink-0 h-5 w-5 text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-200" :class="!isCollapsed ? 'mr-3' : 'mx-auto'" />
         <span v-if="!isCollapsed" class="truncate text-sm font-medium">Exit Admin</span>
       </router-link>
     </div>
@@ -145,9 +145,6 @@ function isActive(path: string) {
 </template>
 
 <style scoped>
-aside {
-  background-color: #395886;
-}
 .custom-scrollbar::-webkit-scrollbar {
   width: 4px;
 }
@@ -155,10 +152,18 @@ aside {
   background: transparent;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #638ECB; 
+  background: #cbd5e1; /* slate-300 */
   border-radius: 4px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #8AAEE0; 
+  background: #94a3b8; /* slate-400 */
+}
+
+/* Dark mode scrollbar */
+:global(.dark) .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #334155; /* slate-700 */
+}
+:global(.dark) .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #475569; /* slate-600 */
 }
 </style>

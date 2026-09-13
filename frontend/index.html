@@ -16,7 +16,7 @@
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         // Draw the transparent logo over it
         ctx.drawImage(img, 0, 0);
-        
+
         let link = document.querySelector("link[rel~='icon']");
         if (!link) {
             link = document.createElement('link');
@@ -28,6 +28,9 @@
       img.src = '/logo.png';
     </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
     <title>Smart Adama</title>
   <script>
   if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {

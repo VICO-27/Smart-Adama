@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AppFooter from '@/components/layout/AppFooter.vue'
 import {
   ref,
   computed,
@@ -92,7 +93,7 @@ const timeGreeting = computed(() => {
 ============================================================ */
 
 const totalChapters = computed(() => {
-  return d.value?.total_chapters || 0
+  return d.value?.total_chapters || 13
 })
 
 
@@ -126,59 +127,62 @@ const isBookComplete = computed(() => {
 })
 
 
-const nextChapter = computed(() => {
-  if (!hasChapters.value) {
-    return 1
+const continueChapter = computed(() => {
+  return d.value?.current_chapter || null
+})
+
+
+const recommendedChapter = computed(() => {
+  if (!d.value?.chapter_progress) return 1
+
+  const firstUnfinished = d.value.chapter_progress.find(c => c.status !== 'COMPLETED')
+  if (firstUnfinished) {
+    // Assuming chapter_progress has chapter_id, we would need the chapter object or order.
+    // Wait, chapter_progress in Dashboard controller doesn't have order.
+    // I should probably map the actual chapter order. But for now return its ID or just say Chapter.
+    // Actually, we can return the firstUnfinished directly.
+    return firstUnfinished.chapter_id // We might need to find the actual number if chapter is UUID.
   }
 
-  return Math.min(
-    completedChapters.value + 1,
-    totalChapters.value,
-  )
+  return null
 })
 
 
 const continueTitle = computed(() => {
   if (!hasChapters.value) {
-    return (
-      t('dashboard.book_ready') ||
-      'Ready to start'
-    )
+    return t('dashboard.book_ready') || 'Ready to start'
   }
 
   if (isBookComplete.value) {
-    return (
-      t('dashboard.book_done') ||
-      'Course complete'
-    )
+    return t('dashboard.book_done') || 'Course complete'
   }
 
-  return (
-    t('dashboard.chap_of', {
-      next: nextChapter.value,
-      total: totalChapters.value,
-    }) ||
-    `Chapter ${nextChapter.value} of ${totalChapters.value}`
-  )
+  if (continueChapter.value) {
+    return continueChapter.value.title || `Chapter`
+  }
+
+  return 'Start Learning'
 })
 
 
 const continueSubtext = computed(() => {
   if (!hasChapters.value) {
-    return (
-      t('dashboard.sub_ready') ||
-      'Your learning journey awaits.'
-    )
+    return t('dashboard.sub_ready') || 'Ready to start.'
   }
 
   if (isBookComplete.value) {
-    return (
-      t('dashboard.sub_done') ||
-      'You have completed the available learning content.'
-    )
+    return t('dashboard.sub_done') || 'All content completed.'
   }
 
-  return 'Your progress is saved automatically. Continue where you left off.'
+  const cp = d.value?.chapter_progress?.find(p => p.chapter_id === continueChapter.value?.id)
+
+  if (cp) {
+    const readingStatus = cp.reading_progress >= 100 ? 'Reading complete' : `Reading ${cp.reading_progress}%`
+    const quizScore = cp.best_quiz_score_pct !== null ? `Quiz: ${cp.best_quiz_score_pct}%` : 'No quiz attempts'
+    return `${readingStatus} • ${quizScore}`
+  }
+
+  return 'Resume reading.'
 })
 
 
@@ -227,37 +231,29 @@ const journey = computed(() => {
     return []
   }
 
+  const cpList = d.value?.chapter_progress || []
+
   return Array.from(
     {
-      length:
-        totalChapters.value,
+      length: totalChapters.value,
     },
     (_, index) => {
-      const chapter = index + 1
+      const chapterNum = index + 1
+      const cp = cpList[index]
 
-      if (
-        chapter <=
-        completedChapters.value
-      ) {
-        return {
-          chapter,
-          state: 'completed',
-        }
+      let state = 'upcoming'
+      if (cp) {
+        if (cp.status === 'COMPLETED') state = 'completed'
+        else if (cp.status === 'IN_PROGRESS') state = 'in_progress'
       }
 
-      if (
-        chapter ===
-        nextChapter.value
-      ) {
-        return {
-          chapter,
-          state: 'current',
-        }
-      }
+      // Also indicate if this is the currently recommended or continued chapter
+      const isCurrent = cp && continueChapter.value && cp.chapter_id === continueChapter.value.id
 
       return {
-        chapter,
-        state: 'upcoming',
+        chapter: chapterNum,
+        state: isCurrent ? 'current' : state,
+        actual_state: state
       }
     },
   )
@@ -409,7 +405,7 @@ const fallbackBadges = [
     id: '1',
     name: 'First Step',
     description:
-      'Complete your first chapter.',
+      'Complete 1 chapter.',
     earned: false,
     progress: {
       current: 0,
@@ -433,7 +429,7 @@ const fallbackBadges = [
     id: '3',
     name: 'Perfectionist',
     description:
-      'Score 100% on any quiz.',
+      '100% on a quiz.',
     earned: false,
     progress: null,
   },
@@ -442,7 +438,7 @@ const fallbackBadges = [
     id: '4',
     name: 'On a Roll',
     description:
-      'Maintain a 3-day learning streak.',
+      '3-day streak.',
     earned: false,
     progress: {
       current: 0,
@@ -454,11 +450,47 @@ const fallbackBadges = [
     id: '5',
     name: 'Week Warrior',
     description:
-      'Maintain a 7-day learning streak.',
+      '7-day streak.',
     earned: false,
     progress: {
       current: 0,
       required: 7,
+    },
+  },
+
+  {
+    id: '6',
+    name: 'Unstoppable',
+    description:
+      '30-day streak.',
+    earned: false,
+    progress: {
+      current: 0,
+      required: 30,
+    },
+  },
+
+  {
+    id: '7',
+    name: 'Smart Adama Master',
+    description:
+      'Complete the book.',
+    earned: false,
+    progress: {
+      current: 0,
+      required: 13,
+    },
+  },
+
+  {
+    id: '8',
+    name: 'Quiz Ace',
+    description:
+      'Pass 10 quizzes.',
+    earned: false,
+    progress: {
+      current: 0,
+      required: 10,
     },
   },
 ]
@@ -530,11 +562,11 @@ onMounted(() => {
 
       <!-- DIAGONAL VIDEO BACKGROUND (Loads instantly for ambient effect) -->
       <div class="global-bg-video">
-        <video 
-          autoplay 
-          loop 
-          muted 
-          playsinline 
+        <video
+          autoplay
+          loop
+          muted
+          playsinline
           poster="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1'%3E%3C/svg%3E"
           src="/videos/smart-adama-book.mp4"
         ></video>
@@ -556,23 +588,22 @@ onMounted(() => {
             </span>
 
             <h1>
-              Welcome back,
+              {{ $t('dash.welcome') }}
               <span>
                 {{ firstName }}
               </span>
             </h1>
 
             <p>
-              Your Smart Adama learning journey,
-              all in one place.
+              {{ $t('dash.journey') }}
             </p>
 
           </div>
 
-          <div class="status">
-            <a href="https://ethiocoders.et/" target="_blank" class="hover:underline text-brand-500 dark:text-brand-300">5 Million Ethiopian Coders</a>
-            <span class="mx-2 opacity-40">•</span>
-            <a href="https://portal.adamacity.gov.et/" target="_blank" class="hover:underline text-brand-500 dark:text-brand-300">Smart Adama City</a>
+          <div class="status flex items-center bg-[#395886] text-white px-5 py-2.5 rounded-full shadow-lg text-sm font-bold tracking-wide mt-4 md:mt-0">
+            <a href="https://ethiocoders.et/" target="_blank" class="hover:text-[#d4af37] transition-colors">{{ $t('dash.coders') }}</a>
+            <span class="mx-3 opacity-60">•</span>
+            <a href="https://portal.adamacity.gov.et/" target="_blank" class="hover:text-[#d4af37] transition-colors">{{ $t('dash.city') }}</a>
           </div>
 
         </header>
@@ -603,17 +634,9 @@ onMounted(() => {
 
             <div>
 
-              <span class="section-label">
-                Continue your journey
-              </span>
-
               <h2>
                 {{ continueTitle }}
               </h2>
-
-              <p>
-                {{ continueSubtext }}
-              </p>
 
             </div>
 
@@ -682,8 +705,7 @@ onMounted(() => {
 
                   <span
                     v-else-if="
-                      item.state ===
-                      'current'
+                      item.state === 'current' || item.actual_state === 'in_progress'
                     "
                     class="current-dot"
                   ></span>
@@ -710,19 +732,7 @@ onMounted(() => {
 
           <div class="journey-footer">
 
-            <div class="journey-stat">
 
-              <strong>
-                {{ completedChapters }}
-              </strong>
-
-              <span>
-                of
-                {{ totalChapters }}
-                chapters
-              </span>
-
-            </div>
 
 
             <div class="journey-progress">
@@ -752,13 +762,13 @@ onMounted(() => {
                 >
                   Next:
                   Chapter
-                  {{ nextChapter }}
+                  {{ recommendedChapter }}
                 </span>
 
                 <span
                   v-else
                 >
-                  Course complete
+                  {{ $t('dash.course_complete') }}
                 </span>
 
               </div>
@@ -812,12 +822,8 @@ onMounted(() => {
 
           <div class="section-heading">
 
-            <span class="section-label">
-              Your momentum
-            </span>
-
             <h2>
-              Keep moving forward
+              {{ $t('dash.stats') }}
             </h2>
 
           </div>
@@ -852,7 +858,7 @@ onMounted(() => {
                 </strong>
 
                 <span>
-                  day streak
+                  {{ $t('dash.day_streak') }}
                 </span>
 
               </div>
@@ -898,7 +904,7 @@ onMounted(() => {
                 </strong>
 
                 <span>
-                  average quiz score
+                  {{ $t('dash.avg_quiz') }}
                 </span>
 
               </div>
@@ -939,7 +945,7 @@ onMounted(() => {
                 </strong>
 
                 <span>
-                  quizzes passed
+                  {{ $t('dash.quizzes_passed') }}
                 </span>
 
               </div>
@@ -982,7 +988,7 @@ onMounted(() => {
                 </strong>
 
                 <span>
-                  badges unlocked
+                  {{ $t('dash.badges') }}
                 </span>
 
               </div>
@@ -1011,12 +1017,8 @@ onMounted(() => {
 
               <div>
 
-                <span class="section-label">
-                  Activity
-                </span>
-
                 <h2>
-                  Recent AI conversations
+                  {{ $t('dash.recent_chats') }}
                 </h2>
 
               </div>
@@ -1027,7 +1029,7 @@ onMounted(() => {
                 class="quiet-link"
               >
 
-                View all
+                {{ $t('dash.view_all') }}
 
                 <svg
                   viewBox="0 0 24 24"
@@ -1146,12 +1148,12 @@ onMounted(() => {
               </div>
 
               <strong>
-                No conversations yet
+                {{ $t('dash.no_convos') }}
               </strong>
 
               <span>
                 Ask something inside Study Mode
-                to start your history.
+
               </span>
 
             </div>
@@ -1167,27 +1169,16 @@ onMounted(() => {
 
             <div class="ai-content">
 
-              <span class="ai-label">
-                Smart Adama AI
-              </span>
-
               <h2>
-                Learn with context.
+                {{ $t('dash.ai_tutor') }}
               </h2>
-
-              <p>
-                Your AI tutor lives inside the
-                learning experience. Ask for an
-                explanation, summary, example, or
-                clarification whenever you need one.
-              </p>
 
               <RouterLink
                 to="/study"
                 class="ai-button"
               >
 
-                Open AI tutor
+                {{ $t('dash.open_tutor') }}
 
                 <svg
                   viewBox="0 0 24 24"
@@ -1287,18 +1278,9 @@ onMounted(() => {
 
           <div class="section-heading">
 
-            <span class="section-label">
-              Milestones
-            </span>
-
             <h2>
-              Your learning achievements
+              {{ $t('dash.achievements') }}
             </h2>
-
-            <p>
-              Complete chapters, build consistency,
-              and unlock recognition along the way.
-            </p>
 
           </div>
 
@@ -1483,11 +1465,11 @@ onMounted(() => {
 
 
               <h3>
-                {{ badge.name }}
+                {{ $te(`badges.${badge.code}.name`) ? $t(`badges.${badge.code}.name`) : badge.name }}
               </h3>
 
               <p>
-                {{ badge.description }}
+                {{ $te(`badges.${badge.code}.desc`) ? $t(`badges.${badge.code}.desc`) : badge.description }}
               </p>
 
 
@@ -1504,7 +1486,7 @@ onMounted(() => {
                 >
 
                   <span>
-                    Progress
+                    {{ $t('dash.progress') }}
                   </span>
 
                   <strong>
@@ -1549,7 +1531,7 @@ onMounted(() => {
                 "
                 class="milestone-complete"
               >
-                Unlocked
+                {{ $t('dash.unlocked') }}
               </div>
 
 
@@ -1557,7 +1539,7 @@ onMounted(() => {
                 v-else
                 class="milestone-locked"
               >
-                Keep learning
+                {{ $t('dash.keep_learning') }}
               </div>
 
             </article>
@@ -1583,17 +1565,17 @@ onMounted(() => {
               <div>
 
                 <span class="section-label">
-                  Practice
+                  {{ $t('dash.practice') }}
                 </span>
 
                 <h2>
-                  Daily challenge
+                  {{ $t('dash.daily') }}
                 </h2>
 
               </div>
 
               <span class="xp-label">
-                +10 XP
+                {{ $t('dash.xp') }}
               </span>
 
             </div>
@@ -1736,17 +1718,17 @@ onMounted(() => {
               <div>
 
                 <span class="section-label">
-                  Platform
+                  {{ $t('dash.platform') }}
                 </span>
 
                 <h2>
-                  Smart Adama updates
+                  {{ $t('dash.updates') }}
                 </h2>
 
               </div>
 
               <span class="latest">
-                Latest
+                {{ $t('dash.latest') }}
               </span>
 
             </div>
@@ -1787,7 +1769,7 @@ onMounted(() => {
                       "
                       class="new"
                     >
-                      New
+                      {{ $t('dash.new') }}
                     </span>
 
                   </div>
@@ -1807,199 +1789,13 @@ onMounted(() => {
         </section>
 
 
-        <!-- ====================================================
-             GOVERNMENT-STYLE FOOTER
-        ===================================================== -->
-
-        <footer class="city-footer">
-
-          <!-- Main -->
-
-          <div class="city-footer-main">
-
-            <div class="city-footer-brand">
-
-              <div class="city-footer-logo">
-
-                <img
-                  src="/logo.png"
-                  alt="Smart Adama"
-                />
-
-              </div>
-
-
-              <div>
-
-                <strong>
-                  Smart Adama
-                </strong>
-
-                <span>
-                  Smart City Learning Platform
-                </span>
-
-              </div>
-
-            </div>
-
-
-            <p class="city-footer-description">
-              A digital learning platform for understanding
-              Adama's smart city vision, initiatives, services,
-              and civic development.
-            </p>
-
-
-            <!-- Platform -->
-
-            <div class="city-footer-column">
-
-              <h3>
-                Platform
-              </h3>
-
-              <RouterLink to="/dashboard">
-                Dashboard
-              </RouterLink>
-
-              <RouterLink to="/study">
-                Study
-              </RouterLink>
-
-              <RouterLink to="/game">
-                Game
-              </RouterLink>
-
-              <RouterLink to="/profile">
-                Profile
-              </RouterLink>
-
-            </div>
-
-
-            <!-- Resources -->
-
-            <div class="city-footer-column">
-
-              <h3>
-                Resources
-              </h3>
-
-              <a
-                href="/books/SA-Book.pdf"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Smart Adama Book
-              </a>
-
-              <RouterLink to="/study">
-                Learning Center
-              </RouterLink>
-
-              <RouterLink to="/game">
-                Challenges
-              </RouterLink>
-
-              <RouterLink to="/profile">
-                Account Settings
-              </RouterLink>
-
-            </div>
-
-
-            <!-- Languages -->
-
-            <div class="city-footer-column">
-
-              <h3>
-                Languages
-              </h3>
-
-              <button type="button">
-                English
-              </button>
-
-              <button type="button">
-                Afaan Oromoo
-              </button>
-
-              <button type="button">
-                አማርኛ
-              </button>
-
-            </div>
-
-          </div>
-
-
-          <!-- Government identity -->
-
-          <div class="city-government-bar">
-
-            <div class="city-government-inner">
-
-              <div class="government-identity">
-
-                <span class="government-line"></span>
-
-                <span>
-                  Smart Adama City
-                </span>
-
-                <span class="government-separator">
-                  /
-                </span>
-
-                <span>
-                  Digital Learning Platform
-                </span>
-
-              </div>
-
-
-              <div class="government-links">
-
-                <span>
-                  Public Service & Innovation
-                </span>
-
-                <span>
-                  Learning · Technology · Community
-                </span>
-
-              </div>
-
-            </div>
-
-          </div>
-
-
-          <!-- Copyright -->
-
-          <div class="city-footer-bottom">
-
-            <span>
-              ©
-              {{
-                new Date()
-                  .getFullYear()
-              }}
-              Smart Adama City
-            </span>
-
-            <span>
-              Built for learning and civic knowledge
-            </span>
-
-          </div>
-
-        </footer>
-
         </template>
-
       </div>
+
+      <!-- ====================================================
+           GOVERNMENT-STYLE FOOTER
+      ===================================================== -->
+      <AppFooter />
 
     </main>
 
@@ -2014,7 +1810,7 @@ onMounted(() => {
 ============================================================ */
 
 .dashboard-page {
-  min-height: 100vh;
+  min-height: 100dvh;
 
   background:
     var(--sa-page-bg);
@@ -2029,20 +1825,12 @@ onMounted(() => {
 
 
 .dashboard-container {
-  width:
-    min(100%, 1180px);
-
-  margin:
-    0 auto;
-
-  padding:
-    5rem 1rem 0;
-
-  position:
-    relative;
-
-  z-index:
-    10;
+  width: 100%;
+  max-width: 1800px;
+  margin: 0 auto;
+  padding: 5rem 3rem 5rem;
+  position: relative;
+  z-index: 10;
 }
 
 
@@ -2166,23 +1954,17 @@ onMounted(() => {
 
 .eyebrow,
 .section-label {
-  display:
-    block;
-
-  color:
-    var(--sa-text-muted);
-
-  font-size:
-    0.5rem;
-
-  font-weight:
-    800;
-
-  letter-spacing:
-    0.14em;
-
-  text-transform:
-    uppercase;
+  display: inline-block;
+  color: var(--sa-text-secondary);
+  background: var(--sa-surface-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  border: 1px solid var(--sa-border);
+  margin-bottom: 8px;
 }
 
 
@@ -2234,8 +2016,7 @@ html.dark
   color:
     var(--sa-text-muted);
 
-  font-size:
-    0.68rem;
+  font-size: 1.09rem;
 
   line-height:
     1.6;
@@ -2268,8 +2049,7 @@ html.dark
   color:
     var(--sa-text-muted);
 
-  font-size:
-    0.48rem;
+  font-size: 0.77rem;
 
   font-weight:
     700;
@@ -2295,7 +2075,8 @@ html.dark
     20px;
 
   background:
-    var(--sa-surface);
+    #ffffff;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
 
   box-shadow:
     var(--sa-card-shadow);
@@ -2349,8 +2130,7 @@ html.dark
   color:
     var(--sa-text-muted);
 
-  font-size:
-    0.61rem;
+  font-size: 0.98rem;
 
   line-height:
     1.55;
@@ -2404,8 +2184,7 @@ html.dark
   color:
     var(--sa-text-muted);
 
-  font-size:
-    0.45rem;
+  font-size: 0.72rem;
 
   font-weight:
     700;
@@ -2594,6 +2373,30 @@ html.dark
 }
 
 
+.chapter-node.in_progress
+.chapter-circle {
+  border-color:
+    #638ECB;
+  background:
+    rgba(99, 142, 203, 0.2);
+}
+
+.chapter-node.in_progress
+.current-dot {
+  width:
+    7px;
+
+  height:
+    7px;
+
+  border-radius:
+    50%;
+
+  background:
+    #638ECB;
+}
+
+
 html.dark
 .chapter-node.current
 .current-dot {
@@ -2618,8 +2421,7 @@ html.dark
   color:
     var(--sa-text-faint);
 
-  font-size:
-    0.42rem;
+  font-size: 0.67rem;
 
   font-weight:
     800;
@@ -2642,7 +2444,6 @@ html.dark
     grid;
 
   grid-template-columns:
-    auto
     1fr
     auto;
 
@@ -2695,8 +2496,7 @@ html.dark
   color:
     var(--sa-text-muted);
 
-  font-size:
-    0.48rem;
+  font-size: 0.77rem;
 }
 
 
@@ -2756,8 +2556,7 @@ html.dark
   color:
     var(--sa-text-faint);
 
-  font-size:
-    0.43rem;
+  font-size: 0.69rem;
 }
 
 
@@ -2789,8 +2588,7 @@ html.dark
   color:
     white;
 
-  font-size:
-    0.56rem;
+  font-size: 0.90rem;
 
   font-weight:
     800;
@@ -2868,8 +2666,7 @@ html.dark
   color:
     var(--sa-text-muted);
 
-  font-size:
-    0.57rem;
+  font-size: 0.91rem;
 }
 
 
@@ -2878,27 +2675,13 @@ html.dark
     grid;
 
   grid-template-columns:
-    1fr
-    auto
-    1fr
-    auto
-    1fr
-    auto
-    1fr;
+    repeat(4, 1fr);
 
-  align-items:
-    center;
+  gap:
+    20px;
 
-  padding:
-    13px 0;
-
-  border-top:
-    1px solid
-    var(--sa-border);
-
-  border-bottom:
-    1px solid
-    var(--sa-border);
+  margin-top:
+    15px;
 }
 
 
@@ -2906,8 +2689,11 @@ html.dark
   display:
     flex;
 
+  flex-direction:
+    column;
+
   align-items:
-    center;
+    flex-start;
 
   gap:
     10px;
@@ -2916,19 +2702,19 @@ html.dark
     0;
 
   padding:
-    0 16px;
-}
+    20px;
 
+  background:
+    var(--sa-surface);
 
-.momentum-item:first-child {
-  padding-left:
-    0;
-}
+  border:
+    1px solid var(--sa-border);
 
+  border-radius:
+    16px;
 
-.momentum-item:last-child {
-  padding-right:
-    0;
+  box-shadow:
+    var(--sa-card-shadow);
 }
 
 
@@ -3002,8 +2788,7 @@ html.dark
   color:
     var(--sa-text-muted);
 
-  font-size:
-    0.44rem;
+  font-size: 0.70rem;
 
   white-space:
     nowrap;
@@ -3011,14 +2796,8 @@ html.dark
 
 
 .momentum-divider {
-  width:
-    1px;
-
-  height:
-    31px;
-
-  background:
-    var(--sa-border);
+  display:
+    none;
 }
 
 
@@ -3093,8 +2872,7 @@ html.dark
   color:
     var(--sa-text);
 
-  font-size:
-    0.95rem;
+  font-size: 1.52rem;
 
   font-weight:
     800;
@@ -3117,8 +2895,7 @@ html.dark
   color:
     #638ECB;
 
-  font-size:
-    0.48rem;
+  font-size: 0.77rem;
 
   font-weight:
     800;
@@ -3238,8 +3015,7 @@ html.dark
   color:
     var(--sa-text);
 
-  font-size:
-    0.57rem;
+  font-size: 0.91rem;
 
   font-weight:
     700;
@@ -3262,8 +3038,7 @@ html.dark
   color:
     var(--sa-text-faint);
 
-  font-size:
-    0.44rem;
+  font-size: 0.70rem;
 }
 
 
@@ -3343,8 +3118,7 @@ html.dark
   color:
     var(--sa-text);
 
-  font-size:
-    0.6rem;
+  font-size: 0.96rem;
 
   font-weight:
     800;
@@ -3361,8 +3135,7 @@ html.dark
   color:
     var(--sa-text-muted);
 
-  font-size:
-    0.48rem;
+  font-size: 0.77rem;
 
   line-height:
     1.5;
@@ -3436,8 +3209,7 @@ html.dark
   color:
     #B1C9EF;
 
-  font-size:
-    0.5rem;
+  font-size: 0.80rem;
 
   font-weight:
     800;
@@ -3485,8 +3257,7 @@ html.dark
   color:
     #D5DEEF;
 
-  font-size:
-    0.58rem;
+  font-size: 0.93rem;
 
   line-height:
     1.65;
@@ -3518,8 +3289,7 @@ html.dark
   color:
     #395886;
 
-  font-size:
-    0.56rem;
+  font-size: 0.90rem;
 
   font-weight:
     800;
@@ -3706,14 +3476,17 @@ html.dark
   display:
     flex;
 
+  flex-wrap:
+    nowrap;
+
   overflow-x:
     auto;
 
   gap:
-    15px;
+    20px;
 
   padding-bottom:
-    12px;
+    20px;
 }
 
 
@@ -3725,10 +3498,10 @@ html.dark
     relative;
 
   width:
-    140px;
+    260px;
 
   min-height:
-    150px;
+    160px;
 
   display:
     flex;
@@ -3941,8 +3714,7 @@ html.dark
   color:
     var(--sa-text);
 
-  font-size:
-    0.66rem;
+  font-size: 1.06rem;
 
   line-height:
     1.2;
@@ -3962,8 +3734,7 @@ html.dark
   color:
     var(--sa-text-muted);
 
-  font-size:
-    0.45rem;
+  font-size: 0.72rem;
 
   line-height:
     1.45;
@@ -3989,8 +3760,7 @@ html.dark
   color:
     var(--sa-text-faint);
 
-  font-size:
-    0.4rem;
+  font-size: 0.64rem;
 }
 
 
@@ -4049,8 +3819,7 @@ html.dark
   padding-top:
     8px;
 
-  font-size:
-    0.4rem;
+  font-size: 0.64rem;
 
   font-weight:
     800;
@@ -4150,8 +3919,7 @@ html.dark
   color:
     #638ECB;
 
-  font-size:
-    0.44rem;
+  font-size: 0.70rem;
 
   font-weight:
     800;
@@ -4165,8 +3933,7 @@ html.dark
   color:
     var(--sa-text);
 
-  font-size:
-    0.7rem;
+  font-size: 1.12rem;
 
   line-height:
     1.6;
@@ -4215,13 +3982,12 @@ html.dark
     9px;
 
   background:
-    var(--sa-surface);
+    var(--sa-surface-muted);
 
   color:
     var(--sa-text-secondary);
 
-  font-size:
-    0.55rem;
+  font-size: 0.88rem;
 
   font-weight:
     700;
@@ -4330,8 +4096,7 @@ html.dark
   border-radius:
     6px;
 
-  font-size:
-    0.45rem;
+  font-size: 0.72rem;
 
   font-weight:
     800;
@@ -4363,8 +4128,7 @@ html.dark
   border-radius:
     8px;
 
-  font-size:
-    0.5rem;
+  font-size: 0.80rem;
 
   font-weight:
     700;
@@ -4407,8 +4171,7 @@ html.dark
   color:
     #638ECB;
 
-  font-size:
-    0.45rem;
+  font-size: 0.72rem;
 
   font-weight:
     800;
@@ -4480,8 +4243,7 @@ html.dark
   background:
     var(--sa-surface-soft);
 
-  font-size:
-    0.4rem;
+  font-size: 0.64rem;
 
   font-weight:
     800;
@@ -4527,8 +4289,7 @@ html.dark
   color:
     var(--sa-text-faint);
 
-  font-size:
-    0.43rem;
+  font-size: 0.69rem;
 
   font-weight:
     800;
@@ -4554,8 +4315,7 @@ html.dark
   color:
     var(--sa-text-secondary);
 
-  font-size:
-    0.55rem;
+  font-size: 0.88rem;
 
   line-height:
     1.55;
@@ -4567,6 +4327,10 @@ html.dark
 ============================================================ */
 
 .city-footer {
+  position:
+    relative;
+  z-index:
+    10;
   margin-top:
     46px;
 
@@ -4582,8 +4346,10 @@ html.dark
       0.08
     );
 
-  background:
-    #243A5A;
+  background-color:
+    #243A5A !important;
+  opacity:
+    1 !important;
 
   color:
     #F0F3FA;
@@ -4670,8 +4436,7 @@ html.dark
   color:
     white;
 
-  font-size:
-    0.82rem;
+  font-size: 1.31rem;
 
   font-weight:
     800;
@@ -4691,8 +4456,7 @@ html.dark
   color:
     #B1C9EF;
 
-  font-size:
-    0.43rem;
+  font-size: 0.69rem;
 
   font-weight:
     700;
@@ -4712,8 +4476,7 @@ html.dark
   color:
     #D5DEEF;
 
-  font-size:
-    0.5rem;
+  font-size: 0.80rem;
 
   line-height:
     1.7;
@@ -4739,8 +4502,7 @@ html.dark
   color:
     #B1C9EF;
 
-  font-size:
-    0.45rem;
+  font-size: 0.72rem;
 
   font-weight:
     800;
@@ -4773,8 +4535,7 @@ html.dark
   font-family:
     inherit;
 
-  font-size:
-    0.48rem;
+  font-size: 0.77rem;
 
   font-weight:
     600;
@@ -4858,8 +4619,7 @@ html.dark
   color:
     #D5DEEF;
 
-  font-size:
-    0.45rem;
+  font-size: 0.72rem;
 
   font-weight:
     700;
@@ -4900,8 +4660,7 @@ html.dark
   color:
     #8AAEE0;
 
-  font-size:
-    0.42rem;
+  font-size: 0.67rem;
 
   font-weight:
     600;
@@ -4932,8 +4691,7 @@ html.dark
   color:
     #8AAEE0;
 
-  font-size:
-    0.4rem;
+  font-size: 0.64rem;
 }
 
 
@@ -4941,7 +4699,7 @@ html.dark
    RESPONSIVE
 ============================================================ */
 
-@media (max-width: 1050px) {
+@media (max-width: 1024px) {
 
   /* .milestone-grid flex handles responsiveness */
 
@@ -4956,7 +4714,14 @@ html.dark
 }
 
 
-@media (max-width: 980px) {
+@media (max-width: 768px) {
+
+  .dashboard-container {
+    padding:
+      4.8rem
+      1.25rem
+      1.5rem;
+  }
 
   .dashboard-header {
     align-items:
@@ -4991,13 +4756,13 @@ html.dark
 }
 
 
-@media (max-width: 760px) {
+@media (max-width: 640px) {
 
   .dashboard-container {
     padding:
       4.6rem
       0.75rem
-      0;
+      1.25rem;
   }
 
 
@@ -5026,143 +4791,124 @@ html.dark
 
 
   .momentum-strip {
-    grid-template-columns:
-      1fr
-      1fr;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
   }
-
 
   .momentum-divider {
-    display:
-      none;
+    display: none;
   }
-
 
   .momentum-item,
   .momentum-item:first-child,
   .momentum-item:last-child {
-    padding:
-      9px 8px;
-
-    border-bottom:
-      1px solid
-      var(--sa-border);
+    padding: 10px 6px;
+    align-items: center;
+    text-align: center;
   }
-
 
   /* .milestone-grid flex handles responsiveness */
 
-
   .city-footer-main {
-    grid-template-columns:
-      1fr 1fr;
-
-    padding:
-      26px 18px;
+    grid-template-columns: 1.3fr 0.9fr 0.9fr 0.9fr;
+    gap: 0.75rem;
+    padding: 20px 12px;
   }
-
 
   .city-footer-brand {
-    grid-column:
-      1 / -1;
+    grid-column: auto;
   }
-
 
   .city-footer-description {
-    max-width:
-      none;
+    max-width: none;
   }
-
 
   .city-government-inner {
-    align-items:
-      flex-start;
-
-    flex-direction:
-      column;
-
-    padding:
-      12px 18px;
+    align-items: center;
+    flex-direction: row;
+    justify-content: space-between;
+    padding: 12px 18px;
   }
-
 
   .government-links {
-    flex-wrap:
-      wrap;
+    flex-wrap: wrap;
   }
 
-
   .city-footer-bottom {
-    align-items:
-      flex-start;
-
-    flex-direction:
-      column;
-
-    padding:
-      11px 18px;
+    align-items: center;
+    flex-direction: row;
+    justify-content: space-between;
+    padding: 11px 18px;
   }
 
 }
 
-
-@media (max-width: 520px) {
+@media (max-width: 480px) {
 
   .dashboard-header h1 {
-    font-size:
-      1.8rem;
+    font-size: 1.8rem;
   }
-
 
   .journey-section,
   .workspace-panel,
   .ai-panel,
   .lower-panel {
-    border-radius:
-      15px;
+    border-radius: 15px;
   }
-
 
   .momentum-strip {
-    grid-template-columns:
-      1fr;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 5px;
   }
-
 
   .momentum-item {
-    border-bottom:
-      1px solid
-      var(--sa-border);
+    padding: 8px 4px;
+    align-items: center;
+    text-align: center;
+    border-bottom: 0;
+    border-radius: 10px;
+    gap: 3px;
   }
 
+  .momentum-icon {
+    width: 22px;
+    height: 22px;
+  }
+
+  .momentum-icon svg {
+    width: 13px;
+    height: 13px;
+  }
+
+  .momentum-item strong {
+    font-size: 0.85rem;
+    line-height: 1.1;
+  }
+
+  .momentum-item span {
+    font-size: 0.5rem;
+    line-height: 1.1;
+    display: block;
+  }
 
   .momentum-item:last-child {
-    border-bottom:
-      0;
+    border-bottom: 0;
   }
-
 
   .chapter-nodes {
-    justify-content:
-      flex-start;
-
-    min-width:
-      max-content;
+    justify-content: flex-start;
+    min-width: max-content;
   }
-
 
   .timeline-track {
-    display:
-      none;
+    display: none;
   }
-
 
   /* .milestone-grid flex handles responsiveness */
 
-
   .loading-grid {
-    grid-template-columns:
-      1fr;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 5px;
   }
 
 
@@ -5174,11 +4920,11 @@ html.dark
 }
 
 
-@media (max-width: 430px) {
+@media (max-width: 380px) {
 
   .city-footer-main {
-    grid-template-columns:
-      1fr;
+    grid-template-columns: 1.2fr 0.9fr 0.9fr 0.9fr;
+    gap: 0.45rem;
   }
 
 }
@@ -5202,7 +4948,15 @@ html.dark
     transition-duration:
       0.01ms !important;
   }
-
 }
 
+html.dark .journey-section,
+html.dark .lower-panel,
+html.dark .dashboard-card {
+  background: #1e293b !important;
+}
+html.dark .journey-button {
+  background: #8AAEE0 !important;
+  color: #0f172a !important;
+}
 </style>

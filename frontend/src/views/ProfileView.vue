@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AppFooter from '@/components/layout/AppFooter.vue'
 import {
   ref,
   computed,
@@ -38,7 +39,7 @@ interface Notice {
 const router = useRouter()
 const auth = useAuthStore()
 const progress = useProgressStore()
-const { locale } = useI18n()
+const { locale, t } = useI18n()
 
 
 /* ============================================================
@@ -198,6 +199,23 @@ function applyTheme(
   )
 }
 
+function getPlaceholderTitle(index: number): string {
+  const titles = [
+    'Introduction & Preface',
+    'Smart Governance',
+    'Digital Adama',
+    'Smart Security',
+    'Smart Urban Design',
+    'Smart Environment',
+    'Smart Mobility',
+    'Smart Social Services',
+    'Smart Tourism and Culture',
+    'Smart Public Relation',
+    'Smart People'
+  ]
+  return titles[index] || `Chapter ${index + 1}`
+}
+
 
 function initializeTheme() {
   const savedTheme =
@@ -302,7 +320,7 @@ const avatarUrl = computed(() => {
     return null
   }
 
-  return (
+  const rawUrl =
     user.avatar_url ||
     user.profile_picture ||
     user.profile_image ||
@@ -311,7 +329,15 @@ const avatarUrl = computed(() => {
     user.image ||
     user.photo ||
     null
-  )
+
+  if (!rawUrl) return null
+
+  if (rawUrl.startsWith('http')) {
+    return rawUrl
+  }
+
+  const baseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
+  return `${baseUrl}${rawUrl.startsWith('/') ? '' : '/'}${rawUrl}`
 })
 
 
@@ -986,17 +1012,17 @@ onUnmounted(() => {
 
 <template>
 
-  <AppShell>
+  <AppShell content-class="pt-14 sm:pt-18 md:pt-24">
 
     <main class="profile-page">
 
       <!-- DIAGONAL VIDEO BACKGROUND -->
       <div class="global-bg-video">
-        <video 
-          autoplay 
-          loop 
-          muted 
-          playsinline 
+        <video
+          autoplay
+          loop
+          muted
+          playsinline
           poster="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1'%3E%3C/svg%3E"
           src="/videos/smart-adama-book.mp4"
         ></video>
@@ -1011,24 +1037,9 @@ onUnmounted(() => {
         =================================================== -->
 
         <header class="profile-header fade-up">
-
-          <div>
-
-            <span class="profile-eyebrow">
-              Account
-            </span>
-
-            <h1 class="profile-page-title">
-              Profile & Settings
-            </h1>
-
-            <p class="profile-page-description">
-              Manage your identity, preferences,
-              security, and appearance.
-            </p>
-
-          </div>
-
+          <h1 class="profile-page-title">
+            {{ $t('prof.prof_settings') }}
+          </h1>
         </header>
 
 
@@ -1148,20 +1159,12 @@ onUnmounted(() => {
                 "
               />
 
-              <span class="avatar-hint">
-                JPG, PNG or WEBP · Max 5 MB
-              </span>
-
             </div>
 
 
             <!-- Identity -->
 
             <div class="identity">
-
-              <span class="identity-label">
-                Smart Adama Scholar
-              </span>
 
               <h2 class="identity-name">
                 {{ displayName }}
@@ -1197,7 +1200,7 @@ onUnmounted(() => {
               <div class="completion-header">
 
                 <span>
-                  Profile completion
+                  {{ $t('prof.prof_completion') }}
                 </span>
 
                 <strong>
@@ -1217,10 +1220,6 @@ onUnmounted(() => {
                 ></div>
 
               </div>
-
-              <p>
-                Keep your account details current.
-              </p>
 
             </div>
 
@@ -1297,21 +1296,9 @@ onUnmounted(() => {
 
           <div class="section-header">
 
-            <div>
-
-              <span class="section-eyebrow">
-                Learning
-              </span>
-
-              <h2>
-                Your learning journey
-              </h2>
-
-            </div>
-
-            <span class="section-note">
-              Personal snapshot
-            </span>
+            <h2>
+              {{ $t('prof.journey') }}
+            </h2>
 
           </div>
 
@@ -1347,7 +1334,7 @@ onUnmounted(() => {
                 </div>
 
                 <span>
-                  Chapters read
+                  {{ $t('prof.chaps_read') }}
                 </span>
 
               </div>
@@ -1380,7 +1367,7 @@ onUnmounted(() => {
 
 
               <small class="metric-caption">
-                {{ completionPct }}% complete
+                {{ completionPct }}%
               </small>
 
             </article>
@@ -1410,7 +1397,7 @@ onUnmounted(() => {
                 </div>
 
                 <span>
-                  Current streak
+                  {{ $t('prof.streak') }}
                 </span>
 
               </div>
@@ -1421,14 +1408,14 @@ onUnmounted(() => {
                 {{ currentStreak }}
 
                 <small>
-                  days
+                  {{ $t('prof.days') }}
                 </small>
 
               </div>
 
 
               <small class="metric-caption">
-                Keep the momentum going.
+                {{ $t('prof.momentum') }}
               </small>
 
             </article>
@@ -1462,7 +1449,7 @@ onUnmounted(() => {
                 </div>
 
                 <span>
-                  Average quiz score
+                  {{ $t('prof.avg_score') }}
                 </span>
 
               </div>
@@ -1480,7 +1467,7 @@ onUnmounted(() => {
 
 
               <small class="metric-caption">
-                {{ quizzesPassed }} quizzes passed
+                {{ quizzesPassed }} passed
               </small>
 
             </article>
@@ -1516,7 +1503,7 @@ onUnmounted(() => {
                 </div>
 
                 <span>
-                  Badges earned
+                  {{ $t('prof.badges_earned') }}
                 </span>
 
               </div>
@@ -1528,11 +1515,151 @@ onUnmounted(() => {
 
 
               <small class="metric-caption">
-                Milestones unlocked
+                {{ $t('prof.milestones') }}
               </small>
 
             </article>
 
+          </div>
+
+          <!-- COMMAND CENTER: Chapter Progress Bento Grid -->
+          <div class="mt-12 space-y-8">
+
+            <!-- Section A: The Progress Hero (Top Full-Width) -->
+            <div class="relative overflow-hidden rounded-2xl sm:rounded-3xl border-transparent bg-gradient-to-br from-[#638ECB] to-[#395886] shadow-[0_12px_40px_rgba(99,142,203,0.3)] p-4 sm:p-6 md:p-8 flex flex-row items-center justify-between gap-3 sm:gap-8">
+              <div class="flex-1 min-w-0">
+                <h2 class="text-[20px] sm:text-[28px] md:text-[36px] leading-tight tracking-tight font-heavy text-white mb-1 sm:mb-2">
+                  Curriculum Progress
+                </h2>
+                <p class="text-[12px] sm:text-[14px] font-normal text-blue-100 dark:text-slate-400 truncate sm:whitespace-normal">
+                  {{ Math.max(0, 12 - (d?.completed_chapters || 0)) }} chapters remaining to complete.
+                </p>
+              </div>
+
+              <div class="flex items-center gap-3 sm:gap-6 shrink-0">
+                <!-- Circular SVG Mastery Visualization -->
+                <div class="relative w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 flex items-center justify-center">
+                  <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" stroke-width="6" class="text-white/20 dark:text-slate-800" />
+                    <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" stroke-width="6"
+                            class="text-white dark:text-[#008A00] transition-all duration-1000 ease-out"
+                            :stroke-dasharray="283"
+                            :stroke-dashoffset="283 - (283 * (d?.completed_chapters || 0) / Math.max(1, (d?.chapter_progress?.length || 12)))"
+                            stroke-linecap="round" />
+                  </svg>
+                  <div class="absolute inset-0 flex flex-col items-center justify-center">
+                    <span class="text-lg sm:text-xl md:text-2xl font-heavy text-white">{{ d?.completed_chapters || 0 }}</span>
+                    <span class="text-[8px] sm:text-[9px] md:text-[10px] uppercase tracking-widest text-white/70 dark:text-slate-400 font-semibold">/ {{ d?.chapter_progress?.length || 12 }}</span>
+                  </div>
+                </div>
+                <div class="hidden sm:block">
+                  <div class="text-[18px] font-medium text-white">Mastered</div>
+                  <div class="text-[12px] text-blue-100 dark:text-slate-400">Chapters</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Section B: The Chapter Track Bento Grid -->
+            <div class="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
+
+              <article
+                v-for="(cp, index) in d?.chapter_progress || []"
+                :key="cp.chapter_id"
+                class="group relative flex flex-col justify-between overflow-hidden rounded-xl sm:rounded-2xl border transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_32px_rgba(0,0,0,0.08)] dark:hover:shadow-[0_12px_32px_rgba(0,0,0,0.4)]"
+                :class="[
+                  cp.status === 'COMPLETED'
+                    ? 'bg-[#8AAEE0] border-transparent shadow-[0_2px_12px_rgba(0,0,0,0.08)]'
+                    : cp.status === 'IN_PROGRESS'
+                      ? 'bg-[#638ECB] border-transparent shadow-[0_8px_30px_rgba(99,142,203,0.4)]'
+                      : 'bg-[#8AAEE0]/15 border-[#8AAEE0]/30'
+                ]"
+              >
+                <!-- TOP ROW (Metadata) -->
+                <div class="p-3.5 sm:p-6 pb-2 sm:pb-4">
+                  <div class="flex items-start justify-between mb-2 sm:mb-4">
+                    <div class="text-[32px] sm:text-[64px] leading-[0.8] tracking-tighter font-heavy opacity-40"
+                         :class="[
+                           cp.status === 'COMPLETED' ? 'text-slate-800' :
+                           cp.status === 'IN_PROGRESS' ? 'text-white' :
+                           'text-slate-500'
+                         ]">
+                      {{ String(index + 1).padStart(2, '0') }}
+                    </div>
+                    <div class="text-[9px] sm:text-[11px] font-medium tracking-wide uppercase px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full"
+                         :class="[
+                           cp.status === 'IN_PROGRESS' ? 'bg-white/20 text-white' : 'bg-white/50 text-slate-700'
+                         ]">
+                      {{ index === 0 ? '15 min' : '45 min' }}
+                    </div>
+                  </div>
+
+                  <h3 class="text-[13px] sm:text-[18px] font-medium leading-snug line-clamp-2"
+                      :class="cp.status === 'IN_PROGRESS' ? 'text-white' : 'text-slate-900'">
+                    {{ getPlaceholderTitle(index) }}
+                  </h3>
+                </div>
+
+                <!-- BOTTOM AREA (State Dependent) -->
+                <div class="p-3.5 sm:p-6 pt-0 mt-auto">
+
+                  <!-- COMPLETED STATE -->
+                  <div v-if="cp.status === 'COMPLETED'" class="flex flex-col gap-4">
+                    <div class="flex items-center gap-2">
+                      <div class="px-2.5 py-1 rounded text-[11px] font-bold uppercase tracking-wider bg-white/60 text-slate-800 flex items-center gap-1.5 shadow-sm">
+                        <svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                        Mastered
+                      </div>
+                    </div>
+
+                    <div class="text-[13px] font-medium text-slate-800 flex items-center gap-1.5">
+                      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" stroke-linecap="round" stroke-linejoin="round"/><polyline points="22 4 12 14.01 9 11.01" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                      {{ cp.best_quiz_score_pct ? cp.best_quiz_score_pct + '% Score' : 'Completed' }}
+                    </div>
+                  </div>
+
+                  <!-- IN PROGRESS STATE -->
+                  <div v-else-if="cp.status === 'IN_PROGRESS'" class="flex flex-col gap-4">
+                    <!-- Subtle Roadmap Timeline -->
+                    <div class="flex items-center gap-1 mt-1">
+                      <div class="flex-1 h-1 rounded-full bg-white"></div>
+                      <div class="flex-1 h-1 rounded-full bg-white/40 relative">
+                        <div class="absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-[#638ECB] bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]"></div>
+                      </div>
+                      <div class="flex-1 h-1 rounded-full bg-white/20"></div>
+                    </div>
+
+                    <div class="flex items-center justify-between text-[12px] text-white/80 mb-1">
+                      <span>{{ cp.reading_progress }}% Read</span>
+                      <span class="text-white font-medium">In Progress</span>
+                    </div>
+
+                    <button @click="router.push(`/study`)" class="w-full py-2 sm:py-2.5 rounded-xl bg-white text-[#638ECB] font-medium text-[13px] sm:text-[14px] transition-transform hover:scale-[1.03] active:scale-[0.98] shadow-md flex items-center justify-center gap-2">
+                      Continue
+                    </button>
+                  </div>
+
+                  <!-- NOT STARTED STATE -->
+                  <div v-else class="flex flex-col gap-4">
+                    <!-- Muted Roadmap -->
+                    <div class="flex items-center gap-1 mt-1 opacity-40">
+                      <div class="flex-1 h-1 rounded-full bg-[#395886]/40"></div>
+                      <div class="flex-1 h-1 rounded-full bg-[#395886]/40"></div>
+                      <div class="flex-1 h-1 rounded-full bg-[#395886]/40"></div>
+                    </div>
+
+                    <div class="text-[12px] text-slate-500 mb-1 font-medium">
+                      Not Started
+                    </div>
+
+                    <button @click="router.push(`/study`)" class="w-full py-2 sm:py-2.5 rounded-xl bg-white text-[#395886] border border-[#8AAEE0]/30 font-medium text-[13px] sm:text-[14px] transition-all hover:bg-blue-50 hover:shadow-sm">
+                      Start
+                    </button>
+                  </div>
+
+                </div>
+              </article>
+
+            </div>
           </div>
 
         </section>
@@ -1558,18 +1685,9 @@ onUnmounted(() => {
 
               <div>
 
-                <span class="section-eyebrow">
-                  Account
-                </span>
-
                 <h2>
-                  Personal information
+                  {{ $t('prof.personal_info') }}
                 </h2>
-
-                <p>
-                  Keep the information associated with
-                  your Smart Adama account current.
-                </p>
 
               </div>
 
@@ -1608,7 +1726,7 @@ onUnmounted(() => {
               <div class="field">
 
                 <label>
-                  Full name
+                  {{ $t('prof.full_name') }}
                 </label>
 
                 <input
@@ -1641,7 +1759,7 @@ onUnmounted(() => {
               <div class="field">
 
                 <label>
-                  Email address
+                  {{ $t('prof.email_addr') }}
                 </label>
 
                 <input
@@ -1652,11 +1770,6 @@ onUnmounted(() => {
                   disabled
                   class="input disabled"
                 />
-
-                <span class="field-help">
-                  Your email is managed by
-                  your account identity.
-                </span>
 
               </div>
 
@@ -1689,8 +1802,8 @@ onUnmounted(() => {
 
                 {{
                   auth.loading
-                    ? 'Saving...'
-                    : 'Save changes'
+                    ? t('prof.saving')
+                    : t('prof.save')
                 }}
 
               </button>
@@ -1710,18 +1823,9 @@ onUnmounted(() => {
 
               <div>
 
-                <span class="section-eyebrow">
-                  Security
-                </span>
-
                 <h2>
-                  Password & security
+                  {{ $t('prof.pass_sec') }}
                 </h2>
-
-                <p>
-                  Use a strong password to protect
-                  your learning account.
-                </p>
 
               </div>
 
@@ -1766,7 +1870,7 @@ onUnmounted(() => {
               <div class="field">
 
                 <label>
-                  Current password
+                  {{ $t('prof.current_pass') }}
                 </label>
 
                 <input
@@ -1785,7 +1889,7 @@ onUnmounted(() => {
               <div class="field">
 
                 <label>
-                  New password
+                  {{ $t('prof.new_pass') }}
                 </label>
 
                 <input
@@ -1840,7 +1944,7 @@ onUnmounted(() => {
               <div class="field">
 
                 <label>
-                  Confirm new password
+                  {{ $t('prof.confirm_pass') }}
                 </label>
 
                 <input
@@ -1897,7 +2001,7 @@ onUnmounted(() => {
                 {{
                   isSavingSecurity
                     ? 'Updating...'
-                    : 'Update password'
+                    : 'Update'
                 }}
 
               </button>
@@ -1942,18 +2046,9 @@ onUnmounted(() => {
 
               <div>
 
-                <span class="section-eyebrow">
-                  Preferences
-                </span>
-
                 <h2>
-                  Notifications
+                  {{ $t('prof.notifications') }}
                 </h2>
-
-                <p>
-                  Control when Smart Adama notifies
-                  you about your progress.
-                </p>
 
               </div>
 
@@ -1988,12 +2083,11 @@ onUnmounted(() => {
               <div>
 
                 <strong>
-                  Badge notifications
+                  {{ $t('prof.badge_notifs') }}
                 </strong>
 
                 <span>
-                  Notify me when I earn a badge
-                  or milestone.
+                  {{ $t('prof.notify_badge') }}
                 </span>
 
               </div>
@@ -2032,18 +2126,9 @@ onUnmounted(() => {
 
               <div>
 
-                <span class="section-eyebrow">
-                  Interface
-                </span>
-
                 <h2>
-                  Appearance
+                  {{ $t('prof.appearance') }}
                 </h2>
-
-                <p>
-                  Choose the theme used across the
-                  Smart Adama application.
-                </p>
 
               </div>
 
@@ -2120,12 +2205,8 @@ onUnmounted(() => {
                 <span class="theme-text">
 
                   <strong>
-                    Light
+                    {{ $t('prof.light') }}
                   </strong>
-
-                  <small>
-                    Bright interface
-                  </small>
 
                 </span>
 
@@ -2196,12 +2277,8 @@ onUnmounted(() => {
                 <span class="theme-text">
 
                   <strong>
-                    System
+                    {{ $t('prof.system') }}
                   </strong>
-
-                  <small>
-                    Follow device setting
-                  </small>
 
                 </span>
 
@@ -2263,12 +2340,8 @@ onUnmounted(() => {
                 <span class="theme-text">
 
                   <strong>
-                    Dark
+                    {{ $t('prof.dark') }}
                   </strong>
-
-                  <small>
-                    Low-light interface
-                  </small>
 
                 </span>
 
@@ -2321,18 +2394,9 @@ onUnmounted(() => {
 
           <div>
 
-            <span class="section-eyebrow danger">
-              Account
-            </span>
-
             <h2>
-              Account actions
+              {{ $t('prof.account_actions') }}
             </h2>
-
-            <p>
-              Sign out from this device or
-              permanently remove your Smart Adama account.
-            </p>
 
           </div>
 
@@ -2366,7 +2430,7 @@ onUnmounted(() => {
                 />
               </svg>
 
-              Sign out
+              {{ $t('prof.signout') }}
 
             </button>
 
@@ -2399,7 +2463,7 @@ onUnmounted(() => {
                 />
               </svg>
 
-              Delete account
+              {{ $t('prof.del_account') }}
 
             </button>
 
@@ -2408,218 +2472,12 @@ onUnmounted(() => {
         </section>
 
 
-        <!-- ==================================================
-             FOOTER
-        =================================================== -->
-
-        <footer class="city-footer">
-
-          <div class="city-footer-main">
-
-
-            <!-- Brand -->
-
-            <div class="city-footer-brand">
-
-              <div class="city-footer-logo">
-
-                <img
-                  src="/logo.png"
-                  alt="Smart Adama"
-                />
-
-              </div>
-
-              <div>
-
-                <strong>
-                  Smart Adama
-                </strong>
-
-                <span>
-                  Smart City Learning Platform
-                </span>
-
-              </div>
-
-            </div>
-
-
-            <p class="city-footer-description">
-              A digital learning platform for understanding
-              Adama's smart city vision, initiatives,
-              services, and civic development.
-            </p>
-
-
-            <!-- Platform -->
-
-            <div class="city-footer-column">
-
-              <h3>
-                Platform
-              </h3>
-
-              <router-link
-                to="/dashboard"
-              >
-                Dashboard
-              </router-link>
-
-              <router-link
-                to="/study"
-              >
-                Study
-              </router-link>
-
-              <router-link
-                to="/game"
-              >
-                Game
-              </router-link>
-
-              <router-link
-                to="/profile"
-              >
-                Profile
-              </router-link>
-
-            </div>
-
-
-            <!-- Resources -->
-
-            <div class="city-footer-column">
-
-              <h3>
-                Resources
-              </h3>
-
-              <a
-                href="/books/SA-Book.pdf"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Smart Adama Book
-              </a>
-
-              <router-link
-                to="/study"
-              >
-                Learning Center
-              </router-link>
-
-              <router-link
-                to="/game"
-              >
-                Challenges
-              </router-link>
-
-              <router-link
-                to="/profile"
-              >
-                Account Settings
-              </router-link>
-
-            </div>
-
-
-            <!-- City -->
-
-            <div class="city-footer-column">
-
-              <h3>
-                Smart Adama City
-              </h3>
-
-              <span>
-                Learning
-              </span>
-
-              <span>
-                Technology
-              </span>
-
-              <span>
-                Innovation
-              </span>
-
-              <span>
-                Community
-              </span>
-
-            </div>
-
-          </div>
-
-
-          <div
-            class="city-government-bar"
-          >
-
-            <div
-              class="city-government-inner"
-            >
-
-              <div
-                class="government-identity"
-              >
-
-                <span
-                  class="government-line"
-                ></span>
-
-                <span>
-                  Smart Adama City
-                </span>
-
-                <span
-                  class="government-separator"
-                >
-                  /
-                </span>
-
-                <span>
-                  Digital Learning Platform
-                </span>
-
-              </div>
-
-
-              <span
-                class="government-message"
-              >
-                Public Service · Learning · Innovation
-              </span>
-
-            </div>
-
-          </div>
-
-
-          <div
-            class="city-footer-bottom"
-          >
-
-            <span>
-              ©
-              {{
-                new Date()
-                  .getFullYear()
-              }}
-              Smart Adama City
-            </span>
-
-            <span>
-              English · Afaan Oromoo · Amharic
-            </span>
-
-          </div>
-
-        </footer>
-
       </div>
 
+      <!-- ==================================================
+           FOOTER
+      =================================================== -->
+      <AppFooter />
 
       <!-- ==================================================
            DELETE MODAL
@@ -2666,13 +2524,11 @@ onUnmounted(() => {
 
 
             <h3>
-              Delete your account?
+              {{ $t('prof.del_confirm') }}
             </h3>
 
             <p>
-              This is a permanent action.
-              Your account and personal information
-              will be anonymized and your access removed.
+              {{ $t('prof.del_perm') }}
             </p>
 
 
@@ -2685,7 +2541,7 @@ onUnmounted(() => {
                   closeDeleteModal
                 "
               >
-                Cancel
+                {{ $t('prof.cancel') }}
               </button>
 
 
@@ -2913,43 +2769,28 @@ onUnmounted(() => {
 ============================================================ */
 
 .profile-page {
-
-  min-height:
-    100vh;
-
-  padding:
-    5rem 1rem 0;
-
-  background:
-    var(--sa-page-bg);
-
-  color:
-    var(--sa-text);
-
+  min-height: 100dvh;
+  width: 100%;
+  max-width: 100%;
+  padding: 0;
+  margin: 0;
+  background: var(--sa-page-bg);
+  color: var(--sa-text);
+  overflow-x: hidden;
   transition:
-    background-color
-    0.3s ease,
-    color
-    0.3s ease;
+    background-color 0.3s ease,
+    color 0.3s ease;
 }
 
 
 .profile-container {
-
-  width:
-    min(
-      100%,
-      1160px
-    );
-
-  margin:
-    0 auto;
-
-  position:
-    relative;
-
-  z-index:
-    10;
+  width: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 1.25rem 2rem 4rem;
+  position: relative;
+  z-index: 10;
+  box-sizing: border-box;
 }
 
 
@@ -2973,8 +2814,7 @@ onUnmounted(() => {
   color:
     var(--sa-text-muted);
 
-  font-size:
-    0.5rem;
+  font-size: 0.70rem;
 
   font-weight:
     800;
@@ -3031,8 +2871,7 @@ onUnmounted(() => {
   color:
     var(--sa-text-muted);
 
-  font-size:
-    0.7rem;
+  font-size: 0.90rem;
 
   line-height:
     1.6;
@@ -3316,8 +3155,7 @@ onUnmounted(() => {
   color:
     white;
 
-  font-size:
-    2.2rem;
+  font-size: 2.20rem;
 
   font-weight:
     800;
@@ -3387,8 +3225,7 @@ onUnmounted(() => {
 
 .avatar-overlay span {
 
-  font-size:
-    0.45rem;
+  font-size: 0.65rem;
 
   font-weight:
     800;
@@ -3411,8 +3248,7 @@ onUnmounted(() => {
       0.55
     );
 
-  font-size:
-    0.44rem;
+  font-size: 0.64rem;
 
   font-weight:
     600;
@@ -3467,8 +3303,7 @@ onUnmounted(() => {
       0.78
     );
 
-  font-size:
-    0.44rem;
+  font-size: 0.64rem;
 
   font-weight:
     800;
@@ -3529,8 +3364,7 @@ onUnmounted(() => {
       0.72
     );
 
-  font-size:
-    0.64rem;
+  font-size: 0.84rem;
 
   text-overflow:
     ellipsis;
@@ -3562,8 +3396,7 @@ onUnmounted(() => {
       0.56
     );
 
-  font-size:
-    0.49rem;
+  font-size: 0.69rem;
 
   font-weight:
     600;
@@ -3647,8 +3480,7 @@ onUnmounted(() => {
       0.68
     );
 
-  font-size:
-    0.49rem;
+  font-size: 0.69rem;
 
   font-weight:
     700;
@@ -3660,8 +3492,7 @@ onUnmounted(() => {
   color:
     white;
 
-  font-size:
-    0.72rem;
+  font-size: 0.92rem;
 }
 
 
@@ -3718,8 +3549,7 @@ onUnmounted(() => {
       0.44
     );
 
-  font-size:
-    0.45rem;
+  font-size: 0.65rem;
 }
 
 
@@ -3770,8 +3600,7 @@ onUnmounted(() => {
       0.86
     );
 
-  font-size:
-    0.56rem;
+  font-size: 0.76rem;
 
   font-weight:
     700;
@@ -3843,8 +3672,7 @@ onUnmounted(() => {
   color:
     var(--sa-text);
 
-  font-size:
-    1.16rem;
+  font-size: 1.16rem;
 
   font-weight:
     800;
@@ -3859,8 +3687,7 @@ onUnmounted(() => {
   color:
     var(--sa-text-muted);
 
-  font-size:
-    0.47rem;
+  font-size: 0.67rem;
 
   font-weight:
     700;
@@ -3964,8 +3791,7 @@ onUnmounted(() => {
   color:
     var(--sa-text-muted);
 
-  font-size:
-    0.47rem;
+  font-size: 0.67rem;
 
   font-weight:
     800;
@@ -4074,8 +3900,7 @@ html.dark
   color:
     var(--sa-text);
 
-  font-size:
-    1.7rem;
+  font-size: 1.70rem;
 
   line-height:
     1;
@@ -4093,8 +3918,7 @@ html.dark
   color:
     var(--sa-text-muted);
 
-  font-size:
-    0.58rem;
+  font-size: 0.78rem;
 
   font-weight:
     600;
@@ -4155,8 +3979,7 @@ html.dark
   color:
     var(--sa-text-muted);
 
-  font-size:
-    0.48rem;
+  font-size: 0.68rem;
 }
 
 
@@ -4246,8 +4069,7 @@ html.dark
   color:
     var(--sa-text);
 
-  font-size:
-    0.98rem;
+  font-size: 0.98rem;
 
   line-height:
     1.15;
@@ -4271,8 +4093,7 @@ html.dark
   color:
     var(--sa-text-muted);
 
-  font-size:
-    0.56rem;
+  font-size: 0.76rem;
 
   line-height:
     1.55;
@@ -4380,8 +4201,7 @@ html.dark
   color:
     var(--sa-text);
 
-  font-size:
-    0.56rem;
+  font-size: 0.76rem;
 
   font-weight:
     800;
@@ -4416,8 +4236,7 @@ html.dark
   color:
     var(--sa-text);
 
-  font-size:
-    0.63rem;
+  font-size: 0.83rem;
 
   transition:
     border-color
@@ -4475,8 +4294,7 @@ html.dark
   color:
     #ef4444;
 
-  font-size:
-    0.5rem;
+  font-size: 0.70rem;
 
   font-weight:
     600;
@@ -4488,8 +4306,7 @@ html.dark
   color:
     var(--sa-text-muted);
 
-  font-size:
-    0.47rem;
+  font-size: 0.67rem;
 
   line-height:
     1.45;
@@ -4523,8 +4340,7 @@ html.dark
   border-radius:
     0.65rem;
 
-  font-size:
-    0.6rem;
+  font-size: 0.80rem;
 
   font-weight:
     800;
@@ -4607,8 +4423,7 @@ html.dark
 
 .form-message {
 
-  font-size:
-    0.5rem;
+  font-size: 0.70rem;
 
   font-weight:
     700;
@@ -4705,8 +4520,7 @@ html.dark
   color:
     var(--sa-text-muted);
 
-  font-size:
-    0.45rem;
+  font-size: 0.65rem;
 
   font-weight:
     800;
@@ -4754,8 +4568,7 @@ html.dark
   color:
     var(--sa-text);
 
-  font-size:
-    0.6rem;
+  font-size: 0.80rem;
 
   font-weight:
     800;
@@ -4773,8 +4586,7 @@ html.dark
   color:
     var(--sa-text-muted);
 
-  font-size:
-    0.48rem;
+  font-size: 0.68rem;
 }
 
 
@@ -5026,8 +4838,7 @@ html.dark
   color:
     var(--sa-text);
 
-  font-size:
-    0.56rem;
+  font-size: 0.76rem;
 
   font-weight:
     800;
@@ -5039,8 +4850,7 @@ html.dark
   color:
     var(--sa-text-muted);
 
-  font-size:
-    0.45rem;
+  font-size: 0.65rem;
 }
 
 
@@ -5065,8 +4875,7 @@ html.dark
   color:
     #638ECB;
 
-  font-size:
-    0.48rem;
+  font-size: 0.68rem;
 
   font-weight:
     700;
@@ -5121,8 +4930,7 @@ html.dark
   color:
     var(--sa-text);
 
-  font-size:
-    0.93rem;
+  font-size: 0.93rem;
 
   font-weight:
     800;
@@ -5137,8 +4945,7 @@ html.dark
   color:
     var(--sa-text-muted);
 
-  font-size:
-    0.53rem;
+  font-size: 0.73rem;
 }
 
 
@@ -5183,8 +4990,7 @@ html.dark
   border-radius:
     0.62rem;
 
-  font-size:
-    0.57rem;
+  font-size: 0.77rem;
 
   font-weight:
     800;
@@ -5350,8 +5156,17 @@ html.dark
   overflow:
     hidden;
 
-  background:
-    #243A5A;
+  position:
+    relative;
+
+  z-index:
+    10;
+
+  background-color:
+    #243A5A !important;
+
+  opacity:
+    1 !important;
 
   color:
     #D5DEEF;
@@ -5450,8 +5265,7 @@ html.dark
   color:
     white;
 
-  font-size:
-    0.82rem;
+  font-size: 1.02rem;
 
   font-weight:
     800;
@@ -5469,8 +5283,7 @@ html.dark
   color:
     #B1C9EF;
 
-  font-size:
-    0.42rem;
+  font-size: 0.62rem;
 
   font-weight:
     700;
@@ -5491,8 +5304,7 @@ html.dark
   color:
     #B1C9EF;
 
-  font-size:
-    0.49rem;
+  font-size: 0.69rem;
 
   line-height:
     1.7;
@@ -5523,8 +5335,7 @@ html.dark
   color:
     white;
 
-  font-size:
-    0.45rem;
+  font-size: 0.65rem;
 
   font-weight:
     800;
@@ -5543,8 +5354,7 @@ html.dark
   color:
     #B1C9EF;
 
-  font-size:
-    0.47rem;
+  font-size: 0.67rem;
 
   font-weight:
     600;
@@ -5625,8 +5435,7 @@ html.dark
   color:
     #D5DEEF;
 
-  font-size:
-    0.44rem;
+  font-size: 0.64rem;
 
   font-weight:
     700;
@@ -5661,8 +5470,7 @@ html.dark
   color:
     #8AAEE0;
 
-  font-size:
-    0.42rem;
+  font-size: 0.62rem;
 
   font-weight:
     600;
@@ -5692,8 +5500,7 @@ html.dark
   color:
     #8AAEE0;
 
-  font-size:
-    0.4rem;
+  font-size: 0.60rem;
 }
 
 
@@ -5898,8 +5705,7 @@ html.dark
   color:
     var(--sa-text);
 
-  font-size:
-    1rem;
+  font-size: 1.00rem;
 
   font-weight:
     800;
@@ -5914,8 +5720,7 @@ html.dark
   color:
     var(--sa-text-muted);
 
-  font-size:
-    0.6rem;
+  font-size: 0.80rem;
 
   line-height:
     1.6;
@@ -5963,8 +5768,7 @@ html.dark
   border-radius:
     0.62rem;
 
-  font-size:
-    0.58rem;
+  font-size: 0.78rem;
 
   font-weight:
     800;
@@ -6059,7 +5863,7 @@ html.dark
    RESPONSIVE
 ============================================================ */
 
-@media (max-width: 1050px) {
+@media (max-width: 1024px) {
 
   .profile-hero-grid {
 
@@ -6100,184 +5904,232 @@ html.dark
 }
 
 
-@media (max-width: 760px) {
+@media (max-width: 768px) {
 
   .profile-page {
-
-    padding:
-      4.6rem 0.75rem 0;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    min-width: 100% !important;
+    overflow-x: hidden !important;
   }
 
+  .profile-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0.5rem 0.85rem 2rem !important;
+    box-sizing: border-box !important;
+  }
+
+  .profile-header {
+    margin-top: 0 !important;
+    margin-bottom: 0.75rem !important;
+  }
+
+  .profile-page-title {
+    font-size: clamp(1.4rem, 5vw, 1.85rem) !important;
+    line-height: 1.1 !important;
+    margin-top: 0.15rem !important;
+  }
+
+  .profile-page-description {
+    margin-top: 0.25rem !important;
+    font-size: 0.8rem !important;
+    line-height: 1.4 !important;
+  }
+
+  .profile-hero {
+    padding: 0.9rem !important;
+    border-radius: 1.1rem !important;
+  }
 
   .profile-hero-grid {
-
-    grid-template-columns:
-      1fr;
-
-    text-align:
-      center;
+    grid-template-columns: auto 1fr !important;
+    text-align: left !important;
+    align-items: center !important;
+    gap: 0.85rem !important;
   }
 
+  .avatar-button {
+    width: 4.6rem !important;
+    height: 4.6rem !important;
+  }
+
+  .avatar-fallback {
+    font-size: 1.7rem !important;
+  }
 
   .identity {
-
-    display:
-      flex;
-
-    flex-direction:
-      column;
-
-    align-items:
-      center;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    min-width: 0 !important;
   }
 
+  .identity-name {
+    font-size: 1.35rem !important;
+    margin-top: 0.2rem !important;
+    word-break: break-word;
+  }
 
   .identity-meta {
-
-    justify-content:
-      center;
+    justify-content: flex-start !important;
+    font-size: 0.72rem !important;
+    margin-top: 0.25rem !important;
   }
 
+  .completion-panel {
+    grid-column: 1 / -1 !important;
+    margin-top: 0.35rem !important;
+    padding: 0.7rem 0.85rem !important;
+    border-radius: 0.85rem !important;
+  }
 
   .settings-grid {
-
-    grid-template-columns:
-      1fr;
+    grid-template-columns: 1fr;
+    margin-top: 1rem !important;
+    gap: 0.65rem !important;
   }
 
+  .settings-card {
+    padding: 0.85rem !important;
+    border-radius: 0.95rem !important;
+  }
+
+  .settings-header {
+    margin-bottom: 0.65rem !important;
+  }
+
+  .settings-header h2 {
+    font-size: 0.92rem !important;
+  }
+
+  .settings-header p {
+    font-size: 0.72rem !important;
+    margin-top: 0.15rem !important;
+  }
 
   .account-actions {
-
-    align-items:
-      flex-start;
-
-    flex-direction:
-      column;
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 0.85rem !important;
+    border-radius: 0.95rem !important;
   }
-
 
   .account-buttons {
-
-    width:
-      100%;
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    gap: 0.5rem;
   }
-
 
   .logout-button,
   .delete-button {
-
-    flex:
-      1;
-  }
-
-
-  .city-footer-main {
-
-    grid-template-columns:
-      1fr 1fr;
-
-    padding:
-      2rem 1rem
-      1.5rem;
-  }
-
-
-  .city-footer-brand {
-
-    grid-column:
-      1 / -1;
-  }
-
-
-  .city-footer-description {
-
-    max-width:
-      none;
-  }
-
-
-  .city-government-inner {
-
-    align-items:
-      flex-start;
-
-    flex-direction:
-      column;
-
-    padding:
-      0.7rem 1rem;
-  }
-
-
-  .city-footer-bottom {
-
-    align-items:
-      flex-start;
-
-    flex-direction:
-      column;
-
-    padding:
-      0.7rem 1rem;
+    flex: 1;
+    width: auto;
   }
 }
 
+@media (max-width: 640px) {
 
-@media (max-width: 500px) {
+  .profile-container {
+    padding: 0.25rem 0.6rem 1.5rem !important;
+  }
 
   .metrics-grid {
-
-    grid-template-columns:
-      1fr;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.35rem;
   }
 
+  .metric-card {
+    padding: 0.55rem 0.35rem;
+    border-radius: 0.75rem;
+  }
+
+  .metric-top {
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+  }
+
+  .metric-icon {
+    width: 1.7rem;
+    height: 1.7rem;
+  }
+
+  .metric-icon svg {
+    width: 0.95rem;
+    height: 0.95rem;
+  }
+
+  .metric-top span {
+    font-size: 0.5rem;
+    text-align: center;
+  }
+
+  .metric-number {
+    font-size: 0.85rem;
+    text-align: center;
+  }
+
+  .metric-caption {
+    font-size: 0.44rem;
+    text-align: center;
+  }
 
   .section-header {
-
-    align-items:
-      flex-start;
-
-    flex-direction:
-      column;
+    align-items: flex-start;
+    flex-direction: column;
   }
 
-
-  .account-buttons {
-
-    flex-direction:
-      column;
+  .theme-options {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 0.35rem !important;
   }
 
-
-  .logout-button,
-  .delete-button {
-
-    width:
-      100%;
+  .theme-option {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center !important;
+    padding: 0.45rem 0.2rem !important;
+    gap: 0.2rem !important;
+    border-radius: 0.55rem !important;
   }
 
+  .theme-icon {
+    width: 1.5rem !important;
+    height: 1.5rem !important;
+  }
+
+  .theme-icon svg {
+    width: 0.75rem !important;
+    height: 0.75rem !important;
+  }
+
+  .theme-text strong {
+    font-size: 0.68rem !important;
+  }
+
+  .theme-text small {
+    font-size: 0.58rem !important;
+  }
+
+  .theme-check {
+    display: none !important;
+  }
 
   .delete-actions {
-
-    flex-direction:
-      column-reverse;
+    flex-direction: row;
+    gap: 0.5rem;
   }
-
 
   .cancel-delete,
   .confirm-delete {
-
-    width:
-      100%;
+    width: auto;
+    flex: 1;
   }
-
-
-  .city-footer-main {
-
-    grid-template-columns:
-      1fr;
-  }
-
 }
 
 

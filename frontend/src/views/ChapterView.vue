@@ -13,7 +13,6 @@ const chapterId = computed(() => route.params.chapterId as string)
 
 onMounted(async () => {
   await books.loadChapter(chapterId.value)
-  await books.markChapterRead(chapterId.value)
   await books.loadChapterQuiz(chapterId.value)
 })
 
@@ -41,16 +40,24 @@ const best     = computed(() => books.bestAttempt)
       </div>
 
       <!-- Chapter header -->
-      <div class="flex items-start justify-between gap-4 mb-8">
+      <div class="flex flex-col sm:flex-row items-start justify-between gap-4 mb-8 border-b pb-6">
         <div>
           <h1 class="font-display text-2xl font-semibold text-[var(--sa-dark)]">{{ chapter.title }}</h1>
-          <p v-if="progress?.is_completed" class="mt-1 text-sm text-green-600 font-medium">✓ Completed</p>
+          <div class="mt-2 flex items-center gap-3">
+            <span v-if="progress?.status === 'COMPLETED'" class="text-sm text-green-600 font-medium px-2 py-0.5 bg-green-50 rounded-md">✓ Completed</span>
+            <span class="text-sm text-slate-500 font-medium">Reading progress: {{ progress?.reading_progress || 0 }}%</span>
+          </div>
         </div>
-        <RouterLink v-if="quiz" :to="`/chapters/${chapterId}/quiz`">
-          <SaButton size="sm">
-            {{ best?.passed ? '🏆 Retake Quiz' : '📝 Take Quiz' }}
-          </SaButton>
-        </RouterLink>
+        <div class="shrink-0 flex items-center gap-2">
+          <RouterLink v-if="progress?.status === 'COMPLETED' && quiz" :to="`/chapters/${chapterId}/quiz`">
+            <SaButton size="sm">
+              🔓 {{ best?.passed ? 'Retake Quiz' : 'Take Quiz' }}
+            </SaButton>
+          </RouterLink>
+          <div v-else-if="quiz" class="px-4 py-2 bg-slate-100 text-slate-500 text-sm font-medium rounded-lg border border-slate-200">
+            🔒 Quiz Locked
+          </div>
+        </div>
       </div>
 
       <!-- Sections -->
@@ -71,16 +78,23 @@ const best     = computed(() => books.bestAttempt)
       <!-- Quiz CTA -->
       <div v-if="quiz" class="mt-8">
         <SaCard glass padding="p-6">
-          <div class="flex items-center justify-between gap-4">
+          <div class="flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
             <div>
               <h3 class="font-display font-semibold text-[var(--sa-dark)]">Chapter Quiz</h3>
-              <p class="text-sm text-[var(--sa-taupe)] mt-0.5">
-                {{ best ? `Best score: ${best.score_pct}%` : `Pass at ${quiz.passing_score_pct}% to complete this chapter` }}
+              <p v-if="progress?.status === 'COMPLETED'" class="text-sm text-[var(--sa-taupe)] mt-0.5">
+                {{ best ? `Best score: ${best.score_pct}%` : `Take the quiz to test your knowledge.` }}
+              </p>
+              <p v-else class="text-sm text-rose-500 mt-0.5 font-medium">
+                🔒 Locked. Finish reading Chapter {{ chapter.order }} first to unlock this quiz.
               </p>
             </div>
-            <RouterLink :to="`/chapters/${chapterId}/quiz`">
-              <SaButton>{{ best?.passed ? 'Retake' : 'Start Quiz' }}</SaButton>
+
+            <RouterLink v-if="progress?.status === 'COMPLETED'" :to="`/chapters/${chapterId}/quiz`">
+              <SaButton>🔓 {{ best?.passed ? 'Retake Quiz' : 'Start Quiz' }}</SaButton>
             </RouterLink>
+            <SaButton v-else disabled class="opacity-50 cursor-not-allowed">
+              🔒 Quiz Locked
+            </SaButton>
           </div>
         </SaCard>
       </div>

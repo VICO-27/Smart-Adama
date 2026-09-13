@@ -2,7 +2,7 @@ import { ref } from 'vue'
 
 export type ThemePreference = 'light' | 'dark' | 'system'
 
-const themePreference = ref<ThemePreference>('system')
+const themePreference = ref<ThemePreference>('light')
 
 export function useTheme() {
 
@@ -50,13 +50,13 @@ export function useTheme() {
   function initializeTheme() {
     const savedTheme = localStorage.getItem('sa_theme')
     const legacyTheme = localStorage.getItem('theme')
-    
+
     if (savedTheme === 'light' || savedTheme === 'dark' || savedTheme === 'system') {
       themePreference.value = savedTheme as ThemePreference
     } else if (legacyTheme === 'light' || legacyTheme === 'dark' || legacyTheme === 'system') {
       themePreference.value = legacyTheme as ThemePreference
     } else {
-      themePreference.value = 'system'
+      themePreference.value = 'light'
     }
 
     applyTheme(themePreference.value)

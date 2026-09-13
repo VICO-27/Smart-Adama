@@ -13,6 +13,7 @@
   --color-brand-500: #395886;
 }
 
+@custom-variant dark (&:where(.dark, .dark *));
 
 /* ============================================================
    SMART ADAMA — LIGHT THEME
@@ -110,6 +111,7 @@
 
   /* Typography */
   --font-display:
+    "Outfit",
     -apple-system,
     BlinkMacSystemFont,
     "SF Pro Display",
@@ -118,6 +120,7 @@
     sans-serif;
 
   --font-body:
+    "Inter",
     -apple-system,
     BlinkMacSystemFont,
     "SF Pro Text",
@@ -261,26 +264,23 @@ body,
 
 html {
   background: var(--sa-page-bg);
+  /* Fluid Base Scale: scales from 16px on mobile (320px) to 20px on desktop (1920px) */
+  font-size: clamp(16px, 1vw + 12px, 20px);
 }
 
 body {
   margin: 0;
-
-  min-height: 100svh;
-
-  background:
-    var(--sa-page-bg);
-
-  color:
-    var(--sa-text);
-
-  transition:
-    background-color 0.3s ease,
-    color 0.3s ease;
+  min-height: 100dvh;
+  background: var(--sa-page-bg);
+  color: var(--sa-text);
+  font-size: 1rem;
+  line-height: 1.6;
+  text-rendering: optimizeLegibility;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 #app {
-  min-height: 100svh;
+  min-height: 100dvh;
 }
 
 
@@ -339,7 +339,7 @@ body {
   colors and can make carefully designed interfaces unreadable.
 */
 
-html.dark .bg-white {
+html.dark .bg-white:not(.chat-page *) {
   background-color:
     var(--sa-surface) !important;
 
@@ -347,41 +347,41 @@ html.dark .bg-white {
     var(--sa-text);
 }
 
-html.dark .bg-gray-50,
-html.dark .bg-slate-50 {
+html.dark .bg-gray-50:not(.chat-page *),
+html.dark .bg-slate-50:not(.chat-page *) {
   background-color:
     var(--sa-surface-soft) !important;
 }
 
-html.dark .bg-gray-100,
-html.dark .bg-slate-100 {
+html.dark .bg-gray-100:not(.chat-page *),
+html.dark .bg-slate-100:not(.chat-page *) {
   background-color:
     var(--sa-surface-muted) !important;
 }
 
-html.dark .bg-brand-50,
-html.dark .bg-smart-blue-50 {
+html.dark .bg-brand-50:not(.chat-page *),
+html.dark .bg-smart-blue-50:not(.chat-page *) {
   background-color:
     #0F172A !important;
 }
 
-html.dark .bg-slate-900 {
+html.dark .bg-slate-900:not(.chat-page *) {
   background-color:
     #020617 !important;
 }
 
-html.dark .bg-slate-950 {
+html.dark .bg-slate-950:not(.chat-page *) {
   background-color:
     #000000 !important;
 }
 
-html.dark .border-slate-200,
-html.dark .border-slate-100 {
+html.dark .border-slate-200:not(.chat-page *),
+html.dark .border-slate-100:not(.chat-page *) {
   border-color: var(--sa-border) !important;
 }
 
-html.dark .ring-slate-200,
-html.dark .ring-slate-300 {
+html.dark .ring-slate-200:not(.chat-page *),
+html.dark .ring-slate-300:not(.chat-page *) {
   --tw-ring-color: var(--sa-border-strong) !important;
 }
 
@@ -390,38 +390,38 @@ html.dark .ring-slate-300 {
    DARK MODE — COMMON TEXT UTILITIES
 ============================================================ */
 
-html.dark .text-slate-900,
-html.dark .text-gray-900 {
+html.dark .text-slate-900:not(.chat-page *),
+html.dark .text-gray-900:not(.chat-page *) {
   color:
     #F8FAFC !important;
 }
 
-html.dark .text-slate-800,
-html.dark .text-gray-800 {
+html.dark .text-slate-800:not(.chat-page *),
+html.dark .text-gray-800:not(.chat-page *) {
   color:
     #E2E8F0 !important;
 }
 
-html.dark .text-slate-700,
-html.dark .text-gray-700 {
+html.dark .text-slate-700:not(.chat-page *),
+html.dark .text-gray-700:not(.chat-page *) {
   color:
     #CBD5E1 !important;
 }
 
-html.dark .text-slate-600,
-html.dark .text-gray-600 {
+html.dark .text-slate-600:not(.chat-page *),
+html.dark .text-gray-600:not(.chat-page *) {
   color:
     #94A3B8 !important;
 }
 
-html.dark .text-slate-500,
-html.dark .text-gray-500 {
+html.dark .text-slate-500:not(.chat-page *),
+html.dark .text-gray-500:not(.chat-page *) {
   color:
     #94A3B8 !important;
 }
 
-html.dark .text-slate-400,
-html.dark .text-gray-400 {
+html.dark .text-slate-400:not(.chat-page *),
+html.dark .text-gray-400:not(.chat-page *) {
   color:
     #64748B !important;
 }
@@ -431,10 +431,10 @@ html.dark .text-gray-400 {
    DARK MODE — BORDERS
 ============================================================ */
 
-html.dark .border-gray-100,
-html.dark .border-gray-200,
-html.dark .border-slate-100,
-html.dark .border-slate-200 {
+html.dark .border-gray-100:not(.chat-page *),
+html.dark .border-gray-200:not(.chat-page *),
+html.dark .border-slate-100:not(.chat-page *),
+html.dark .border-slate-200:not(.chat-page *) {
   border-color:
     var(--sa-border) !important;
 }
@@ -444,9 +444,9 @@ html.dark .border-slate-200 {
    DARK MODE — FORM CONTROLS
 ============================================================ */
 
-html.dark input:not([type="checkbox"]):not([type="radio"]),
-html.dark textarea,
-html.dark select {
+html.dark input:not(.chat-page *):not([type="checkbox"]):not([type="radio"]),
+html.dark textarea:not(.chat-page *),
+html.dark select:not(.chat-page *) {
   background:
     var(--sa-input-bg) !important;
 
@@ -457,15 +457,15 @@ html.dark select {
     var(--sa-input-border) !important;
 }
 
-html.dark input::placeholder,
-html.dark textarea::placeholder {
+html.dark input:not(.chat-page *)::placeholder,
+html.dark textarea:not(.chat-page *)::placeholder {
   color:
     var(--sa-input-placeholder) !important;
 }
 
-html.dark input:disabled,
-html.dark textarea:disabled,
-html.dark select:disabled {
+html.dark input:not(.chat-page *):disabled,
+html.dark textarea:not(.chat-page *):disabled,
+html.dark select:not(.chat-page *):disabled {
   background:
     #05070A !important;
 
@@ -478,7 +478,7 @@ html.dark select:disabled {
    DARK MODE — COMMON DASHBOARD GRADIENTS
 ============================================================ */
 
-html.dark .from-orange-50 {
+html.dark .from-orange-50:not(.chat-page *) {
   background:
     linear-gradient(
       to bottom right,
@@ -490,7 +490,7 @@ html.dark .from-orange-50 {
     #431407 !important;
 }
 
-html.dark .from-indigo-50 {
+html.dark .from-indigo-50:not(.chat-page *) {
   background:
     linear-gradient(
       to bottom right,
@@ -502,7 +502,7 @@ html.dark .from-indigo-50 {
     #1E293B !important;
 }
 
-html.dark .from-fuchsia-50 {
+html.dark .from-fuchsia-50:not(.chat-page *) {
   background:
     linear-gradient(
       to bottom right,
@@ -519,7 +519,7 @@ html.dark .from-fuchsia-50 {
    DARK MODE — BRAND PANELS
 ============================================================ */
 
-html.dark .bg-brand-500 {
+html.dark .bg-brand-500:not(.chat-page *) {
   background-color:
     #0B1220 !important;
 }
@@ -632,7 +632,7 @@ html.dark .bg-brand-500 {
   width: 65vw;
   min-width: 500px;
   max-width: 100vw;
-  height: 100vh;
+  height: 100dvh;
   z-index: 0;
   pointer-events: none;
   overflow: hidden;

@@ -1,22 +1,28 @@
 <template>
   <div v-if="fatalError" class="fatal-error-overlay">
     <div class="fatal-error-modal">
-      <h2>Something went wrong</h2>
-      <p>We encountered an unexpected error while rendering this page.</p>
+      <h2>{{ $t('chat.error') }}</h2>
+      <p>{{ $t('chat.error_desc') }}</p>
       <pre>{{ fatalError }}</pre>
-      <button class="btn btn--primary" @click="fatalError = null">Dismiss</button>
-      <button class="btn" @click="reloadPage">Reload Page</button>
+      <button class="btn btn--primary" @click="fatalError = null">{{ $t('chat.dismiss') }}</button>
+      <button class="btn" @click="reloadPage">{{ $t('chat.reload') }}</button>
     </div>
   </div>
 
   <div
     v-else
     class="chat-page"
-    :style="themeVars"
-    :class="{
-      'is-resizing': isDraggingLeft || isDraggingRight || isDraggingReader,
-      'is-fullscreen': isFullscreen,
-    }"
+    :class="[
+      'theme-' + readerTheme,
+      {
+        'dark': readerTheme === 'dark',
+        'light': readerTheme !== 'dark',
+        'is-resizing': isDraggingLeft || isDraggingRight || isDraggingReader,
+        'is-fullscreen': isFullscreen,
+      }
+    ]"
+    :data-theme="readerTheme"
+    :style="[themeVars, { colorScheme: readerTheme === 'dark' ? 'dark' : 'light' }]"
   >
     <!-- Mobile overlays -->
     <Transition name="fade">
@@ -34,33 +40,47 @@
     ========================================================== -->
     <aside
       v-if="!isSidebarOpen && !isFullscreen && !isMobile"
-      class="collapsed-rail collapsed-rail--left"
-      aria-label="Chapter controls"
+      class="collapsed-rail collapsed-rail--left flex flex-col justify-between items-center cursor-pointer"
+      aria-label="Sidebar controls"
+      @click="isSidebarOpen = true"
     >
-      <button
-        class="rail-button"
-        type="button"
-        title="Open chapters"
-        aria-label="Open chapters"
-        @click="isSidebarOpen = true"
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="3" y="3" width="18" height="18" rx="2" ry="2" stroke-linecap="round" />
-          <path d="M9 3v18" stroke-linecap="round" />
-        </svg>
-      </button>
+      <div class="flex flex-col gap-5 pt-5 w-full items-center">
+        <!-- Open Sidebar -->
+        <button class="rail-button" type="button" title="Open sidebar" @click="isSidebarOpen = true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" stroke-linecap="round" />
+            <path d="M9 3v18" stroke-linecap="round" />
+          </svg>
+        </button>
 
-      <button
-        class="rail-button rail-button--accent"
-        type="button"
-        title="New AI session"
-        aria-label="New AI session"
-        @click="startNewChatAndOpen"
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M12 4v16M4 12h16" stroke-linecap="round" />
-        </svg>
-      </button>
+        <!-- New Chat -->
+        <button class="rail-button" type="button" title="New AI session" @click.stop="startNewChatAndOpen">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 4v16M4 12h16" stroke-linecap="round" />
+          </svg>
+        </button>
+
+        <!-- Get Full PDF (Read Book) -->
+        <button class="rail-button" type="button" title="Get Full PDF" @click="switchToPdf">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </button>
+
+        <!-- Chapters -->
+        <button class="rail-button" type="button" title="Chapters" @click="activeSidebarTab = 'chapters'; isSidebarOpen = true;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="pb-6 flex justify-center w-full">
+        <button v-if="authStore?.user" class="w-7 h-7 rounded-full bg-emerald-500 text-white font-bold flex items-center justify-center text-xs shadow-sm hover:opacity-80 transition-opacity" title="Profile">
+          {{ authStore?.user?.first_name?.charAt(0) || authStore?.user?.name?.charAt(0) || 'U' }}
+        </button>
+      </div>
     </aside>
 
     <!-- =========================================================
@@ -111,66 +131,43 @@
           </div>
         </div>
 
-        <!-- Sidebar Search -->
-        <div v-if="isSidebarSearchActive" class="sidebar-search-container">
-          <div class="sidebar-search-wrapper">
-            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="11" cy="11" r="8" />
-              <path d="m21 21-4.3-4.3" stroke-linecap="round" />
-            </svg>
-            <input 
-              type="text" 
-              v-model="sidebarSearchQuery" 
-              ref="sidebarSearchInputRef"
-              class="sidebar-search-input" 
-              :placeholder="activeSidebarTab === 'chats' ? 'Search chats...' : 'Search chapters...'"
-              @keyup.esc="toggleSidebarSearch"
-            />
-            <button v-if="sidebarSearchQuery" @click="sidebarSearchQuery = ''" class="search-clear" type="button">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-
         <!-- ChatGPT-style New Chat Button -->
         <button type="button" class="new-chat-button" @click="startNewChat">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M12 5v14M5 12h14" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
-          New chat
+          {{ $t('chat.new_chat') }}
         </button>
 
-        <button 
-          type="button" 
-          class="reader-toggle-button" 
-          @click="viewMode === 'reading' ? switchToPdf() : viewMode = 'reading'"
+        <button
+          type="button"
+          class="reader-toggle-button"
+          @click="switchToPdf"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke-linecap="round" stroke-linejoin="round" />
             <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
-          {{ viewMode === 'reading' ? 'Get Full PDF' : 'Back to Reading' }}
+          Get Full PDF
         </button>
 
         <!-- Modern Tab Switcher -->
         <div class="sidebar-tab-switcher">
-          <button 
-            type="button" 
-            class="tab-btn" 
+          <button
+            type="button"
+            class="tab-btn"
             :class="{ 'is-active': activeSidebarTab === 'chats' }"
             @click="activeSidebarTab = 'chats'; if (!isAiSidebarOpen) { isAiSidebarOpen = true; isReaderOpen = false; }"
           >
-            Chats
+            {{ $t('chat.chats') }}
           </button>
-          <button 
-            type="button" 
-            class="tab-btn" 
+          <button
+            type="button"
+            class="tab-btn"
             :class="{ 'is-active': activeSidebarTab === 'chapters' }"
             @click="activeSidebarTab = 'chapters'; if (!isReaderOpen) { isReaderOpen = true; isAiSidebarOpen = false; }"
           >
-            Chapters
+            {{ $t('chat.chapters') }}
           </button>
         </div>
       </div>
@@ -179,34 +176,95 @@
         <!-- CHATS TAB -->
         <div v-if="activeSidebarTab === 'chats'" class="sidebar-tab-content">
           <section class="sidebar-section sidebar-section--sessions">
-            <div class="session-list chatgpt-session-list">
-              <div
-                v-for="session in visibleSessions"
-                :key="session.id"
-                style="display: flex; align-items: center; gap: 4px; padding-right: 4px;"
+            <div
+              class="sidebar-group-title"
+              style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; padding: 4px 8px; font-size: 0.72rem; font-weight: 600; color: var(--reader-muted);"
+              @click="isRecentChatsOpen = !isRecentChatsOpen"
+            >
+              <span>{{ $t('chat.recent_chats') }}</span>
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                style="width: 12px; height: 12px; transition: transform 0.2s;"
+                :style="{ transform: isRecentChatsOpen ? 'rotate(90deg)' : 'rotate(0deg)' }"
               >
-                <button
-                  type="button"
-                  class="session-item"
-                  :class="{ 'session-item--active': chatStore.currentSession?.id === session.id }"
-                  @click="switchSession(session.id)"
-                  style="flex: 1; margin: 0;"
-                >
-                  <span class="session-item__title">{{ session.title || 'New Conversation' }}</span>
-                </button>
-                <button 
-                  type="button" 
-                  @click.stop="deleteChat(session.id)" 
-                  title="Delete chat"
-                  style="background: transparent; border: none; padding: 6px; cursor: pointer; color: var(--reader-muted); border-radius: 6px; display: flex; align-items: center;" 
-                  onmouseover="this.style.color='var(--reader-error, #ef4444)'; this.style.background='var(--reader-surface-2)';" 
-                  onmouseout="this.style.color='var(--reader-muted)'; this.style.background='transparent';"
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                </button>
-              </div>
+                <path d="M9 18l6-6-6-6" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
             </div>
-            
+
+            <div v-show="isRecentChatsOpen">
+              <template v-for="group in sessionGroups" :key="group.id">
+                <div class="session-list chatgpt-session-list" style="margin-bottom: 12px;">
+                  <div
+                    v-for="session in group.sessions"
+                  :key="session.id"
+                  class="session-item-wrapper"
+                  style="position: relative; display: flex; align-items: center; gap: 4px; padding-right: 4px;"
+                  @mouseleave="activeSessionMenu === session.id ? null : null"
+                >
+                  <button
+                    v-if="editingSessionId !== session.id"
+                    type="button"
+                    class="session-item"
+                    :class="{ 'session-item--active': chatStore.currentSession?.id === session.id }"
+                    @click="switchSession(session.id)"
+                    style="flex: 1; margin: 0; position: relative;"
+                  >
+                    <span class="session-item__title" style="padding-right: 28px;">{{ session.title || 'New Conversation' }}</span>
+                  </button>
+
+                  <input
+                    v-else
+                    type="text"
+                    class="session-rename-input"
+                    v-model="editSessionTitle"
+                    @blur="submitRename"
+                    @keyup.enter="submitRename"
+                    @keyup.esc="editingSessionId = null"
+                    v-focus
+                  />
+
+                  <button
+                    v-if="editingSessionId !== session.id"
+                    type="button"
+                    class="session-options-btn"
+                    :class="{ 'is-visible': activeSessionMenu === session.id || chatStore.currentSession?.id === session.id }"
+                    @click.stop="activeSessionMenu = activeSessionMenu === session.id ? null : session.id"
+                    title="Options"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+                  </button>
+
+                  <!-- Dropdown Menu -->
+                  <div v-if="activeSessionMenu === session.id" class="session-dropdown-menu">
+                    <button type="button" class="dropdown-item" @click.stop="copySessionTranscript(session)">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+                      {{ $t('chat.share') }}
+                    </button>
+                    <button type="button" class="dropdown-item" @click.stop="startRenaming(session)">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                      {{ $t('chat.rename') }}
+                    </button>
+                    <hr class="dropdown-divider" />
+                    <button type="button" class="dropdown-item" @click.stop="chatStore.togglePinSession(session); activeSessionMenu = null">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                      {{ session.is_pinned ? 'Unpin chat' : 'Pin chat' }}
+                    </button>
+                    <button type="button" class="dropdown-item" @click.stop="chatStore.toggleArchiveSession(session); activeSessionMenu = null">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+                      {{ session.is_archived ? 'Unarchive' : 'Archive' }}
+                    </button>
+                    <button type="button" class="dropdown-item text-danger" @click.stop="deleteChat(session.id); activeSessionMenu = null">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                      {{ $t('chat.delete') }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </template>
+
             <button
               v-if="hiddenChatsCount > 0"
               type="button"
@@ -215,6 +273,7 @@
             >
               {{ showAllChats ? 'Show less' : `Show ${hiddenChatsCount} more` }}
             </button>
+            </div>
           </section>
         </div>
 
@@ -272,12 +331,12 @@
                     @click="loadBookChapter(chapter.id)"
                   >
                     <span class="section-bullet">01</span>
-                    <span>Overview</span>
+                    <span>{{ $t('chat.overview') }}</span>
                   </button>
 
                   <template v-else>
                     <button
-                      v-for="section in (chapter.sections?.data || chapter.sections || [])"
+                      v-for="section in currentChapterPages"
                       :key="section.id"
                       type="button"
                       class="section-link"
@@ -286,9 +345,13 @@
                           booksStore.currentChapter?.id === chapter.id &&
                           sectionToPageMap.get(section.id) === currentPage - 1,
                       }"
+                      :style="{ paddingLeft: section.depth > 0 ? `${(section.depth * 1.5) + 0.75}rem` : '' }"
                       @click="jumpToSection(chapter.id, section.id)"
                     >
-                      <span class="section-bullet">•</span>
+                      <span class="section-bullet" :style="{ opacity: section.depth > 0 ? 0.5 : 1 }">
+                        <template v-if="section.depth > 0">-</template>
+                        <template v-else>•</template>
+                      </span>
                       <span>{{ section.title }}</span>
                     </button>
 
@@ -315,117 +378,200 @@
         </div>
       </div>
 
-      <!-- Sidebar Footer (Profile & Settings) -->
-      <div class="sidebar-footer" style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-        <RouterLink to="/profile" class="sidebar-profile-link" style="flex: 1; padding-right: 4px;">
-          <div class="sidebar-profile-avatar">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <!-- Sidebar Footer (Profile & Settings - ChatGPT Style) -->
+      <div class="sidebar-footer" ref="displaySettingsRef">
+        <!-- ChatGPT-style User Pill Button -->
+        <button
+          type="button"
+          class="chatgpt-user-pill"
+          :class="{ 'is-active': isDisplaySettingsOpen }"
+          @click.stop="toggleDisplaySettings"
+          :aria-expanded="isDisplaySettingsOpen"
+          aria-label="User menu and settings"
+        >
+          <div class="chatgpt-user-avatar">
+            <template v-if="authStore?.user">
+              {{ authStore?.user?.first_name?.charAt(0) || authStore?.user?.name?.charAt(0) || 'U' }}
+            </template>
+            <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="8" r="3.5" />
               <path d="M5 20a7 7 0 0 1 14 0" />
             </svg>
           </div>
-          <div class="sidebar-profile-info">
-            <span class="sidebar-profile-name">Profile</span>
-            <span class="sidebar-profile-plan">Manage Account</span>
+
+          <div class="chatgpt-user-info">
+            <span class="chatgpt-user-name">
+              {{ authStore?.user?.first_name || authStore?.user?.name || 'User' }}
+            </span>
+            <span class="chatgpt-user-role">
+              {{ authStore?.user?.role || 'Reader' }}
+            </span>
           </div>
-        </RouterLink>
 
-        <!-- Display Settings Toggle (Moved from header) -->
-        <div class="reader-menu" ref="displaySettingsRef">
-          <button
-            type="button"
-            class="header-control-button"
-            :aria-expanded="isDisplaySettingsOpen"
-            title="Display Settings"
-            @click.stop="toggleDisplaySettings"
-            style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 10px; background: transparent; border: none; cursor: pointer; color: var(--reader-muted); transition: all 0.2s ease;"
-            onmouseover="this.style.background='var(--reader-surface-2)'; this.style.color='var(--reader-text)';"
-            onmouseout="this.style.background='transparent'; this.style.color='var(--reader-muted)';"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px;">
-              <circle cx="12" cy="12" r="3"></circle>
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          <div class="chatgpt-user-dots">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <circle cx="5" cy="12" r="2" />
+              <circle cx="12" cy="12" r="2" />
+              <circle cx="19" cy="12" r="2" />
             </svg>
-          </button>
+          </div>
+        </button>
 
-          <Transition name="menu">
-            <div v-if="isDisplaySettingsOpen" class="popover-menu popover-menu--display-settings" style="bottom: 100%; top: auto; right: auto; left: 0; margin-bottom: 12px; transform-origin: bottom left; width: 200px; overflow: visible;">
-              
-              <div class="display-settings-group" style="position: relative;">
-                <button 
-                  class="display-settings-label" 
-                  style="display: flex; justify-content: space-between; align-items: center; width: 100%; border: none; background: transparent; cursor: pointer; padding: 8px 4px;"
-                  @click="activeSettingsSubmenu = activeSettingsSubmenu === 'font' ? null : 'font'"
-                >
-                  Font
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px; transform: rotate(-90deg);"><path d="m6 9 6 6 6-6"/></svg>
-                </button>
-                
-                <Transition name="fade">
-                  <div v-if="activeSettingsSubmenu === 'font'" class="popover-menu flyout-menu" style="left: 100%; right: auto; top: -10px; margin-left: 8px; width: 220px;">
-                    <div style="display: flex; gap: 4px;">
-                      <button type="button" :class="{ 'is-selected': readerFont === 'sans' }" @click="setFont('sans')" style="flex:1; justify-content:center;">Sans-serif</button>
-                      <button type="button" :class="{ 'is-selected': readerFont === 'serif' }" @click="setFont('serif')" style="flex:1; justify-content:center;">Serif</button>
-                    </div>
-                  </div>
-                </Transition>
+        <!-- ChatGPT-style Floating Popover Menu -->
+        <Transition name="chatgpt-popover">
+          <div v-if="isDisplaySettingsOpen" class="chatgpt-popover-menu" @click.stop>
+            <!-- User preview header inside menu -->
+            <div class="chatgpt-menu-user-row">
+              <div class="chatgpt-user-avatar chatgpt-user-avatar--sm">
+                {{ authStore?.user?.first_name?.charAt(0) || authStore?.user?.name?.charAt(0) || 'U' }}
               </div>
-
-              <div class="display-settings-group" style="position: relative;">
-                <button 
-                  class="display-settings-label" 
-                  style="display: flex; justify-content: space-between; align-items: center; width: 100%; border: none; background: transparent; cursor: pointer; padding: 8px 4px;"
-                  @click="activeSettingsSubmenu = activeSettingsSubmenu === 'appearance' ? null : 'appearance'"
-                >
-                  Appearance
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px; transform: rotate(-90deg);"><path d="m6 9 6 6 6-6"/></svg>
-                </button>
-                
-                <Transition name="fade">
-                  <div v-if="activeSettingsSubmenu === 'appearance'" class="popover-menu flyout-menu" style="left: 100%; right: auto; top: -10px; margin-left: 8px; width: 220px;">
-                    <div style="display: flex; flex-direction: column; gap: 2px;">
-                      <button
-                        v-for="(item, key) in THEMES"
-                        :key="key"
-                        type="button"
-                        :class="{ 'is-selected': readerTheme === key }"
-                        @click="setTheme(key)"
-                      >
-                        <span class="theme-swatch" :style="{ background: item.vars['--rt-surface'] }"></span>
-                        {{ item.label }}
-                        <svg v-if="readerTheme === key" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left: auto;">
-                          <path d="m5 12 4 4L19 6" stroke-linecap="round" stroke-linejoin="round" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                </Transition>
+              <div class="chatgpt-menu-user-meta">
+                <span class="chatgpt-menu-user-name">{{ authStore?.user?.name || authStore?.user?.first_name || 'User' }}</span>
+                <span class="chatgpt-menu-user-email">{{ authStore?.user?.email || 'Active Reader' }}</span>
               </div>
-
-              <!-- New items: Clear Chat History & Sign Out -->
-              <hr style="margin: 8px 0; border: 0; border-top: 1px solid var(--reader-border);" />
-              
-              <button 
-                class="display-settings-label" 
-                style="display: flex; justify-content: flex-start; align-items: center; gap: 8px; width: 100%; border: none; background: transparent; cursor: pointer; padding: 8px 4px; color: var(--reader-error, #ef4444);"
-                @click="clearChatHistory"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                Clear Chat History
-              </button>
-              
-              <button 
-                class="display-settings-label" 
-                style="display: flex; justify-content: flex-start; align-items: center; gap: 8px; width: 100%; border: none; background: transparent; cursor: pointer; padding: 8px 4px;"
-                @click="signOut"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"></path></svg>
-                Sign Out
-              </button>
-
             </div>
-          </Transition>
-        </div>
+
+            <div class="chatgpt-menu-divider"></div>
+
+            <!-- Settings (Opens ChatGPT Settings Dialog) -->
+            <button type="button" class="chatgpt-menu-item" @click="openSettingsModal('general')">
+              <span class="chatgpt-menu-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="3"></circle>
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg>
+              </span>
+              <span class="chatgpt-menu-label">{{ $t('chat.settings', 'Settings') }}</span>
+            </button>
+
+            <!-- Appearance (Inline expandable accordion) -->
+            <button
+              type="button"
+              class="chatgpt-menu-item"
+              :class="{ 'is-expanded': activeSettingsSubmenu === 'appearance' }"
+              @click="activeSettingsSubmenu = activeSettingsSubmenu === 'appearance' ? null : 'appearance'"
+            >
+              <span class="chatgpt-menu-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="4"></circle>
+                  <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
+                </svg>
+              </span>
+              <span class="chatgpt-menu-label">{{ $t('chat.appearance', 'Appearance') }}</span>
+              <span class="chatgpt-menu-pill-tag">{{ THEMES[readerTheme]?.label || 'Dark' }}</span>
+              <svg class="chatgpt-menu-chevron" :class="{ 'is-rotated': activeSettingsSubmenu === 'appearance' }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+
+            <!-- Inline Theme Selector Strip -->
+            <div v-if="activeSettingsSubmenu === 'appearance'" class="chatgpt-inline-accordion">
+              <div class="chatgpt-inline-themes-grid">
+                <button
+                  v-for="(item, key) in THEMES"
+                  :key="key"
+                  type="button"
+                  class="chatgpt-inline-theme-chip"
+                  :class="{ 'is-selected': readerTheme === key }"
+                  @click="setTheme(key)"
+                >
+                  <span class="chatgpt-chip-swatch" :style="{ background: item.vars['--rt-surface'], borderColor: item.vars['--rt-border'] }"></span>
+                  <span class="chatgpt-chip-label">{{ item.label }}</span>
+                  <svg v-if="readerTheme === key" class="chatgpt-chip-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- Font (Inline expandable) -->
+            <button
+              type="button"
+              class="chatgpt-menu-item"
+              :class="{ 'is-expanded': activeSettingsSubmenu === 'font' }"
+              @click="activeSettingsSubmenu = activeSettingsSubmenu === 'font' ? null : 'font'"
+            >
+              <span class="chatgpt-menu-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="4 7 4 4 20 4 20 7"></polyline>
+                  <line x1="9" y1="20" x2="15" y2="20"></line>
+                  <line x1="12" y1="4" x2="12" y2="20"></line>
+                </svg>
+              </span>
+              <span class="chatgpt-menu-label">{{ $t('chat.font', 'Font') }}</span>
+              <span class="chatgpt-menu-pill-tag">{{ readerFont === 'serif' ? 'Serif' : 'Sans' }}</span>
+              <svg class="chatgpt-menu-chevron" :class="{ 'is-rotated': activeSettingsSubmenu === 'font' }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+
+            <!-- Inline Font Segmented Switch -->
+            <div v-if="activeSettingsSubmenu === 'font'" class="chatgpt-inline-accordion">
+              <div class="chatgpt-inline-font-switch">
+                <button
+                  type="button"
+                  class="chatgpt-font-switch-btn"
+                  :class="{ 'is-selected': readerFont === 'sans' }"
+                  @click="setFont('sans')"
+                >
+                  <span style="font-family: sans-serif; font-weight: 600;">Sans</span>
+                  <span class="chatgpt-font-subtext">{{ $t('chat.sans', 'Modern') }}</span>
+                </button>
+                <button
+                  type="button"
+                  class="chatgpt-font-switch-btn"
+                  :class="{ 'is-selected': readerFont === 'serif' }"
+                  @click="setFont('serif')"
+                >
+                  <span style="font-family: serif; font-weight: 600;">Serif</span>
+                  <span class="chatgpt-font-subtext">{{ $t('chat.serif', 'Book') }}</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Profile item -->
+            <RouterLink to="/profile" class="chatgpt-menu-item" @click="isDisplaySettingsOpen = false">
+              <span class="chatgpt-menu-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+              </span>
+              <span class="chatgpt-menu-label">{{ $t('chat.profile', 'Profile') }}</span>
+            </RouterLink>
+
+            <div class="chatgpt-menu-divider"></div>
+
+            <!-- Clear Chat History -->
+            <button
+              type="button"
+              class="chatgpt-menu-item chatgpt-menu-item--danger"
+              @click="handleClearChatFromSettings"
+            >
+              <span class="chatgpt-menu-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  <line x1="10" y1="11" x2="10" y2="17"></line>
+                  <line x1="14" y1="11" x2="14" y2="17"></line>
+                </svg>
+              </span>
+              <span class="chatgpt-menu-label">{{ $t('chat.clear_hist', 'Clear chat history') }}</span>
+            </button>
+
+            <!-- Sign Out -->
+            <button type="button" class="chatgpt-menu-item" @click="signOut">
+              <span class="chatgpt-menu-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                  <polyline points="16 17 21 12 16 7"></polyline>
+                  <line x1="21" y1="12" x2="9" y2="12"></line>
+                </svg>
+              </span>
+              <span class="chatgpt-menu-label">{{ $t('chat.signout', 'Log out') }}</span>
+            </button>
+          </div>
+        </Transition>
       </div>
 
     </aside>
@@ -433,144 +579,174 @@
     <!-- =========================================================
          WORKSPACE (Main Area + Right Sidebar)
     ========================================================== -->
-    <div class="workspace" style="flex: 1; display: flex; flex-direction: column; min-width: 0;">
-      
+    <div class="workspace" style="flex: 1; display: flex; flex-direction: column; min-width: 0; position: relative;">
+
       <div v-if="viewMode === 'reading'" class="reading-progress-track">
         <div class="reading-progress-value" :style="{ width: `${readingProgress}%` }"></div>
       </div>
 
-      <header class="reader-header">
+      <!-- Floating Read Book with AI Button for Desktop -->
+      <button
+        v-if="!isMobile"
+        type="button"
+        class="btn-read-with-ai"
+        style="position: absolute; top: 12px; left: 16px; z-index: 60;"
+        :class="{ 'is-active': isReaderOpen && isAiSidebarOpen }"
+        @click="toggleSplitScreen"
+      >
+        {{ $t('chat.read_ai') }}
+      </button>
+
+      <header v-if="isMobile" class="reader-header">
         <div class="reader-header__left">
-          <template v-if="!isMobile">
-            <button
-              type="button"
-              class="btn-read-with-ai"
-              :class="{ 'is-active': isReaderOpen && isAiSidebarOpen }"
-              @click="toggleSplitScreen"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px; color: #10b981;">
-                <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
-              </svg>
-              Read with AI
-            </button>
-          </template>
-          
-          <template v-else>
-            <div class="mobile-header-left">
-              <div class="mobile-header-top-row">
-                <RouterLink to="/dashboard" class="mobile-brand-row">
-                  <img src="/logo.png" alt="Smart Adama" class="mobile-brand-logo" />
-                  <span class="mobile-brand-text">Smart Adama</span>
-                </RouterLink>
-                <span class="mobile-chapter-title">
-                  {{ booksStore.currentChapter?.title || 'Select a chapter' }}
-                </span>
-              </div>
-              <div class="mobile-header-bottom-row">
-                <button type="button" class="mobile-sidebar-toggle" @click="isSidebarOpen = true">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                    <path d="m11 17 5-5-5-5" stroke-linecap="round" stroke-linejoin="round" />
-                    <path d="m6 17 5-5-5-5" stroke-linecap="round" stroke-linejoin="round" />
-                  </svg>
-                </button>
-              </div>
+          <div class="mobile-header-left">
+            <div class="mobile-header-top-row">
+              <RouterLink to="/dashboard" class="mobile-brand-row">
+                <img src="/logo.png" alt="Smart Adama" class="mobile-brand-logo" />
+                <span class="mobile-brand-text">{{ $t('chat.brand') }}</span>
+              </RouterLink>
+              <span class="mobile-chapter-title">
+                {{ booksStore.currentChapter?.title || 'Select a chapter' }}
+              </span>
             </div>
-          </template>
+            <div class="mobile-header-bottom-row">
+              <button
+                type="button"
+                class="mobile-sidebar-toggle"
+                aria-label="Open sidebar"
+                title="Open sidebar"
+                @click="openSidebar"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="m11 17 5-5-5-5" stroke-linecap="round" stroke-linejoin="round" />
+                  <path d="m6 17 5-5-5-5" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </button>
+            </div>
+          </div>
         </div>
 
         <div class="reader-header__right">
-          <template v-if="isMobile">
-            <!-- Mobile Hamburger Settings (Right Top) -->
-            <div class="mobile-settings-wrapper" ref="mobileSettingsMenuRef">
-              <button 
-                type="button" 
-                class="mobile-settings-toggle" 
-                @click="isMobileSettingsOpen = !isMobileSettingsOpen"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="5" r="1" />
-                  <circle cx="12" cy="12" r="1" />
-                  <circle cx="12" cy="19" r="1" />
-                </svg>
-              </button>
+          <div class="mobile-header-right">
+            <div class="mobile-header-top-row mobile-header-top-row--right">
+              <!-- Mobile Hamburger Settings (Right Top) -->
+              <div class="mobile-settings-wrapper" ref="mobileSettingsMenuRef">
+                <button
+                  type="button"
+                  class="mobile-settings-toggle"
+                  aria-label="Settings"
+                  title="Settings"
+                  @click="isMobileSettingsOpen = !isMobileSettingsOpen"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="5" r="1" />
+                    <circle cx="12" cy="12" r="1" />
+                    <circle cx="12" cy="19" r="1" />
+                  </svg>
+                </button>
 
-              <Transition name="menu">
-                <div v-if="isMobileSettingsOpen" class="mobile-settings-dropdown">
-                  
-                  <!-- Reader Mode removed from here -->
+                <Transition name="menu">
+                  <div v-if="isMobileSettingsOpen" class="mobile-settings-dropdown">
 
-                  <template v-if="viewMode === 'reading'">
-                    <!-- Page Control -->
-                    <div class="mobile-settings-section">
-                      <div class="page-control page-control--mobile">
-                        <button type="button" :disabled="currentPage <= 1" aria-label="Previous page" @click="prevPage">
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
-                            <path d="m15 19-7-7 7-7" stroke-linecap="round" stroke-linejoin="round" />
+                    <!-- Reader Mode removed from here -->
+
+                    <template v-if="viewMode === 'reading'">
+                      <!-- Page Control -->
+                      <div class="mobile-settings-section">
+                        <div class="page-control page-control--mobile">
+                          <button type="button" :disabled="currentPage <= 1" aria-label="Previous page" @click="prevPage">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
+                              <path d="m15 19-7-7 7-7" stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                          </button>
+                          <label class="page-jump">
+                            <input
+                              v-model="jumpPageInput"
+                              aria-label="Current page"
+                              inputmode="numeric"
+                              @blur="applyJumpPage"
+                              @keydown.enter.prevent="applyJumpPage"
+                            />
+                          </label>
+                          <span class="page-total">/ {{ totalPages }}</span>
+                          <button
+                            type="button"
+                            :disabled="currentPage >= totalPages"
+                            aria-label="Next page"
+                            @click="nextPage"
+                          >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
+                              <path d="m9 5 7 7-7 7" stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+
+                      <!-- Mode Switching Dropdown -->
+                      <div class="mobile-settings-section">
+                        <button
+                          type="button"
+                          class="mobile-menu-item"
+                          @click="viewMode = 'quiz'; isMobileSettingsOpen = false"
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4 mr-2">
+                            <path d="m9 11 3 3L22 4" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" stroke-linecap="round" stroke-linejoin="round"/>
                           </svg>
+                          <span>Take Quiz</span>
                         </button>
-                        <label class="page-jump">
-                          <input
-                            v-model="jumpPageInput"
-                            aria-label="Current page"
-                            inputmode="numeric"
-                            @keyup.enter="jumpToPage"
-                            @blur="jumpToPage"
-                          />
-                          <span>/ {{ totalPages }}</span>
-                        </label>
-                        <button type="button" :disabled="currentPage >= totalPages" aria-label="Next page" @click="nextPage">
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
-                            <path d="m9 5 7 7-7 7" stroke-linecap="round" stroke-linejoin="round" />
+                        <button
+                          type="button"
+                          class="mobile-menu-item"
+                          @click="viewMode = 'mindmap'; isMobileSettingsOpen = false"
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4 mr-2">
+                            <rect x="3" y="3" width="7" height="7" rx="1"/>
+                            <rect x="14" y="3" width="7" height="7" rx="1"/>
+                            <rect x="14" y="14" width="7" height="7" rx="1"/>
+                            <rect x="3" y="14" width="7" height="7" rx="1"/>
                           </svg>
+                          <span>Mind Map</span>
                         </button>
                       </div>
-                    </div>
+                    </template>
 
-                    <!-- Font Menu -->
-                    <div class="mobile-settings-section" style="display: flex; gap: 8px;">
-                      <button 
-                        type="button" 
-                        class="mobile-option-btn" 
-                        :class="{ 'is-selected': readerFont === 'sans' }" 
-                        @click="setFont('sans')"
-                      >
-                        Sans-serif
-                      </button>
-                      <button 
-                        type="button" 
-                        class="mobile-option-btn" 
-                        :class="{ 'is-selected': readerFont === 'serif' }" 
-                        @click="setFont('serif')"
-                      >
-                        Serif
-                      </button>
-                    </div>
+                    <!-- Theme Switcher -->
+                    <template v-if="viewMode === 'reading'">
+                      <div class="mobile-settings-section theme-grid">
+                        <button
+                          v-for="(item, key) in themeDefinitions"
+                          :key="key"
+                          type="button"
+                          class="theme-button"
+                          :class="{ 'is-active': readerTheme === key }"
+                          @click="setTheme(key)"
+                        >
+                          <span class="theme-swatch" :style="{ background: item.vars['--rt-surface'] }"></span>
+                          {{ item.label }}
+                        </button>
+                      </div>
+                    </template>
 
-                    <!-- Theme Menu -->
-                    <div class="mobile-settings-section mobile-theme-grid">
-                      <button
-                        v-for="(item, key) in THEMES"
-                        :key="key"
-                        type="button"
-                        class="mobile-option-btn"
-                        :class="{ 'is-selected': readerTheme === key }"
-                        @click="setTheme(key)"
-                      >
-                        <span class="theme-swatch" :style="{ background: item.vars['--rt-surface'] }"></span>
-                        {{ item.label }}
-                      </button>
-                    </div>
-                  </template>
-
-                </div>
-              </Transition>
+                  </div>
+                </Transition>
+              </div>
             </div>
-          </template>
-
-          <template v-else>
-            <!-- segmented control removed -->
-
-          </template>
+            <div class="mobile-header-bottom-row mobile-header-bottom-row--right">
+              <button
+                type="button"
+                class="mobile-sidebar-toggle mobile-sidebar-toggle--ai"
+                aria-label="Open AI assistant"
+                title="Open AI assistant"
+                @click="openAiSidebar"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="m13 17-5-5 5-5" stroke-linecap="round" stroke-linejoin="round" />
+                  <path d="m18 17-5-5 5-5" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </button>
+            </div>
+          </div>
         </div>
       </header>
 
@@ -581,9 +757,20 @@
         <main
           v-show="isReaderOpen"
           class="reader-main"
-          style="flex: 1; min-width: 0;"
+          style="flex: 1; min-width: 0; position: relative;"
           :style="{ borderRight: isReaderOpen && isAiSidebarOpen && !isMobile ? '1px solid var(--reader-border)' : 'none' }"
         >
+          <div class="reading-canvas-controls" v-if="!isMobile && viewMode === 'reading'">
+            <button @click="zoomOutReader" class="reading-canvas-btn" title="Zoom Out">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            </button>
+            <button class="reading-canvas-zoom-label" @click="readerScale = 125" title="Reset to 125%">
+              {{ readerScale }}%
+            </button>
+            <button @click="zoomInReader" class="reading-canvas-btn" title="Zoom In">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            </button>
+          </div>
 
       <!-- =====================================================
            READING VIEW
@@ -598,21 +785,25 @@
           ref="readerContainerRef"
           class="reader-column"
           :style="{
-            width: isMobile ? '100%' : `${readerWidth}px`,
-            minWidth: isMobile ? undefined : '320px',
-            maxWidth: '100%',
+            width: '100%',
+            transform: overscrollAccum ? `translateY(${overscrollDir === 'down' ? -overscrollAccum : overscrollAccum}px)` : 'none',
+            transition: overscrollAccum === 0 ? 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)' : 'none'
           }"
         >
 
-
-          <article
-            class="reader-paper"
-            :class="readerFont === 'serif' ? 'reader-paper--serif' : 'reader-paper--sans'"
-            :style="{
-              fontSize: `${readerScale}%`,
-              minHeight: isMobile ? 'calc(100vh - 7rem)' : '800px',
-            }"
-          >
+          <Transition name="page-slide" mode="out-in">
+            <article
+              :key="currentPage"
+              class="reader-paper"
+              :class="[
+                readerFont === 'serif' ? 'reader-paper--serif' : 'reader-paper--sans',
+                { 'reader-paper--preface': booksStore.currentChapter?.title === 'Introduction & Preface' }
+              ]"
+              :style="isMobile ? { minHeight: 'calc(100dvh - 7rem)' } : {
+                fontSize: `${readerScale}%`,
+                minHeight: '800px',
+              }"
+            >
             <div class="reader-paper__inner">
               <template v-if="booksStore.currentChapter?.title === 'Introduction & Preface'">
                 <IntroductionPreface
@@ -635,6 +826,13 @@
                 </div>
 
                 <div v-if="currentPageData" class="reader-content">
+                  <header class="reading-canvas-header" v-if="currentPage === 1 && booksStore.currentChapter?.title && booksStore.currentChapter.title !== 'Introduction & Preface'">
+                    <div class="reading-canvas-metadata">{{ $t('chat.book_title') }}</div>
+                    <div class="reading-canvas-chapter">
+                      {{ booksStore.currentChapter.title.toUpperCase() }}
+                    </div>
+                    <hr class="reading-canvas-divider" />
+                  </header>
                   <section
                     v-for="section in currentPageData.sections"
                     :key="section.id"
@@ -643,17 +841,7 @@
                   >
                     <h2>{{ section.title }}</h2>
 
-                    <template v-for="(block, blockIndex) in formatContent(section.raw_text)" :key="blockIndex">
-                      <p v-if="block.type === 'p'">{{ block.text }}</p>
-
-                      <div v-else class="reader-bullet">
-                        <span class="reader-bullet__mark"></span>
-                        <span>
-                          <strong v-if="block.label">{{ block.label }}: </strong>
-                          {{ block.text }}
-                        </span>
-                      </div>
-                    </template>
+                    <div class="reader-markdown-content" v-html="renderMarkdown(section.raw_text || '')"></div>
                   </section>
                 </div>
 
@@ -661,16 +849,56 @@
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
                     <path d="M5 4h14v16H5V4ZM9 8h6M9 12h6M9 16h4" />
                   </svg>
-                  <h2>No readable content</h2>
-                  <p>Select another chapter or open the original PDF.</p>
+                  <h2>{{ $t('chat.no_content') }}</h2>
+                  <p>{{ $t('chat.select_another') }}</p>
+                </div>
+              </template>
+
+              <template v-if="currentPage === totalPages && booksStore.currentChapter?.title !== 'Introduction & Preface'">
+                <div class="mt-16 mb-8 p-8 bg-[var(--rt-surface-2)] border border-[var(--rt-border)] rounded-2xl flex flex-col items-center justify-center text-center shadow-sm">
+                  <div class="w-16 h-16 bg-[var(--rt-surface)] border border-[var(--rt-border)] rounded-full flex items-center justify-center shadow-sm mb-4">
+                    <span class="text-3xl">🎉</span>
+                  </div>
+                  <h3 class="text-xl font-bold text-[var(--rt-text)] mb-2">You've reached the end of {{ booksStore.currentChapter?.title }}</h3>
+                  <p class="text-[var(--rt-muted)] mb-6 max-w-md">Complete this chapter to unlock its quiz.</p>
+                  <div class="flex flex-wrap items-center justify-center gap-3">
+                    <button
+                      type="button"
+                      class="px-6 py-3 bg-[#04AA6D] text-white font-bold rounded-xl hover:bg-[#039660] transition-colors shadow-sm shadow-emerald-500/20 flex items-center gap-2 cursor-pointer"
+                      @click="markCompleteAndNextChapter"
+                    >
+                      <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m5 12 4 4L19 7" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                      Finish Chapter
+                    </button>
+                    <button
+                      type="button"
+                      :disabled="isNavigatingToQuiz"
+                      class="px-6 py-3 bg-[#395886] text-white font-bold rounded-xl hover:bg-[#2e476d] transition-colors shadow-sm shadow-blue-500/20 flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                      @click="takeChapterQuiz"
+                    >
+                      <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                      {{ isNavigatingToQuiz ? 'Loading Quiz...' : 'Take Quiz' }}
+                    </button>
+                  </div>
                 </div>
               </template>
 
               <footer v-if="currentPageData || booksStore.currentChapter?.title === 'Introduction & Preface'" class="reader-footer">
+                <RouterLink
+                  v-if="currentPage === 1"
+                  to="/dashboard"
+                  class="page-action page-action--secondary"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
+                    <path d="m15 19-7-7 7-7" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                  <span>{{ $t('dashboard.title') }}</span>
+                </RouterLink>
+
                 <button
+                  v-else
                   type="button"
                   class="page-action page-action--secondary"
-                  :disabled="currentPage <= 1"
                   @click="prevPage"
                 >
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
@@ -678,17 +906,6 @@
                   </svg>
                   <span>{{ $t('chapter.prev') }}</span>
                 </button>
-
-                <RouterLink
-                  v-if="currentPage >= totalPages && booksStore.currentChapter?.title !== 'Introduction & Preface' && booksStore.currentChapter?.id"
-                  :to="`/chapters/${booksStore.currentChapter.id}/quiz`"
-                  class="quiz-complete-link"
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="m9 12 2 2 4-4M7.8 4.7a3.4 3.4 0 0 0 1.9-.8 3.4 3.4 0 0 1 4.4 0 3.4 3.4 0 0 0 1.9.8 3.4 3.4 0 0 1 3.1 3.1 3.4 3.4 0 0 0 .8 1.9 3.4 3.4 0 0 1 0 4.4 3.4 3.4 0 0 0-.8 1.9 3.4 3.4 0 0 1-3.1 3.1 3.4 3.4 0 0 0-1.9.8 3.4 3.4 0 0 1-4.4 0 3.4 3.4 0 0 0-1.9-.8 3.4 3.4 0 0 1-3.1-3.1 3.4 3.4 0 0 0-.8-1.9 3.4 3.4 0 0 1 0-4.4 3.4 3.4 0 0 0 .8-1.9 3.4 3.4 0 0 1 3.1-3.1Z" />
-                  </svg>
-                  {{ $t('chapter.take_quiz') }}
-                </RouterLink>
 
                 <button
                   v-if="currentPage < totalPages"
@@ -701,23 +918,10 @@
                     <path d="m9 5 7 7-7 7" stroke-linecap="round" stroke-linejoin="round" />
                   </svg>
                 </button>
-
-                <button
-                  v-else
-                  type="button"
-                  class="page-action page-action--success"
-                  @click="markCompleteAndNextChapter"
-                >
-                  <span>Finish</span>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
-                    <path d="m5 12 4 4L19 7" stroke-linecap="round" stroke-linejoin="round" />
-                  </svg>
-                </button>
               </footer>
             </div>
           </article>
-
-
+          </Transition>
         </div>
       </div>
 
@@ -754,132 +958,222 @@
     <aside
       v-show="isAiSidebarOpen && !isFullscreen"
       class="side-panel side-panel--right"
-      :style="isMobile ? undefined : { flex: isReaderOpen ? '0 0 auto' : 1, width: isReaderOpen ? '400px' : 'auto' }"
-      :class="{ 'side-panel--mobile': isMobile, 'chat-full-screen': !isReaderOpen && !isMobile, 'chat-is-empty': currentMessages.length === 0 }"
+      :style="isMobile ? undefined : { flex: isReaderOpen ? '0 0 auto' : 1, width: isReaderOpen ? '500px' : 'auto' }"
+      :class="{ 'side-panel--mobile': isMobile, 'chat-full-screen': !isReaderOpen && !isMobile, 'chat-is-empty': !hasMessages }"
       aria-label="Smart Adama AI Assistant"
     >
-
-      <div ref="messagesContainerRef" class="ai-messages">
-        <div v-if="currentMessages.length === 0" class="ai-welcome">
-          <h3>What can I help with?</h3>
-        </div>
-
-        <div v-for="msg in currentMessages" :key="msg.id" class="message-stack">
-          <div v-if="msg.role === 'user'" class="message message--user">
-            {{ msg.content }}
+      <!-- Mobile header for AI sidebar -->
+      <div v-if="isMobile" class="side-panel__header mobile-ai-header">
+        <div class="side-panel__brand-row" style="margin-bottom: 0;">
+          <div class="flex items-center gap-2">
+            <span class="font-bold text-sm text-[var(--rt-text)]">Smart Adama AI</span>
           </div>
-
-          <div v-else class="message-stack__assistant">
-            <div class="assistant-label">
-              <span class="assistant-label__icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
-                  <circle cx="12" cy="12" r="3" />
-                  <path d="M12 3v4M12 17v4M3 12h4M17 12h4" />
-                </svg>
-              </span>
-              <span>Smart Adama</span>
-            </div>
-
-            <article class="message message--assistant">
-              <div v-html="renderMarkdown(msg.content)" class="ai-response-content"></div>
-
-              <div class="feedback-row">
-                <button
-                  type="button"
-                  class="feedback-button"
-                  :class="{ 'is-helpful': msg.feedback === 'helpful' }"
-                  @click="toggleFeedback(msg, 'helpful')"
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                    <path d="M14 10h4.7a2 2 0 0 1 1.8 2.9l-3.5 7A2 2 0 0 1 15.2 21h-4a2 2 0 0 1-.5-.1L7 20m7-10V5a2 2 0 0 0-2-2h-.1a.9.9 0 0 0-.9.9 3.8 3.8 0 0 1-.6 2L7 11v9M7 20H5a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2h2" />
-                  </svg>
-                  {{ msg.feedback === 'helpful' ? 'Helpful' : 'Helpful?' }}
-                </button>
-
-                <button
-                  type="button"
-                  class="feedback-button"
-                  :class="{ 'is-unhelpful': msg.feedback === 'not_helpful' }"
-                  @click="toggleFeedback(msg, 'not_helpful')"
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                    <path d="M10 14H5.3a2 2 0 0 1-1.8-2.9l3.5-7A2 2 0 0 1 8.8 3h4a2 2 0 0 1 .5.1L17 4m-7 10v5a2 2 0 0 0 2 2h.1a.9.9 0 0 0 .9-.9 3.8 3.8 0 0 1 .6-2L17 13V4m0 0h2a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2" />
-                  </svg>
-                  {{ msg.feedback === 'not_helpful' ? 'Not helpful' : 'Not helpful?' }}
-                </button>
-              </div>
-            </article>
-          </div>
-        </div>
-
-        <div v-if="chatStore.streaming" class="message-stack__assistant">
-          <div class="assistant-label">
-            <span class="assistant-label__icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
-                <circle cx="12" cy="12" r="3" />
-                <path d="M12 3v4M12 17v4M3 12h4M17 12h4" />
-              </svg>
-            </span>
-            <span>Smart Adama</span>
-          </div>
-
-          <article class="message message--assistant">
-            <template v-if="chatStore.streamingContent">
-              <div class="streaming-text">
-                <span v-html="renderMarkdown(chatStore.streamingContent)"></span>
-                <span class="streaming-cursor">▋</span>
-              </div>
-            </template>
-
-            <template v-else>
-              <div style="display: flex; align-items: center; gap: 12px;">
-                <div class="thinking-dots" aria-label="Thinking" style="margin: 0;">
-                  <span></span><span></span><span></span>
-                </div>
-                <span v-if="chatStore.activityPayload" style="color: var(--color-text-muted); font-size: 0.9em; font-style: italic; opacity: 0.8;">
-                  {{ chatStore.activityPayload.message }}
-                </span>
-              </div>
-            </template>
-          </article>
-        </div>
-
-        <div v-if="chatStore.streamError && !chatStore.streaming" class="message-stack__assistant">
-          <article class="error-message">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-              <path d="M12 9v3m0 4h.01M10.3 4.5 2.8 17.5A2 2 0 0 0 4.5 20h15a2 2 0 0 0 1.7-2.5L13.7 4.5a2 2 0 0 0-3.4 0Z" />
+          <button
+            type="button"
+            class="icon-button"
+            aria-label="Close AI panel"
+            title="Close AI panel"
+            @click="isAiSidebarOpen = false"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4">
+              <path d="M18 6 6 18M6 6l12 12" stroke-linecap="round" stroke-linejoin="round" />
             </svg>
-            <div>
-              <strong>AI is temporarily unavailable</strong>
-              <p>Please try again in a moment.</p>
-            </div>
-          </article>
+          </button>
         </div>
       </div>
 
+      <div ref="messagesContainerRef" class="ai-messages" @scroll="handleChatScroll" @click="handleMessagesClick">
+        <!-- WELCOME SCREEN: Visible ONLY when conversation has 0 messages -->
+        <div v-if="!hasMessages" class="chat-welcome-screen flex flex-col items-center justify-center pt-[15vh] w-full max-w-2xl mx-auto px-6">
+          <Transition name="fade-greeting" mode="out-in">
+            <h2 :key="activeGreetingKey + (chatStore.currentSession?.id || 'new')" class="text-3xl md:text-4xl font-semibold text-[var(--rt-text)] mb-10 text-center tracking-tight">
+              {{ dynamicGreeting }}
+            </h2>
+          </Transition>
+        </div>
 
+        <!-- CONVERSATION THREAD: Visible when messages count >= 1 (including pending/streaming) -->
+        <template v-else>
+          <div v-for="msg in currentMessages" :key="msg.id" :id="'msg-' + msg.id" class="message-stack w-full flex mb-8">
+
+            <!-- USER MESSAGE -->
+            <div v-if="msg.role === 'user'" class="message-stack__user w-full flex justify-end group relative">
+              <div class="message message--user bg-[var(--rt-surface-2)] text-[var(--rt-text)] px-5 py-3 rounded-[24px] rounded-br-[8px] max-w-[75%] inline-block text-base leading-relaxed break-words shadow-sm">
+                {{ msg.content }}
+
+                <div class="absolute -bottom-8 right-0 opacity-0 group-hover:opacity-100 transition-opacity flex flex-row gap-1 z-10">
+                  <button @click="editMessage(msg)" class="p-1 text-[var(--rt-muted)] hover:text-[var(--rt-text)] bg-[var(--rt-surface)] rounded-md border border-[var(--rt-border)] shadow-sm" title="Edit">
+                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-3.5 h-3.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                  </button>
+                  <button @click="copyText(msg.content, msg.id)" class="p-1 text-[var(--rt-muted)] hover:text-[var(--rt-text)] bg-[var(--rt-surface)] rounded-md border border-[var(--rt-border)] shadow-sm" title="Copy">
+                     <svg v-if="copiedMessageId === msg.id" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-3.5 h-3.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                     <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-3.5 h-3.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- AI MESSAGE -->
+            <div v-else class="message-stack__assistant flex gap-4 w-full">
+              <div class="flex-1 min-w-0">
+                <article class="message message--assistant text-[var(--rt-text)] w-full">
+                  <!-- ERROR STATE (NO CONTENT GENERATED) -->
+                  <div v-if="msg.error && !msg.content" class="error-message">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                      <path d="M12 9v3m0 4h.01M10.3 4.5 2.8 17.5A2 2 0 0 0 4.5 20h15a2 2 0 0 0 1.7-2.5L13.7 4.5a2 2 0 0 0-3.4 0Z" />
+                    </svg>
+                    <div>
+                      <strong>{{ $t('chat.ai_down') }}</strong>
+                      <p>{{ msg.error }}</p>
+                    </div>
+                  </div>
+
+                  <!-- PENDING / THINKING STATE -->
+                  <div v-else-if="msg.isStreaming && msg.isPending" class="flex items-center gap-3 py-1">
+                    <div class="thinking-dots flex gap-1 items-center" aria-label="Thinking">
+                      <span class="w-1.5 h-1.5 rounded-full bg-[var(--rt-muted)] animate-bounce"></span>
+                      <span class="w-1.5 h-1.5 rounded-full bg-[var(--rt-muted)] animate-bounce" style="animation-delay: 0.2s"></span>
+                      <span class="w-1.5 h-1.5 rounded-full bg-[var(--rt-muted)] animate-bounce" style="animation-delay: 0.4s"></span>
+                    </div>
+                    <span v-if="msg.activity?.message" class="text-[var(--rt-muted)] text-sm italic opacity-80">
+                      {{ msg.activity.message }}
+                    </span>
+                  </div>
+
+                  <!-- STREAMING CONTENT STATE -->
+                  <div v-else-if="msg.isStreaming && !msg.isPending" class="streaming-text">
+                    <span class="ai-response-content" v-html="renderMarkdown(msg.content)"></span>
+                    <span class="streaming-cursor ml-1 inline-block">▋</span>
+                  </div>
+
+                  <!-- COMPLETED OR PARTIAL ERROR STATE -->
+                  <template v-else>
+                    <div v-html="renderMarkdown(msg.content)" class="ai-response-content"></div>
+
+                    <!-- PARTIAL STREAM WARNING / RETRY NOTICE -->
+                    <div v-if="msg.error" class="partial-error-notice mt-3 p-2.5 rounded-lg border border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs flex items-center gap-2">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4 shrink-0">
+                        <path d="M12 9v3m0 4h.01M10.3 4.5 2.8 17.5A2 2 0 0 0 4.5 20h15a2 2 0 0 0 1.7-2.5L13.7 4.5a2 2 0 0 0-3.4 0Z" />
+                      </svg>
+                      <span>{{ msg.error }} — Partial response preserved. You can send a follow-up to continue.</span>
+                    </div>
+
+                    <!-- AI Action Row -->
+                    <div class="feedback-row flex items-center gap-1.5 mt-3">
+                      <button
+                        type="button"
+                        class="feedback-button feedback-up p-1.5 text-[var(--rt-muted)] hover:text-[var(--rt-text)] hover:bg-[var(--rt-surface-2)] rounded-md transition-colors"
+                        :class="{ 'text-blue-500': msg.feedback?.feedback === 'like' }"
+                        @click="toggleFeedback(msg, 'like')"
+                        title="Helpful"
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4">
+                          <path d="M14 10h4.7a2 2 0 0 1 1.8 2.9l-3.5 7A2 2 0 0 1 15.2 21h-4a2 2 0 0 1-.5-.1L7 20m7-10V5a2 2 0 0 0-2-2h-.1a.9.9 0 0 0-.9.9 3.8 3.8 0 0 1-.6 2L7 11v9M7 20H5a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2h2" />
+                        </svg>
+                      </button>
+
+                      <button
+                        type="button"
+                        class="feedback-button feedback-down p-1.5 text-[var(--rt-muted)] hover:text-[var(--rt-text)] hover:bg-[var(--rt-surface-2)] rounded-md transition-colors"
+                        :class="{ 'text-red-500': msg.feedback?.feedback === 'dislike' }"
+                        @click="toggleFeedback(msg, 'dislike')"
+                        title="Not helpful"
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4">
+                          <path d="M10 14H5.3a2 2 0 0 1-1.8-2.9l3.5-7A2 2 0 0 1 8.8 3h4a2 2 0 0 1 .5.1L17 4m-7 10v5a2 2 0 0 0 2 2h.1a.9.9 0 0 0 .9-.9 3.8 3.8 0 0 1 .6-2L17 13V4m0 0h2a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2" />
+                        </svg>
+                      </button>
+
+                      <!-- Copy AI Response -->
+                      <button
+                        type="button"
+                        class="feedback-button feedback-copy p-1.5 text-[var(--rt-muted)] hover:text-[var(--rt-text)] hover:bg-[var(--rt-surface-2)] rounded-md transition-colors"
+                        @click="copyText(msg.content, msg.id)"
+                        title="Copy text"
+                      >
+                        <svg v-if="copiedMessageId === msg.id" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4 text-green-500">
+                          <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                        <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4">
+                          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                      </button>
+
+                      <!-- Sources Tooltip -->
+                      <div class="source-tooltip-container relative group inline-block ml-1">
+                        <button type="button" class="feedback-button feedback-source p-1.5 px-2 flex items-center gap-1 text-[var(--rt-muted)] hover:text-[var(--rt-text)] hover:bg-[var(--rt-surface-2)] rounded-md transition-colors" title="View Sources">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4">
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="12" y1="16" x2="12" y2="12" />
+                            <line x1="12" y1="8" x2="12.01" y2="8" />
+                          </svg>
+                          <span class="text-[11px] font-semibold tracking-wide">{{ $t('chat.sources') }}</span>
+                        </button>
+                        <!-- Tooltip popup -->
+                        <div class="source-tooltip absolute bottom-full left-0 mb-2 hidden group-hover:block w-72 p-3 bg-[var(--rt-surface)] border border-[var(--rt-border)] rounded-lg shadow-xl text-xs text-[var(--rt-text-body)] z-50 text-left">
+                          <div class="font-bold mb-2 text-[var(--rt-text)]">{{ $t('chat.sources') }}</div>
+                          <ul v-if="msg.sources && msg.sources.length" class="space-y-1.5">
+                            <li v-for="(src, idx) in msg.sources" :key="idx" class="truncate flex items-center gap-1.5">
+                              <span class="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0"></span>
+                              {{ src.chapter_title || src.heading || 'Context' }}
+                              <span v-if="src.vector_score || src.similarity_score" class="text-[10px] opacity-75 shrink-0">(Match: {{ Math.round((src.vector_score || src.similarity_score || 0) * 100) }}%)</span>
+                            </li>
+                          </ul>
+                          <div v-else class="text-[var(--rt-muted)] italic mt-1">{{ $t('chat.no_sources') }}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </template>
+                </article>
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+
+      <!-- Scroll to bottom button -->
+      <button
+        v-show="showScrollButton"
+        @click="scrollToBottom"
+        class="absolute bottom-28 left-1/2 -translate-x-1/2 z-50 p-2 bg-(--rt-surface-2) border border-(--rt-border) rounded-full shadow-md text-(--rt-text-body) hover:text-(--rt-text) hover:bg-(--rt-surface) transition-all"
+        title="Scroll to bottom"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4">
+          <path d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+        </svg>
+      </button>
+
+      <!-- Feedback Toast -->
+      <div
+        v-if="feedbackToastMessage"
+        class="absolute bottom-32 left-1/2 -translate-x-1/2 z-50 px-3 py-1.5 bg-[#10b981] text-white text-xs font-medium rounded-full shadow-lg transition-opacity duration-300"
+      >
+        {{ feedbackToastMessage }}
+      </div>
 
       <form class="ai-composer" @submit.prevent="sendMessage">
         <div class="ai-composer__field">
-          <input
+          <textarea
             ref="chatInputRef"
             v-model="chatInput"
-            :disabled="chatStore.streaming"
-            type="text"
-            autocomplete="off"
+            @input="autoResizeInput"
+            @keydown="handleEnter"
+            rows="1"
+            class="ai-composer__textarea"
             :placeholder="$t('chapter.ask_placeholder')"
-          />
+          ></textarea>
 
           <button
-            v-if="!chatStore.streaming"
+            v-if="!chatStore.streaming || chatInput.trim()"
             type="submit"
             class="send-button"
-            :disabled="!chatInput.trim()"
-            aria-label="Send message"
+            :class="{ 'send-button--active': !!chatInput.trim() }"
+            :disabled="!chatInput.trim() || isSubmitting"
+            :aria-label="$t('chat.send')"
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-              <path d="m4 5 16 7-16 7 2.3-7L4 5Z" stroke-linejoin="round" />
-              <path d="M6.3 12H20" stroke-linecap="round" />
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M4 11h11.586l-5.293-5.293 1.414-1.414L20.414 12l-8.707 8.707-1.414-1.414L15.586 13H4v-2z" />
             </svg>
           </button>
 
@@ -888,7 +1182,7 @@
             type="button"
             class="send-button stop-button"
             aria-label="Stop generating"
-            @click.prevent="chatStore.cancelStream()"
+            @click.prevent="chatStore.cancelAllStreams()"
           >
             <svg viewBox="0 0 24 24" fill="currentColor">
               <rect x="7" y="7" width="10" height="10" rx="1.5" />
@@ -913,9 +1207,9 @@
           left: `${selectionPopup.x}px`,
         }"
       >
-        <span>Ask Smart AI</span>
+        <span>{{ $t('chat.ask_ai') }}</span>
         <button type="button" @click="askAiAboutSelection">
-          Ask
+          {{ $t('chat.ask') }}
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M5 12h14m-6-6 6 6-6 6" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
@@ -923,40 +1217,337 @@
       </div>
     </Transition>
 
-    <!-- =========================================================
-         MOBILE BOTTOM NAV
-    ========================================================== -->
-    <nav v-if="isMobile && !isFullscreen" class="mobile-bottom-nav">
-      <RouterLink to="/dashboard" class="mobile-nav-item">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-          <polyline points="9 22 9 12 15 12 15 22" />
-        </svg>
-        <span>Home</span>
-      </RouterLink>
-      
-      <div class="mobile-nav-item is-active">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" />
-        </svg>
-        <span>Study</span>
+
+
+    <!-- Global Search Overlay (Command Palette Style) -->
+    <Transition name="fade">
+      <div v-if="isSidebarSearchActive" class="fixed inset-0 z-[9999] flex items-start justify-center pt-[20vh] bg-black/20" @click.self="toggleSidebarSearch">
+        <div class="w-full max-w-2xl relative mx-4 ai-glow-wrap pointer-events-auto rounded-[24px] overflow-hidden p-[2px]" style="box-shadow: 0 8px 32px rgba(0, 0, 0, 0.14);" @dblclick.stop="toggleSidebarSearch">
+          <!-- Circling Glowing Border -->
+          <div class="absolute top-1/2 left-1/2 w-[200%] h-[500%] -translate-x-1/2 -translate-y-1/2 z-0" style="background: conic-gradient(from 0deg, #0A0A0A, #9A9A9A, #FFFFFF, #9A9A9A, #0A0A0A); animation: spinGlow 3.5s linear infinite;"></div>
+
+          <!-- The inner white pill that blocks out the middle of the gradient -->
+          <div class="ai-glow-inner relative z-10 flex flex-col bg-[var(--rt-surface)] rounded-[22px] overflow-hidden transition-all duration-300" :style="{ maxHeight: (searchResults || (!sidebarSearchQuery && globalSearchHistory.length)) ? '80vh' : 'auto' }">
+            <div class="flex items-center gap-3 px-5 lg:px-6 py-2.5">
+              <textarea
+                v-model="sidebarSearchQuery"
+                ref="sidebarSearchInputRef"
+                class="ai-search-input flex-1 bg-transparent outline-none border-0 text-[var(--rt-text)] placeholder:text-[#a8a29e] text-sm md:text-base resize-none"
+                style="outline: none !important; box-shadow: none !important; min-height: 24px; max-height: 120px;"
+                rows="1"
+                placeholder="Search..."
+                @keydown.esc="toggleSidebarSearch"
+                @keydown.enter="submitGlobalSearch"
+                @input="handleSearchInput"
+              ></textarea>
+              <button
+                class="w-7 h-7 flex items-center justify-center rounded-full text-[#a8a29e] hover:bg-[var(--rt-surface-2)] hover:text-[var(--rt-text)] transition shrink-0"
+                aria-label="Close search"
+                @click="toggleSidebarSearch"
+                type="button"
+              >
+                ✕
+              </button>
+            </div>
+
+            <!-- History List (Shown when empty) -->
+            <div v-if="!sidebarSearchQuery && globalSearchHistory.length > 0" class="border-t border-[var(--rt-border)] overflow-y-auto p-2 bg-[var(--rt-surface-2)]">
+              <div class="px-3 py-2 text-xs font-semibold text-[var(--rt-muted)] uppercase tracking-wider">{{ $t('chat.recent_searches') }}</div>
+              <ul>
+                <li v-for="hist in globalSearchHistory" :key="hist" class="px-3 py-2 text-sm text-[var(--rt-text)] hover:bg-[var(--rt-surface)] cursor-pointer rounded-lg flex items-center gap-3 transition-colors" @click="sidebarSearchQuery = hist; performHybridSearch()">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4 text-[var(--rt-muted)]">
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
+                  </svg>
+                  {{ hist }}
+                </li>
+              </ul>
+            </div>
+
+            <!-- Unified Search Results -->
+            <div v-if="(searchResults || isSearchingGlobal || localSearchResults.messages.length || localSearchResults.sessions.length) && sidebarSearchQuery" class="border-t border-[var(--rt-border)] overflow-y-auto p-4 bg-[var(--rt-surface-2)]" style="max-height: calc(80vh - 60px);">
+
+              <!-- 1. Local Sessions -->
+              <div v-if="localSearchResults.sessions.length > 0" class="mb-6">
+                <div class="px-2 pb-2 text-xs font-semibold text-[var(--rt-muted)] uppercase tracking-wider">{{ $t('chat.past_chats') }}</div>
+                <div class="space-y-1">
+                  <div v-for="session in localSearchResults.sessions" :key="session.id"
+                       @click="goToSession(session.id)"
+                       class="px-3 py-2 bg-[var(--rt-surface)] hover:bg-blue-50 border border-[var(--rt-border)] rounded-lg cursor-pointer transition-colors flex items-center gap-3">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4 text-blue-500 shrink-0"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                    <span class="text-sm font-medium text-[var(--rt-text)] truncate" v-html="highlightText(session.title, sidebarSearchQuery)"></span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 2. Local Chat Messages -->
+              <div v-if="localSearchResults.messages.length > 0" class="mb-6">
+                <div class="px-2 pb-2 text-xs font-semibold text-[var(--rt-muted)] uppercase tracking-wider">{{ $t('chat.current_msgs') }}</div>
+                <div class="space-y-2">
+                  <div v-for="msg in localSearchResults.messages" :key="msg.id"
+                       @click="scrollToMessage(msg.id)"
+                       class="px-3 py-2 bg-[var(--rt-surface)] hover:bg-blue-50 border border-[var(--rt-border)] rounded-lg cursor-pointer transition-colors">
+                    <div class="flex items-center gap-2 mb-1">
+                      <span class="w-2 h-2 rounded-full" :class="msg.role === 'user' ? 'bg-gray-400' : 'bg-blue-500'"></span>
+                      <span class="text-[10px] font-bold uppercase text-[var(--rt-muted)]">{{ msg.role === 'user' ? 'You' : 'AI' }}</span>
+                    </div>
+                    <div class="text-xs text-[var(--rt-text-body)] line-clamp-2" v-html="highlightText(msg.content, sidebarSearchQuery)"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 3. RAG Search -->
+              <div class="px-2 pb-2 text-xs font-semibold text-[var(--rt-muted)] uppercase tracking-wider">{{ $t('chat.knowledge') }}</div>
+              <div v-if="isSearchingGlobal" class="flex justify-center items-center py-6">
+                <svg class="animate-spin h-6 w-6 text-[var(--rt-muted)]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              </div>
+
+              <div v-else-if="searchError" class="p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
+                {{ searchError }}
+              </div>
+
+              <div v-else-if="searchResults">
+                <div class="flex items-center justify-between text-[10px] text-[var(--rt-muted)] mb-3 px-2">
+                  <span>Found {{ filteredChunks.length }} chunks</span>
+                  <span class="font-mono">{{ searchResults.duration_seconds }}s</span>
+                </div>
+
+                <div v-if="filteredChunks.length > 0" class="space-y-4">
+                  <div v-for="(chunk, index) in filteredChunks" :key="chunk.id" class="bg-[var(--rt-surface)] rounded-xl border border-[var(--rt-border)] shadow-sm overflow-hidden hover:border-blue-300 transition-colors">
+                    <div class="border-b border-[var(--rt-border)] bg-[var(--rt-surface-2)] px-4 py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div class="flex items-center gap-3">
+                        <div class="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-blue-900 text-[10px] font-bold text-white">#{{ index + 1 }}</div>
+                        <div class="flex flex-col">
+                          <span class="text-[9px] font-semibold uppercase tracking-wider text-[var(--rt-muted)]">{{ $t('chat.rrf') }}</span>
+                          <span class="text-xs font-bold text-blue-600 font-mono">{{ chunk.rrf_score.toFixed(4) }}</span>
+                        </div>
+                      </div>
+
+                      <div class="flex flex-wrap items-center gap-3">
+                        <div class="flex flex-col items-end gap-0.5">
+                          <span class="text-[8px] uppercase tracking-wider text-[var(--rt-muted)] font-semibold">Semantic (#{{ chunk.vector_rank }})</span>
+                          <span :class="['inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-mono font-semibold border', getScoreColor(chunk.vector_score)]">
+                            {{ chunk.vector_score.toFixed(4) }}
+                          </span>
+                        </div>
+                        <div class="w-px h-5 bg-[var(--rt-border)] hidden sm:block"></div>
+                        <div class="flex flex-col items-end gap-0.5">
+                          <span class="text-[8px] uppercase tracking-wider text-[var(--rt-muted)] font-semibold">Lexical (#{{ chunk.keyword_rank }})</span>
+                          <span :class="['inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-mono font-semibold border', getScoreColor(chunk.keyword_score, true)]">
+                            {{ chunk.keyword_score.toFixed(4) }}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="px-4 py-3 space-y-3">
+                      <div class="flex flex-wrap items-center gap-2">
+                        <span class="inline-flex items-center gap-1 rounded bg-[var(--rt-surface-2)] px-2 py-0.5 text-[9px] font-medium text-[var(--rt-text)] border border-[var(--rt-border)]">Page {{ chunk.page_number || 'N/A' }}</span>
+                        <span v-if="chunk.structural_context?.heading" class="inline-flex items-center gap-1 rounded bg-blue-50 px-2 py-0.5 text-[9px] font-medium text-blue-700 border border-blue-200">{{ chunk.structural_context.heading }}</span>
+                      </div>
+                      <div class="text-[11px] leading-relaxed text-[var(--rt-text)] bg-[var(--rt-surface-2)] rounded-lg p-3">
+                        <p v-html="highlightText(chunk.chunk_text, sidebarSearchQuery)"></p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div v-else class="text-center py-6 text-[var(--rt-muted)] text-xs">
+                  {{ $t('chat.no_chunks') }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
+    </Transition>
 
-      <button type="button" class="mobile-nav-item" @click="isAiSidebarOpen = true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M13 10V3L4 14h7v7l9-11h-7Z" stroke-linejoin="round" />
-        </svg>
-        <span>AI</span>
-      </button>
+    <!-- =========================================================
+         CHATGPT-STYLE SETTINGS MODAL DIALOG
+    ========================================================== -->
+    <Teleport to="body">
+      <Transition name="chatgpt-modal-fade">
+        <div
+          v-if="isSettingsModalOpen"
+          class="chatgpt-modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="settings-dialog-title"
+          @click.self="isSettingsModalOpen = false"
+        >
+          <div class="chatgpt-settings-dialog">
+            <!-- Dialog Header -->
+            <div class="chatgpt-dialog-header">
+              <div class="chatgpt-dialog-header-left">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="chatgpt-dialog-header-icon">
+                  <circle cx="12" cy="12" r="3"></circle>
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg>
+                <h2 id="settings-dialog-title" class="chatgpt-dialog-title">{{ $t('chat.settings', 'Settings') }}</h2>
+              </div>
+              <button
+                type="button"
+                class="chatgpt-dialog-close-btn"
+                aria-label="Close settings"
+                @click="isSettingsModalOpen = false"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
 
-      <RouterLink to="/profile" class="mobile-nav-item">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="8" r="4" />
-          <path d="M4 20c0-4 4-7 8-7s8 3 8 7" />
-        </svg>
-        <span>Profile</span>
-      </RouterLink>
-    </nav>
+            <!-- Dialog Body -->
+            <div class="chatgpt-dialog-body">
+              <!-- Left Navigation Tabs -->
+              <nav class="chatgpt-dialog-sidebar">
+                <button
+                  type="button"
+                  class="chatgpt-tab-btn"
+                  :class="{ 'is-active': activeSettingsTab === 'general' }"
+                  @click="activeSettingsTab = 'general'"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                  </svg>
+                  <span>{{ $t('chat.general', 'General') }}</span>
+                </button>
+
+                <button
+                  type="button"
+                  class="chatgpt-tab-btn"
+                  :class="{ 'is-active': activeSettingsTab === 'appearance' }"
+                  @click="activeSettingsTab = 'appearance'"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="4"></circle>
+                    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
+                  </svg>
+                  <span>{{ $t('chat.appearance', 'Appearance') }}</span>
+                </button>
+
+                <button
+                  type="button"
+                  class="chatgpt-tab-btn"
+                  :class="{ 'is-active': activeSettingsTab === 'data' }"
+                  @click="activeSettingsTab = 'data'"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    <line x1="10" y1="11" x2="10" y2="17"></line>
+                    <line x1="14" y1="11" x2="14" y2="17"></line>
+                  </svg>
+                  <span>{{ $t('chat.data_controls', 'Data controls') }}</span>
+                </button>
+              </nav>
+
+              <!-- Right Content Area -->
+              <div class="chatgpt-dialog-content">
+                <!-- General Tab -->
+                <div v-if="activeSettingsTab === 'general'" class="chatgpt-tab-panel">
+                  <div class="chatgpt-setting-row">
+                    <div class="chatgpt-setting-info">
+                      <div class="chatgpt-setting-title">{{ $t('chat.reading_font', 'Reading font') }}</div>
+                      <div class="chatgpt-setting-desc">{{ $t('chat.choose_font_desc', 'Choose your preferred typography for reading and chat.') }}</div>
+                    </div>
+                    <div class="chatgpt-segmented-control">
+                      <button
+                        type="button"
+                        class="chatgpt-segmented-btn"
+                        :class="{ 'is-active': readerFont === 'sans' }"
+                        @click="setFont('sans')"
+                      >
+                        <span style="font-family: sans-serif;">{{ $t('chat.sans', 'Sans-serif') }}</span>
+                      </button>
+                      <button
+                        type="button"
+                        class="chatgpt-segmented-btn"
+                        :class="{ 'is-active': readerFont === 'serif' }"
+                        @click="setFont('serif')"
+                      >
+                        <span style="font-family: serif;">{{ $t('chat.serif', 'Serif') }}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="chatgpt-panel-divider"></div>
+
+                  <div class="chatgpt-setting-row">
+                    <div class="chatgpt-setting-info">
+                      <div class="chatgpt-setting-title">{{ $t('chat.brand', 'Smart Adama') }}</div>
+                      <div class="chatgpt-setting-desc">{{ $t('chat.book_title', 'SMART ADAMA BOOK') }} — Civic Innovation & Learning Platform</div>
+                    </div>
+                    <span class="chatgpt-system-pill">v2.4 Ready</span>
+                  </div>
+                </div>
+
+                <!-- Appearance Tab -->
+                <div v-if="activeSettingsTab === 'appearance'" class="chatgpt-tab-panel">
+                  <div class="chatgpt-panel-intro">
+                    <div class="chatgpt-setting-title">{{ $t('chat.theme', 'Theme') }}</div>
+                    <div class="chatgpt-setting-desc">{{ $t('chat.choose_theme_desc', 'Customize the visual appearance of your study environment.') }}</div>
+                  </div>
+
+                  <div class="chatgpt-themes-gallery">
+                    <button
+                      v-for="(item, key) in THEMES"
+                      :key="key"
+                      type="button"
+                      class="chatgpt-theme-card"
+                      :class="{ 'is-selected': readerTheme === key }"
+                      @click="setTheme(key)"
+                    >
+                      <div class="chatgpt-card-canvas" :style="{ background: item.vars['--rt-bg'] }">
+                        <div class="chatgpt-card-inner" :style="{ background: item.vars['--rt-surface'], borderColor: item.vars['--rt-border'] }">
+                          <div class="chatgpt-card-bar" :style="{ background: item.vars['--rt-accent'] }"></div>
+                          <div class="chatgpt-card-line" :style="{ background: item.vars['--rt-text'] }"></div>
+                          <div class="chatgpt-card-subline" :style="{ background: item.vars['--rt-muted'] }"></div>
+                        </div>
+                      </div>
+                      <div class="chatgpt-card-meta">
+                        <span class="chatgpt-card-name">{{ item.label }}</span>
+                        <span v-if="readerTheme === key" class="chatgpt-card-checkmark">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                          </svg>
+                        </span>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Data Controls Tab -->
+                <div v-if="activeSettingsTab === 'data'" class="chatgpt-tab-panel">
+                  <div class="chatgpt-setting-row chatgpt-setting-row--stacked-sm">
+                    <div class="chatgpt-setting-info">
+                      <div class="chatgpt-setting-title">{{ $t('chat.clear_hist', 'Clear Chat History') }}</div>
+                      <div class="chatgpt-setting-desc">{{ $t('chat.clear_all_chats_desc', 'Permanently delete all previous conversation history for this book.') }}</div>
+                    </div>
+                    <button
+                      type="button"
+                      class="chatgpt-modal-danger-btn"
+                      @click="handleClearChatFromSettings"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                      </svg>
+                      <span>{{ $t('chat.delete', 'Delete') }}</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
@@ -981,10 +1572,42 @@ import { useBooksStore } from '@/stores/books'
 import { useProgressStore } from '@/stores/progress'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
+import hljs from 'highlight.js'
+import 'highlight.js/styles/github-dark.css'
 import apiClient from '@/api/client'
 import IntroductionPreface from '@/components/IntroductionPreface.vue'
 import { useI18n } from 'vue-i18n'
+import { useConfirm } from '@/composables/useConfirm'
+import { useTheme } from '@/composables/useTheme'
 
+// Setup marked and syntax highlighting
+const renderer = new marked.Renderer()
+renderer.code = function(token) {
+  const code = typeof token === 'string' ? token : (token as any).text
+  const lang = (typeof token === 'string' ? '' : ((token as any).lang || '')).match(/\S*/)?.[0]
+
+  const validLanguage = hljs.getLanguage(lang) ? lang : 'plaintext'
+  const highlighted = hljs.highlight(code, { language: validLanguage }).value
+  const encodedCode = encodeURIComponent(code)
+
+  return `
+    <div class="code-block-wrapper my-4 rounded-md overflow-hidden bg-[var(--rt-surface-2)] border border-[var(--rt-border)]">
+      <div class="flex items-center justify-between px-3 py-1.5 bg-[var(--rt-surface)] text-xs text-[var(--rt-muted)] border-b border-[var(--rt-border)]">
+        <span class="font-mono uppercase">${validLanguage}</span>
+        <button type="button" class="copy-code-btn flex items-center gap-1.5 hover:text-[var(--rt-text)] transition-colors" data-code="${encodedCode}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-3.5 h-3.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+          <span class="copy-text">Copy code</span>
+        </button>
+      </div>
+      <div class="overflow-x-auto p-4 bg-[var(--rt-surface-2)]">
+        <pre class="!m-0 !p-0 !bg-transparent"><code class="hljs language-${validLanguage} text-sm">${highlighted}</code></pre>
+      </div>
+    </div>
+  `
+}
+marked.setOptions({ renderer, breaks: true })
+
+const { confirm } = useConfirm()
 const chatStore = useChatStore()
 const booksStore = useBooksStore()
 const progressStore = useProgressStore()
@@ -995,16 +1618,19 @@ const { t } = useI18n()
 
 async function signOut() {
   await authStore.logout()
-  router.push('/login')
 }
 
 async function clearChatHistory() {
-  if (confirm('Are you sure you want to delete all chat history?')) {
+  const isConfirmed = await confirm({
+    title: 'Delete All Chat History',
+    message: 'Are you sure you want to delete all chat history? This cannot be undone.',
+    confirmText: 'Delete All',
+    confirmColor: 'red'
+  })
+
+  if (isConfirmed) {
     try {
-      for (const session of chatStore.sessions) {
-        await chatStore.deleteSession(session.id)
-      }
-      await chatStore.fetchSessions()
+      await chatStore.deleteAllSessions()
       startNewChat()
     } catch (e) {
       console.error('Failed to clear history:', e)
@@ -1013,7 +1639,14 @@ async function clearChatHistory() {
 }
 
 async function deleteChat(sessionId: string) {
-  if (confirm('Are you sure you want to delete this chat?')) {
+  const isConfirmed = await confirm({
+    title: 'Delete Chat',
+    message: 'Are you sure you want to delete this chat?',
+    confirmText: 'Delete',
+    confirmColor: 'red'
+  })
+
+  if (isConfirmed) {
     try {
       await chatStore.deleteSession(sessionId)
       if (chatStore.currentSession?.id === sessionId) {
@@ -1031,6 +1664,10 @@ async function deleteChat(sessionId: string) {
 
 const fatalError = ref<string | null>(null)
 
+const vFocus = {
+  mounted: (el: HTMLElement) => el.focus()
+}
+
 onErrorCaptured((err: unknown) => {
   console.error('ChatView Error Boundary Caught:', err)
   fatalError.value = err instanceof Error ? err.message : String(err)
@@ -1041,12 +1678,57 @@ onErrorCaptured((err: unknown) => {
    RESPONSIVE LAYOUT STATE
 ============================================================ */
 
-const isSidebarOpen = ref(typeof window !== 'undefined' ? window.innerWidth > 768 : true)
-const isAiSidebarOpen = ref(true)
-const isReaderOpen = ref(false)
+const isSidebarOpen = ref(false)
+const isAiSidebarOpen = ref(false)
+const storedReaderState = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('smart_adama_reader_open') : null
+const isReaderOpen = ref(storedReaderState !== null ? storedReaderState === 'true' : true)
+
+const saveReaderState = () => {
+  if (typeof sessionStorage !== 'undefined') {
+    sessionStorage.setItem('smart_adama_reader_open', isReaderOpen.value ? 'true' : 'false')
+  }
+}
+
 const sidebarWidth = ref(300)
 const activeSidebarTab = ref<'chats' | 'chapters'>('chats')
+const isRecentChatsOpen = ref(true)
+const activeSessionMenu = ref<string | null>(null)
+const editingSessionId = ref<string | null>(null)
+const editSessionTitle = ref<string>('')
 const isDraggingLeft = ref(false)
+
+const startRenaming = (session: any) => {
+  editingSessionId.value = session.id
+  editSessionTitle.value = session.title || 'New Conversation'
+  activeSessionMenu.value = null
+  // We need to focus the input on next tick, but we'll do it via auto-focus directive or ref
+}
+
+const submitRename = async () => {
+  if (editingSessionId.value && editSessionTitle.value.trim()) {
+    try {
+      await chatStore.renameSession(editingSessionId.value, editSessionTitle.value.trim())
+    } catch (e) {
+      console.error('Failed to rename session:', e)
+    }
+  }
+  editingSessionId.value = null
+}
+
+const copySessionTranscript = (session: any) => {
+  activeSessionMenu.value = null
+  if (!session.messages || session.messages.length === 0) {
+    alert('This chat is empty.')
+    return
+  }
+  const transcript = session.messages.map((m: any) => `${m.role === 'user' ? 'You' : 'Smart Adama'}:\n${m.content}`).join('\n\n')
+  navigator.clipboard.writeText(transcript).then(() => {
+    // Ideally a toast, but an alert is simple
+    alert('Chat copied to clipboard!')
+  }).catch(err => {
+    console.error('Failed to copy text: ', err)
+  })
+}
 
 
 const isDraggingRight = ref(false)
@@ -1070,7 +1752,6 @@ const handleResize = () => {
 
   if (!mobileNow) {
     sidebarWidth.value = clamp(sidebarWidth.value, 240, Math.min(480, Math.floor(window.innerWidth * 0.34)))
-    aiSidebarWidth.value = clamp(aiSidebarWidth.value, 300, Math.min(560, Math.floor(window.innerWidth * 0.42)))
   }
 }
 
@@ -1078,6 +1759,20 @@ const closeMobilePanels = () => {
   if (!isMobile.value) return
   isSidebarOpen.value = false
   isAiSidebarOpen.value = false
+}
+
+const openSidebar = () => {
+  isSidebarOpen.value = true
+  if (isMobile.value) {
+    isAiSidebarOpen.value = false
+  }
+}
+
+const openAiSidebar = () => {
+  isAiSidebarOpen.value = true
+  if (isMobile.value) {
+    isSidebarOpen.value = false
+  }
 }
 
 const toggleAiSidebar = (open?: boolean) => {
@@ -1092,7 +1787,7 @@ const toggleAiSidebar = (open?: boolean) => {
 ============================================================ */
 
 const isFullscreen = ref(false)
-const readerScale = ref(100)
+const readerScale = ref(125)
 const currentPage = ref(1)
 const jumpPageInput = ref('1')
 const viewMode = ref<'reading' | 'pdf'>('reading')
@@ -1104,6 +1799,20 @@ const scrollAreaRef = ref<HTMLElement | null>(null)
 let readerDragCenter = 0
 
 const LOCAL_BOOK_FALLBACK_URL = '/books/SA-Book.pdf'
+
+const ZOOM_STEPS = [50, 60, 75, 80, 90, 100, 110, 125, 150, 175, 200, 234, 250, 300, 400]
+
+const zoomInReader = () => {
+  const current = readerScale.value
+  const next = ZOOM_STEPS.find(s => s > current) || 400
+  readerScale.value = next
+}
+
+const zoomOutReader = () => {
+  const current = readerScale.value
+  const prev = [...ZOOM_STEPS].reverse().find(s => s < current) || 50
+  readerScale.value = prev
+}
 
 const pdfUrl = computed(() => {
   const chapter = booksStore.currentChapter as any
@@ -1166,13 +1875,20 @@ const allSortedChapters = computed(() => {
 
   const contentSize = (book: any) => {
     const chapters = book.chapters?.data || book.chapters || []
-    return chapters.reduce((total: number, chapter: any) => {
+    let totalLength = 0
+    let totalSections = 0
+
+    chapters.forEach((chapter: any) => {
       const sections = chapter.sections?.data || chapter.sections || []
-      return total + sections.reduce(
+      totalSections += sections.length
+      totalLength += sections.reduce(
         (sum: number, section: any) => sum + (section.raw_text?.length || 0),
         0,
       )
-    }, 0)
+    })
+
+    // Fallback: If text length is 0 (sections not eager loaded), use chapter count
+    return totalLength > 0 ? totalLength : (totalSections > 0 ? totalSections : chapters.length)
   }
 
   const book = booksStore.books.reduce(
@@ -1202,7 +1918,7 @@ const toggleSidebarSearch = () => {
 const allVisibleChapters = computed(() => {
   const chapters = allSortedChapters.value
   const query = sidebarSearchQuery.value.trim().toLowerCase()
-  const filtered = query 
+  const filtered = query
     ? chapters.filter(c => c.title?.toLowerCase().includes(query) || c.chapter_number?.toString().includes(query))
     : chapters
   return isShowingAll.value || query ? filtered : filtered.slice(0, 5)
@@ -1210,27 +1926,45 @@ const allVisibleChapters = computed(() => {
 
 const hasHiddenChapters = computed(() => allSortedChapters.value.length > 5)
 
-const visibleSessions = computed(() => {
-  const sessions = chatStore.sessions || []
+const visiblePinnedSessions = computed(() => {
+  const sessions = chatStore.pinnedSessions || []
   const query = sidebarSearchQuery.value.trim().toLowerCase()
-  const filtered = query
-    ? sessions.filter(s => (s.title || 'New Conversation').toLowerCase().includes(query))
-    : sessions
+  return query ? sessions.filter(s => (s.title || '').toLowerCase().includes(query)) : sessions
+})
+
+const visibleActiveSessions = computed(() => {
+  const sessions = chatStore.activeSessions || []
+  const query = sidebarSearchQuery.value.trim().toLowerCase()
+  const filtered = query ? sessions.filter(s => (s.title || '').toLowerCase().includes(query)) : sessions
   return showAllChats.value || query ? filtered : filtered.slice(0, 6)
 })
 
+const visibleArchivedSessions = computed(() => {
+  const sessions = chatStore.archivedSessions || []
+  const query = sidebarSearchQuery.value.trim().toLowerCase()
+  return query ? sessions.filter(s => (s.title || '').toLowerCase().includes(query)) : sessions
+})
+
 const hiddenChatsCount = computed(() =>
-  Math.max(0, (chatStore.sessions || []).length - 6),
+  Math.max(0, (chatStore.activeSessions || []).length - 6),
 )
+
+const sessionGroups = computed(() => [
+  { id: 'pinned', title: 'Pinned', sessions: visiblePinnedSessions.value },
+  { id: 'active', title: 'Recent', sessions: visibleActiveSessions.value },
+  { id: 'archived', title: 'Archived', sessions: visibleArchivedSessions.value }
+].filter(g => g.sessions.length > 0))
 
 /* ============================================================
    PAGINATION / CONTENT
 ============================================================ */
 
 const currentChapterPages = computed(() =>
-  booksStore.currentChapter?.sections?.data ||
-  booksStore.currentChapter?.sections ||
-  [],
+  getStructuredSections(
+    booksStore.currentChapter?.sections?.data ||
+    booksStore.currentChapter?.sections ||
+    []
+  )
 )
 
 const READING_PAGE_MIN_CHARS = 900
@@ -1311,6 +2045,38 @@ function paragraphize(text: string, perParagraph = 3) {
   }
   return paragraphs.filter(Boolean)
 }
+function getStructuredSections(sections: any[]) {
+  if (!sections || !Array.isArray(sections)) return []
+
+  const childrenMap = new Map<string, any[]>()
+  const rootSections: any[] = []
+
+  sections.forEach(sec => {
+    if (sec.parent_id) {
+      if (!childrenMap.has(sec.parent_id)) childrenMap.set(sec.parent_id, [])
+      childrenMap.get(sec.parent_id)!.push(sec)
+    } else {
+      rootSections.push(sec)
+    }
+  })
+
+  const sortByOrder = (a: any, b: any) => (a.order || 0) - (b.order || 0)
+  rootSections.sort(sortByOrder)
+  childrenMap.forEach(arr => arr.sort(sortByOrder))
+
+  const result: any[] = []
+  function traverse(sec: any, depth: number) {
+    result.push({ ...sec, depth })
+    const children = childrenMap.get(sec.id)
+    if (children) {
+      children.forEach(child => traverse(child, depth + 1))
+    }
+  }
+
+  rootSections.forEach(root => traverse(root, 0))
+  return result
+}
+
 
 function formatContent(raw: string | undefined | null): ContentBlock[] {
   if (!raw) return []
@@ -1398,28 +2164,257 @@ const checkChapterCompletion = async (
   chapterId: string,
   page: number,
 ) => {
-  if (page < totalPages.value) return
-
-  try {
-    if (typeof booksStore.markChapterRead === 'function') {
-      await booksStore.markChapterRead(chapterId)
-    } else {
-      try {
-        await apiClient.post(`/chapters/${chapterId}/read`)
-      } catch {
-        await apiClient.post(`/progress/chapters/${chapterId}`)
-      }
-    }
-
-    await progressStore.loadAll()
-  } catch (error) {
-    console.warn('Chapter completion sync failed:', error)
-  }
+  // Do nothing. Chapters should only be completed when the user explicitly clicks "Finish Chapter"
+  // as per the requirement: "Do not mark a chapter completed merely because ... the user jumped directly to the final page".
 }
 const renderMarkdown = (text: string | undefined): string => {
   if (!text) return ''
-  const parsed = marked.parse(text)
+
+  let cleanText = text
+
+  // Clean up PDF hard-wrapping artifacts and backend HTML formatting:
+  // Convert HTML paragraph tags to Markdown newlines
+  cleanText = cleanText.replace(/<\/p>\s*<p>/gi, '\n\n')
+  cleanText = cleanText.replace(/<\/?p>/gi, '')
+
+  // Ensure relative backend storage image URLs point to the backend server
+  const apiBase = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000').replace(/\/$/, '')
+  cleanText = cleanText.replace(/src="\/storage\//g, `src="${apiBase}/storage/`)
+  cleanText = cleanText.replace(/src='\/storage\//g, `src='${apiBase}/storage/`)
+  cleanText = cleanText.replace(/\(\/storage\//g, `(${apiBase}/storage/`)
+
+  const parsed = marked.parse(cleanText)
   return DOMPurify.sanitize(parsed as string)
+}
+
+const showScrollButton = ref(false)
+const isNearBottom = ref(true)
+const SCROLL_THRESHOLD = 120 // px
+
+const handleChatScroll = (e: Event) => {
+  const target = e.target as HTMLElement
+  const distanceFromBottom = target.scrollHeight - target.scrollTop - target.clientHeight
+  isNearBottom.value = distanceFromBottom <= SCROLL_THRESHOLD
+  showScrollButton.value = distanceFromBottom > 150
+}
+
+const scrollToBottom = (force = true) => {
+  if (!force && !isNearBottom.value) return
+  nextTick(() => {
+    if (messagesContainerRef.value) {
+      messagesContainerRef.value.scrollTo({
+        top: messagesContainerRef.value.scrollHeight,
+        behavior: 'smooth'
+      })
+    }
+  })
+}
+
+const handleMessagesClick = async (e: MouseEvent) => {
+  const target = e.target as HTMLElement
+  const copyBtn = target.closest('.copy-code-btn')
+  if (copyBtn) {
+    const code = decodeURIComponent(copyBtn.getAttribute('data-code') || '')
+    if (code) {
+      await navigator.clipboard.writeText(code)
+      const textSpan = copyBtn.querySelector('.copy-text')
+      if (textSpan) {
+        const orig = textSpan.textContent
+        textSpan.textContent = 'Copied!'
+        setTimeout(() => { textSpan.textContent = orig }, 2000)
+      }
+    }
+  }
+}
+
+const copiedMessageId = ref<string | null>(null)
+const feedbackToastMessage = ref('')
+
+const showFeedbackToast = (msg: string) => {
+  feedbackToastMessage.value = msg
+  setTimeout(() => feedbackToastMessage.value = '', 3000)
+}
+
+const copyText = async (text: string, msgId: string) => {
+  try {
+    await navigator.clipboard.writeText(text)
+    copiedMessageId.value = msgId
+    setTimeout(() => {
+      copiedMessageId.value = null
+    }, 2000)
+  } catch (err) {
+    console.error('Failed to copy text: ', err)
+  }
+}
+
+const editMessage = (msg: any) => {
+  chatInput.value = msg.content
+  nextTick(() => {
+    if (chatInputRef.value) {
+      chatInputRef.value.focus()
+      autoResizeInput()
+    }
+  })
+}
+
+const handleEnter = (e: KeyboardEvent) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault()
+    void sendMessage()
+  }
+}
+
+const autoResizeInput = () => {
+  if (chatInputRef.value) {
+    chatInputRef.value.style.height = 'auto';
+    chatInputRef.value.style.height = Math.min(chatInputRef.value.scrollHeight, 120) + 'px';
+  }
+}
+
+const autoResizeSearchInput = () => {
+  if (sidebarSearchInputRef.value) {
+    sidebarSearchInputRef.value.style.height = 'auto';
+    sidebarSearchInputRef.value.style.height = Math.min(sidebarSearchInputRef.value.scrollHeight, 120) + 'px';
+  }
+}
+
+// Global Hybrid Search Logic
+const isSearchingGlobal = ref(false)
+const searchResults = ref<any>(null)
+const searchError = ref<string | null>(null)
+const globalSearchHistory = ref<string[]>([])
+let searchTimeout: ReturnType<typeof setTimeout> | null = null
+
+const localSearchResults = ref<{ messages: any[], sessions: any[] }>({ messages: [], sessions: [] })
+
+const filteredChunks = computed(() => {
+  if (!searchResults.value?.chunks) return []
+  // Filter out noise: require at least a decent semantic match or a direct keyword match
+  return searchResults.value.chunks.filter((c: any) => c.vector_score > 0.25 || c.keyword_score > 0)
+})
+
+onMounted(() => {
+  const history = localStorage.getItem('globalSearchHistory')
+  if (history) {
+    globalSearchHistory.value = JSON.parse(history)
+  }
+})
+
+const performLocalSearch = () => {
+  const q = sidebarSearchQuery.value.trim().toLowerCase()
+  if (!q) {
+    localSearchResults.value = { messages: [], sessions: [] }
+    return
+  }
+
+  const matchedMessages = currentMessages.value.filter((m: any) => m.content && m.content.toLowerCase().includes(q))
+  const matchedSessions = chatStore.sessions.filter((s: any) => s.title && s.title.toLowerCase().includes(q))
+
+  localSearchResults.value = {
+    messages: matchedMessages.slice(-5).reverse(), // Last 5 matches, newest first
+    sessions: matchedSessions.slice(0, 5)
+  }
+}
+
+const performHybridSearch = async () => {
+  if (!sidebarSearchQuery.value.trim()) {
+    searchResults.value = null
+    isSearchingGlobal.value = false
+    return
+  }
+
+  isSearchingGlobal.value = true
+  searchError.value = null
+
+  try {
+    const { data } = await apiClient.get('/admin/rag/debug-search', {
+      params: { query: sidebarSearchQuery.value, limit: 10 }
+    })
+    searchResults.value = data
+  } catch (err: any) {
+    searchError.value = err.response?.data?.message || 'Failed to execute search.'
+  } finally {
+    isSearchingGlobal.value = false
+  }
+}
+
+const handleSearchInput = () => {
+  autoResizeSearchInput()
+  performLocalSearch() // Instant local search
+
+  if (searchTimeout) clearTimeout(searchTimeout)
+  if (!sidebarSearchQuery.value.trim()) {
+    searchResults.value = null
+    return
+  }
+
+  searchTimeout = setTimeout(() => {
+    performHybridSearch()
+  }, 400)
+}
+
+const highlightText = (text: string, searchTerm: string) => {
+  if (!text || !searchTerm) return text
+  const escapedTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const regex = new RegExp(`(${escapedTerm})`, 'gi')
+  return text.replace(regex, '<mark class="bg-amber-200 text-amber-900 rounded-sm px-1 py-0.5 font-medium">$1</mark>')
+}
+
+const getScoreColor = (score: number, isKeyword = false) => {
+  if (isKeyword && score === 0) return 'bg-slate-100 text-slate-400 border-slate-200'
+  if (score > 0.8) return 'bg-emerald-50 text-emerald-700 border-emerald-200'
+  if (score > 0.5) return 'bg-blue-50 text-blue-700 border-blue-200'
+  if (score > 0.0) return 'bg-amber-50 text-amber-700 border-amber-200'
+  return 'bg-slate-50 text-slate-500 border-slate-200'
+}
+
+const scrollToMessage = (msgId: string) => {
+  toggleSidebarSearch()
+  if (!isAiSidebarOpen.value) {
+    isAiSidebarOpen.value = true
+  }
+  setTimeout(() => {
+    const el = document.getElementById(`msg-${msgId}`)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      el.classList.add('ring-2', 'ring-blue-500', 'ring-offset-2', 'transition-all', 'duration-1000')
+      setTimeout(() => el.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-2'), 2000)
+    }
+  }, 300)
+}
+
+const goToSession = (sessionId: string) => {
+  toggleSidebarSearch()
+  if (!isAiSidebarOpen.value) {
+    isAiSidebarOpen.value = true
+  }
+  selectSession(sessionId)
+}
+
+const submitGlobalSearch = async (e: KeyboardEvent) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    const queryToSubmit = sidebarSearchQuery.value.trim();
+    if (!queryToSubmit) return;
+
+    // Save to history
+    if (!globalSearchHistory.value.includes(queryToSubmit)) {
+      globalSearchHistory.value.unshift(queryToSubmit);
+      if (globalSearchHistory.value.length > 5) globalSearchHistory.value.pop();
+      localStorage.setItem('globalSearchHistory', JSON.stringify(globalSearchHistory.value));
+    }
+
+    chatInput.value = queryToSubmit;
+    sidebarSearchQuery.value = '';
+    searchResults.value = null;
+    toggleSidebarSearch();
+
+    if (!isAiSidebarOpen.value) {
+      isAiSidebarOpen.value = true;
+    }
+
+    await sendMessage();
+  }
 }
 
 watch(
@@ -1437,10 +2432,10 @@ watch(
     await checkChapterCompletion(newId, currentPage.value)
 
     const savedSessionId = localStorage.getItem(`smart_adama_chat_session_${newId}`)
-    if (savedSessionId && route.params.sessionId !== savedSessionId) {
+    if (savedSessionId && chatStore.sessions.some((s: any) => s.id === savedSessionId)) {
       try {
         await chatStore.loadSession(savedSessionId)
-        router.replace({ name: 'study-session', params: { sessionId: savedSessionId } })
+        router.replace({ name: 'study', params: { sessionId: savedSessionId } })
       } catch (e) {
         localStorage.removeItem(`smart_adama_chat_session_${newId}`)
       }
@@ -1519,6 +2514,27 @@ const markCompleteAndNextChapter = async () => {
   }
 }
 
+const isNavigatingToQuiz = ref(false)
+
+const takeChapterQuiz = async () => {
+  const currentId = booksStore.currentChapter?.id
+  if (!currentId || isNavigatingToQuiz.value) return
+
+  isNavigatingToQuiz.value = true
+  try {
+    if (typeof booksStore.markChapterRead === 'function') {
+      await booksStore.markChapterRead(currentId)
+      await progressStore.loadAll()
+    }
+  } catch (error) {
+    console.warn('Unable to mark chapter complete before quiz:', error)
+  } finally {
+    isNavigatingToQuiz.value = false
+  }
+
+  router.push(`/chapters/${currentId}/quiz`)
+}
+
 const jumpToSection = async (
   chapterId: string,
   sectionId: string,
@@ -1541,7 +2557,7 @@ const jumpToSection = async (
 
 const handleTocClick = async (chapterNumber: string) => {
   const target = allSortedChapters.value.find((chapter: any) => {
-    const regex = new RegExp(`^chapter\\s+${chapterNumber}\\b`, 'i')
+    const regex = new RegExp(`^(chapter|ch)[\\s\\-]+${chapterNumber}\\b`, 'i')
     return regex.test(chapter.title)
   })
 
@@ -1683,9 +2699,10 @@ const toggleFullscreen = () => {
 }
 
 const switchToPdf = () => {
-  viewMode.value = 'pdf'
-  if (!isFullscreen.value) {
-    toggleFullscreen()
+  if (pdfUrl.value) {
+    window.open(pdfUrl.value, '_blank')
+  } else {
+    alert('PDF not available for this chapter.')
   }
 }
 
@@ -1729,16 +2746,16 @@ const THEMES: Record<ThemeKey, { label: string; vars: Record<string, string> }> 
   dark: {
     label: 'Dark',
     vars: {
-      '--rt-bg': '#0B0D10',
-      '--rt-surface': '#1E2128',
-      '--rt-surface-2': '#15171B',
-      '--rt-border': '#2C303A',
-      '--rt-text': '#EDEFF3',
-      '--rt-text-body': '#D8DEE9',
-      '--rt-muted': '#8890A0',
+      '--rt-bg': '#212121',
+      '--rt-surface': '#171717',
+      '--rt-surface-2': '#0D0D0D',
+      '--rt-border': '#3A3A3A',
+      '--rt-text': '#ECECEC',
+      '--rt-text-body': '#D1D5DB',
+      '--rt-muted': '#9B9B9B',
       '--rt-accent': '#5B7FDB',
       '--rt-accent-hover': '#7093EE',
-      '--rt-accent-text': '#0B0D10',
+      '--rt-accent-text': '#FFFFFF',
     },
   },
   green: {
@@ -1794,14 +2811,69 @@ const readerFont = ref<'serif' | 'sans'>(
 
 const themeVars = computed(() => THEMES[readerTheme.value].vars)
 
+const { initializeTheme: restoreGlobalWebsiteTheme } = useTheme()
+
+function applyStudyTheme(theme: ThemeKey) {
+  if (typeof document === 'undefined') return
+  const isDark = theme === 'dark'
+  const root = document.documentElement
+  const body = document.body
+  const app = document.getElementById('app')
+
+  if (isDark) {
+    root.classList.add('dark')
+    root.dataset.theme = 'dark'
+    body.classList.add('dark-theme')
+    body.dataset.theme = 'dark'
+    if (app) {
+      app.classList.add('dark')
+      app.dataset.theme = 'dark'
+    }
+  } else {
+    root.classList.remove('dark')
+    root.dataset.theme = theme
+    body.classList.remove('dark-theme')
+    body.dataset.theme = theme
+    if (app) {
+      app.classList.remove('dark')
+      app.dataset.theme = theme
+    }
+  }
+}
+
+function restoreGlobalTheme() {
+  restoreGlobalWebsiteTheme()
+}
+
+watch(readerTheme, (newTheme) => {
+  applyStudyTheme(newTheme)
+})
+
 const isDisplaySettingsOpen = ref(false)
 const isMobileSettingsOpen = ref(false)
+const isSettingsModalOpen = ref(false)
+const activeSettingsTab = ref<'general' | 'appearance' | 'data'>('general')
 const activeSettingsSubmenu = ref<string | null>(null)
 const displaySettingsRef = ref<HTMLElement | null>(null)
 const mobileSettingsMenuRef = ref<HTMLElement | null>(null)
 
+const openSettingsModal = (tab: 'general' | 'appearance' | 'data' = 'general') => {
+  activeSettingsTab.value = tab
+  isDisplaySettingsOpen.value = false
+  activeSettingsSubmenu.value = null
+  isSettingsModalOpen.value = true
+}
+
+const handleClearChatFromSettings = async () => {
+  isDisplaySettingsOpen.value = false
+  isSettingsModalOpen.value = false
+  await clearChatHistory()
+}
+
 const setTheme = (key: any) => {
-  readerTheme.value = key as ThemeKey
+  const newTheme = key as ThemeKey
+  readerTheme.value = newTheme
+  applyStudyTheme(newTheme)
   try {
     localStorage.setItem(READER_THEME_KEY, key as string)
   } catch {
@@ -1834,6 +2906,12 @@ const handleClickOutsideMenus = (event: MouseEvent) => {
   if (isMobileSettingsOpen.value && mobileSettingsMenuRef.value && !mobileSettingsMenuRef.value.contains(target)) {
     isMobileSettingsOpen.value = false
   }
+
+  if (activeSessionMenu.value) {
+    if (!(target as HTMLElement).closest('.session-dropdown-menu') && !(target as HTMLElement).closest('.session-options-btn')) {
+      activeSessionMenu.value = null
+    }
+  }
 }
 
 /* ============================================================
@@ -1843,6 +2921,22 @@ const handleClickOutsideMenus = (event: MouseEvent) => {
 const chatInputRef = ref<HTMLInputElement | null>(null)
 
 const handleKeydown = (event: KeyboardEvent) => {
+  // Always handle Escape regardless of typing state
+  if (event.key === 'Escape') {
+    if (isSettingsModalOpen.value) {
+      isSettingsModalOpen.value = false
+      return
+    }
+    if (isDisplaySettingsOpen.value) {
+      isDisplaySettingsOpen.value = false
+      activeSettingsSubmenu.value = null
+      return
+    }
+    if (isFullscreen.value) toggleFullscreen()
+    if (isMobile.value) closeMobilePanels()
+    return
+  }
+
   const target = event.target as HTMLElement | null
   const isTyping =
     target?.tagName === 'INPUT' ||
@@ -1858,9 +2952,6 @@ const handleKeydown = (event: KeyboardEvent) => {
   } else if (event.key === 'f' && event.ctrlKey) {
     event.preventDefault()
     toggleFullscreen()
-  } else if (event.key === 'Escape') {
-    if (isFullscreen.value) toggleFullscreen()
-    if (isMobile.value) closeMobilePanels()
   } else if (event.key.length === 1 && !event.ctrlKey && !event.altKey && !event.metaKey) {
     // Auto-focus chat if user starts typing alphanumeric/punctuation characters
     if (event.key.match(/^[a-zA-Z0-9!"#$%&'()*+,-./:;<=>?@[\]^_`{|}~]$/)) {
@@ -1892,6 +2983,12 @@ const handleTextSelection = () => {
     return
   }
 
+  const anchor = selection.anchorNode?.parentElement
+  if (!anchor || (!anchor.closest('.reader-paper') && !anchor.closest('.message'))) {
+    selectionPopup.value.visible = false
+    return
+  }
+
   const text = selection.toString().trim()
   if (!text || text.length < 3) {
     selectionPopup.value.visible = false
@@ -1918,7 +3015,8 @@ const askAiAboutSelection = () => {
   selectionPopup.value.visible = false
   window.getSelection()?.removeAllRanges()
 
-  chatInput.value = `Can you explain this excerpt from chapter page ${currentPage.value}: "${snippet}"`
+  const chapterName = booksStore.currentChapter?.title || 'the current chapter'
+  chatInput.value = `Could you please explain this excerpt from "${chapterName}", page ${currentPage.value}?\n\n"${snippet}"`
   toggleAiSidebar(true)
 
   nextTick(() => {
@@ -1931,23 +3029,93 @@ const askAiAboutSelection = () => {
 ============================================================ */
 
 const chatInput = ref('')
+
+watch(chatInput, () => {
+  nextTick(autoResizeInput)
+})
 const messagesContainerRef = ref<HTMLElement | null>(null)
 const currentMessages = computed(() => chatStore.currentSession?.messages || [])
+const hasMessages = computed(() => (currentMessages.value?.length || 0) > 0)
 
-const scrollChatToBottom = () => {
-  nextTick(() => {
-    const container = messagesContainerRef.value
-    if (!container) return
-    container.scrollTo({
-      top: container.scrollHeight,
-      behavior: 'smooth',
-    })
-  })
+/* ============================================================
+   DYNAMIC SESSION GREETINGS
+============================================================ */
+const activeGreetingKey = ref<string>('help')
+
+const userFirstName = computed(() => {
+  const raw = authStore.user?.first_name || authStore.user?.name || ''
+  if (!raw) return ''
+  return raw.trim().split(/\s+/)[0] || ''
+})
+
+const displayChapterName = computed(() => {
+  return booksStore.currentChapter?.title || progressStore.dashboard?.current_chapter?.title || ''
+})
+
+const pickDynamicGreeting = () => {
+  const name = userFirstName.value
+  const chapter = displayChapterName.value
+
+  const candidatePool: string[] = [
+    'help',
+    'help_today',
+    'explore_today',
+    'where_start',
+    'which_chapter',
+    'dive_in',
+  ]
+
+  if (name) {
+    candidatePool.push(
+      'help_name',
+      'explore_name',
+      'where_start_name',
+      'which_chapter_name',
+      'what_learn_name',
+    )
+  }
+
+  if (chapter) {
+    candidatePool.push(
+      'continue_reading',
+      'pick_up_last',
+      'questions_chapter',
+    )
+    if (name) {
+      candidatePool.push('continue_reading_name')
+    }
+  }
+
+  // Avoid repeating the immediately previous greeting
+  const filtered = candidatePool.filter((k) => k !== activeGreetingKey.value)
+  const pool = filtered.length > 0 ? filtered : candidatePool
+  activeGreetingKey.value = pool[Math.floor(Math.random() * pool.length)]
 }
 
-watch(currentMessages, scrollChatToBottom, { deep: true })
-watch(() => chatStore.streamingContent, scrollChatToBottom)
-watch(() => chatStore.streaming, scrollChatToBottom)
+const dynamicGreeting = computed(() => {
+  const name = userFirstName.value
+  const chapter = displayChapterName.value
+
+  let key = activeGreetingKey.value
+
+  // Safety fallbacks if key requires chapter or name but it's unavailable
+  if ((key.includes('chapter') || key.includes('reading') || key.includes('pick_up')) && !chapter) {
+    key = name ? 'explore_name' : 'explore_today'
+  }
+  if (key.includes('name') && !name) {
+    key = key.replace('_name', '_today').replace('what_learn_today', 'where_start')
+  }
+
+  return t(`chat.greetings.${key}`, {
+    name,
+    chapter,
+    page: currentPage.value,
+  })
+})
+
+watch(currentMessages, () => {
+  scrollToBottom(false)
+}, { deep: true })
 
 const sendPrompt = (prompt: string) => {
   chatInput.value = prompt
@@ -1959,6 +3127,10 @@ const reloadPage = () => {
 }
 
 const startNewChat = async () => {
+  activeSidebarTab.value = 'chats'
+  isReaderOpen.value = false
+  isAiSidebarOpen.value = true
+  pickDynamicGreeting()
   await chatStore.createSession()
   chatInput.value = ''
 
@@ -1966,9 +3138,11 @@ const startNewChat = async () => {
     if (booksStore.currentChapter?.id) {
       localStorage.setItem(`smart_adama_chat_session_${booksStore.currentChapter.id}`, chatStore.currentSession.id)
     }
-    
+
+    saveReaderState()
+
     router.push({
-      name: 'study-session',
+      name: 'study',
       params: { sessionId: chatStore.currentSession.id },
     })
   }
@@ -1994,14 +3168,17 @@ const startNewChatAndOpen = async () => {
 }
 
 const switchSession = async (sessionId: string) => {
+  pickDynamicGreeting()
   await chatStore.loadSession(sessionId)
 
   if (booksStore.currentChapter?.id) {
     localStorage.setItem(`smart_adama_chat_session_${booksStore.currentChapter.id}`, sessionId)
   }
 
+  saveReaderState()
+
   router.push({
-    name: 'study-session',
+    name: 'study',
     params: { sessionId },
   })
 
@@ -2028,12 +3205,12 @@ const loadBookChapter = async (chapterId: string) => {
 
 const toggleFeedback = async (
   message: any,
-  feedbackType: 'helpful' | 'not_helpful',
+  feedbackType: 'like' | 'dislike',
 ) => {
   const newFeedback =
-    message.feedback === feedbackType
-      ? null
-      : feedbackType
+    message.feedback?.feedback === feedbackType
+      ? undefined
+      : { feedback: feedbackType }
 
   const currentSession = chatStore.currentSession
   const messages = currentSession?.messages
@@ -2048,8 +3225,12 @@ const toggleFeedback = async (
   }
 
   try {
-    // Keep the backend integration optional until the feedback endpoint exists.
-    // await apiClient.post(`/chat/messages/${message.id}/feedback`, { feedback: newFeedback })
+    if (newFeedback) {
+      await apiClient.post(`/messages/${message.id}/feedback`, { feedback: newFeedback.feedback })
+      showFeedbackToast('Thank you for your feedback!')
+    } else {
+      await apiClient.delete(`/messages/${message.id}/feedback`)
+    }
   } catch (error) {
     console.error('Failed to save feedback:', error)
   }
@@ -2059,9 +3240,12 @@ const isSubmitting = ref(false)
 
 const sendMessage = async () => {
   const text = chatInput.value.trim()
-  if (!text || chatStore.streaming || isSubmitting.value) return
+  if (!text || isSubmitting.value) return
 
+  // 1. Immediately wipe composer and reset height so sent text NEVER reappears
   isSubmitting.value = true
+  chatInput.value = ''
+  nextTick(autoResizeInput)
 
   try {
     if (!chatStore.currentSession) {
@@ -2070,13 +3254,22 @@ const sendMessage = async () => {
 
     if (!chatStore.currentSession) return
 
-    chatInput.value = ''
+    const context = {
+      chapter_id: booksStore.currentChapter?.id,
+      page: currentPage.value,
+    }
 
-    await chatStore.sendMessage(
+    // 2. Force scroll to bottom so user sees their new message immediately
+    scrollToBottom(true)
+
+    // 3. Dispatch message (optimistically appends both user message & assistant placeholder)
+    chatStore.sendMessage(
       chatStore.currentSession.id,
       text,
+      context,
     )
   } finally {
+    // 4. Immediately release lock so user can draft and submit subsequent messages concurrently
     isSubmitting.value = false
   }
 }
@@ -2086,51 +3279,69 @@ const sendMessage = async () => {
 ============================================================ */
 
 onMounted(async () => {
+  pickDynamicGreeting()
+  applyStudyTheme(readerTheme.value)
   window.addEventListener('resize', handleResize)
   document.addEventListener('mouseup', handleTextSelection)
   document.addEventListener('keydown', handleKeydown)
   document.addEventListener('click', handleClickOutsideMenus)
 
-  await Promise.all([
+  if (!progressStore.dashboard) {
+    progressStore.loadDashboard().catch(() => {})
+  }
+
+  const savedChapterId = localStorage.getItem(LAST_CHAPTER_KEY)
+  const initialPromises: Promise<any>[] = [
     chatStore.loadSessions(1),
     booksStore.loadBooks(),
-  ])
+  ]
+  if (savedChapterId) {
+    initialPromises.push(booksStore.loadChapter(savedChapterId))
+  }
 
-  const chapters = allSortedChapters.value
-  if (chapters.length) {
-    const savedChapterId = localStorage.getItem(LAST_CHAPTER_KEY)
-    const target =
-      chapters.find((chapter: any) => chapter.id === savedChapterId) ||
-      chapters[0]
+  try {
+    await Promise.all(initialPromises)
+  } catch (err) {
+    console.error('Initial study data loading error:', err)
+  }
 
-    await booksStore.loadChapter(target.id)
+  if (!booksStore.currentChapter) {
+    const chapters = allSortedChapters.value
+    if (chapters.length) {
+      const defaultChapter = chapters.find((c: any) => c.title?.includes('Ch-1') || c.title?.includes('Chapter 1')) || chapters[1] || chapters[0]
+      try {
+        await booksStore.loadChapter(defaultChapter.id)
+      } catch (err) {
+        console.error('Failed to load default chapter:', err)
+      }
+    }
   }
 
   const sessionId = route.params.sessionId as string | undefined
   if (sessionId) {
-    await chatStore.loadSession(sessionId)
-    if (booksStore.currentChapter?.id) {
-      localStorage.setItem(`smart_adama_chat_session_${booksStore.currentChapter.id}`, sessionId)
+    try {
+      await chatStore.loadSession(sessionId)
+    } catch (e) {
+      console.error('Failed to load session from URL:', e)
+      router.replace({ name: 'study' })
     }
-  } else if (booksStore.currentChapter?.id) {
-    const savedId = localStorage.getItem(`smart_adama_chat_session_${booksStore.currentChapter.id}`)
-    if (savedId) {
-      try {
-        await chatStore.loadSession(savedId)
-        router.replace({ name: 'study-session', params: { sessionId: savedId } })
-      } catch (e) {
-        localStorage.removeItem(`smart_adama_chat_session_${booksStore.currentChapter.id}`)
-      }
-    }
+  } else {
+    // Force start a new chat if no specific session is requested
+    chatStore.currentSession = null
   }
 
   // Open the current chapter in the sidebar when it is available.
   if (booksStore.currentChapter?.id) {
     expandedChapters.value[booksStore.currentChapter.id] = true
   }
+  // Prevent completely blank workspace on load
+  if (!isReaderOpen.value && !isAiSidebarOpen.value) {
+    isReaderOpen.value = true
+  }
 })
 
 onUnmounted(() => {
+  restoreGlobalTheme()
   window.removeEventListener('resize', handleResize)
   document.removeEventListener('mousemove', onDragLeft)
   document.removeEventListener('mouseup', handleTextSelection)
@@ -2143,6 +3354,33 @@ onUnmounted(() => {
 
   document.body.style.cursor = ''
 })
+
+watch(
+  () => route.params.sessionId,
+  async (newSessionId, oldSessionId) => {
+    if (newSessionId !== oldSessionId) {
+      pickDynamicGreeting()
+      if (newSessionId) {
+        try {
+          await chatStore.loadSession(newSessionId as string)
+        } catch (e) {
+          console.error('Failed to load session from URL:', e)
+        }
+      } else {
+        chatStore.currentSession = null
+      }
+    }
+  }
+)
+
+watch(
+  () => chatStore.currentSession?.id,
+  (newId, oldId) => {
+    if (newId !== oldId) {
+      pickDynamicGreeting()
+    }
+  }
+)
 </script>
 
 <style scoped>
@@ -2180,6 +3418,42 @@ onUnmounted(() => {
   cursor: ew-resize !important;
 }
 
+/* Ensure all form controls inside .chat-page strictly respect reader theme tokens */
+.chat-page textarea,
+.chat-page input:not([type="checkbox"]):not([type="radio"]),
+.chat-page select {
+  background-color: var(--reader-surface) !important;
+  color: var(--reader-text) !important;
+  border-color: var(--reader-border) !important;
+}
+
+.chat-page .ai-composer__textarea {
+  background: transparent !important;
+  color: var(--reader-text) !important;
+}
+
+.chat-page .ai-composer__textarea::placeholder {
+  color: var(--reader-muted) !important;
+}
+
+.chat-page .sidebar-search-input {
+  background: transparent !important;
+  color: var(--reader-text) !important;
+}
+
+.chat-page .sidebar-search-input::placeholder {
+  color: var(--reader-muted) !important;
+}
+
+.chat-page .ai-search-input {
+  background: transparent !important;
+  color: var(--reader-text) !important;
+}
+
+.chat-page .ai-search-input::placeholder {
+  color: var(--reader-muted) !important;
+}
+
 /* ============================================================
    MOBILE BACKDROP
 ============================================================ */
@@ -2210,13 +3484,13 @@ onUnmounted(() => {
 .collapsed-rail {
   position: relative;
   z-index: 20;
-  width: 58px;
-  flex: 0 0 58px;
+  width: 48px;
+  flex: 0 0 48px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 10px;
-  padding: 12px 8px;
+  padding: 12px 0;
   background: color-mix(in srgb, var(--reader-surface-2) 92%, var(--reader-bg));
   border-color: var(--reader-border);
 }
@@ -2230,30 +3504,26 @@ onUnmounted(() => {
 }
 
 .rail-button {
-  width: 38px;
-  height: 38px;
+  width: 36px;
+  height: 36px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--reader-border);
-  border-radius: 11px;
-  color: var(--reader-text);
-  background: var(--reader-surface);
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+  border: none;
+  border-radius: 8px;
+  color: var(--reader-muted);
+  background: transparent;
   cursor: pointer;
-  transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+  transition: all 0.2s ease;
 }
 
 .rail-button:hover {
-  transform: translateY(-1px);
-  background: var(--reader-bg);
-  box-shadow: 0 7px 18px rgba(15, 23, 42, 0.08);
+  background: var(--reader-surface-2);
+  color: var(--reader-text);
 }
 
 .rail-button--accent {
-  color: var(--reader-accent-text);
-  background: var(--reader-accent);
-  border-color: transparent;
+  color: var(--reader-text);
 }
 
 .rail-button svg {
@@ -2311,7 +3581,7 @@ onUnmounted(() => {
 .side-panel__header {
   flex: 0 0 auto;
   padding: 12px;
-  border-bottom: 1px solid var(--reader-border);
+  border-bottom: none;
 }
 
 .side-panel__brand-row {
@@ -2319,24 +3589,25 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  margin-bottom: 16px;
 }
 
 .brand-button {
   min-width: 0;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   border: 0;
   color: var(--reader-text);
   background: transparent;
-  font-size: 0.86rem;
-  font-weight: 800;
+  font-size: 0.8rem;
+  font-weight: 700;
   cursor: pointer;
 }
 
 .brand-button img {
-  width: 28px;
-  height: 28px;
+  width: 22px;
+  height: 22px;
   object-fit: contain;
 }
 
@@ -2366,42 +3637,27 @@ onUnmounted(() => {
   height: 17px;
 }
 
-/* Sidebar Search */
-.sidebar-search-container {
-  margin-top: 12px;
-  margin-bottom: 4px;
+.ai-glow-inner input::placeholder {
+  color: #a8a29e; /* Subtle taupe */
 }
 
-.sidebar-search-wrapper {
-  display: flex;
-  align-items: center;
-  background: var(--rt-input-bg, #FFFFFF);
-  border: 1px solid var(--rt-border, #E2E8F0);
-  border-radius: 8px;
-  padding: 6px 10px;
-  gap: 8px;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+/* Search Glow Animation */
+@keyframes spinGlow {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
 }
 
-html.dark .sidebar-search-wrapper {
-  background: var(--rt-input-bg, #0B1220);
-  border-color: var(--rt-border, #334155);
-}
+
 
 .sidebar-search-wrapper:focus-within {
-  border-color: #395886;
-  box-shadow: 0 0 0 2px rgba(57, 88, 134, 0.15);
-}
-
-html.dark .sidebar-search-wrapper:focus-within {
-  border-color: #638ECB;
-  box-shadow: 0 0 0 2px rgba(99, 142, 203, 0.15);
+  border-color: var(--reader-accent, #395886);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--reader-accent, #395886) 15%, transparent);
 }
 
 .search-icon {
   width: 14px;
   height: 14px;
-  color: var(--rt-text-muted, #94A3B8);
+  color: var(--reader-muted, #94A3B8);
   flex-shrink: 0;
 }
 
@@ -2410,18 +3666,14 @@ html.dark .sidebar-search-wrapper:focus-within {
   min-width: 0;
   border: none;
   background: transparent !important;
-  color: var(--rt-text, #0F172A);
+  color: var(--reader-text) !important;
   font-size: 0.85rem;
   padding: 0;
   outline: none;
 }
 
-html.dark .sidebar-search-input {
-  color: var(--rt-text, #F8FAFC);
-}
-
 .sidebar-search-input::placeholder {
-  color: var(--rt-text-muted, #94A3B8);
+  color: var(--reader-muted) !important;
 }
 
 .search-clear {
@@ -2432,27 +3684,17 @@ html.dark .sidebar-search-input {
   height: 20px;
   border-radius: 50%;
   border: none;
-  background: var(--rt-hover, #F1F5F9);
-  color: var(--rt-text-secondary, #64748B);
+  background: var(--reader-surface-2);
+  color: var(--reader-muted);
   cursor: pointer;
   padding: 0;
   flex-shrink: 0;
   transition: background 0.15s ease, color 0.15s ease;
 }
 
-html.dark .search-clear {
-  background: var(--rt-hover, #1E293B);
-  color: var(--rt-text-secondary, #94A3B8);
-}
-
 .search-clear:hover {
-  background: #E2E8F0;
-  color: #0F172A;
-}
-
-html.dark .search-clear:hover {
-  background: #334155;
-  color: #F8FAFC;
+  background: var(--reader-surface);
+  color: var(--reader-text);
 }
 
 .search-clear svg {
@@ -2460,62 +3702,38 @@ html.dark .search-clear:hover {
   height: 12px;
 }
 
-.new-chat-button {
-  width: 100%;
-  margin-top: 10px;
-  min-height: 42px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 12px;
-  padding: 8px 14px;
-  border: 1px solid var(--reader-border);
-  border-radius: 12px;
-  color: var(--reader-text);
-  background: var(--reader-bg);
-  font-size: 0.82rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.new-chat-button:hover {
-  background: var(--reader-surface-2);
-}
-
-.new-chat-button svg {
-  width: 16px;
-  height: 16px;
-  opacity: 0.8;
-}
-
-.reader-toggle-button {
+.new-chat-button, .reader-toggle-button {
   width: 100%;
   margin-top: 8px;
-  min-height: 38px;
+  min-height: 36px;
   display: inline-flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 12px;
-  padding: 8px 14px;
-  border: 1px solid transparent;
-  border-radius: 12px;
-  color: var(--reader-muted);
+  gap: 10px;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 8px;
+  color: var(--reader-text);
   background: transparent;
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background 0.15s ease, transform 0.1s ease;
 }
 
-.reader-toggle-button:hover {
+.new-chat-button:hover, .reader-toggle-button:hover {
   background: var(--reader-surface);
-  color: var(--reader-text);
 }
 
-.reader-toggle-button svg {
+.new-chat-button:active, .reader-toggle-button:active {
+  transform: scale(0.97);
+  background: var(--reader-surface);
+}
+
+.new-chat-button svg, .reader-toggle-button svg {
   width: 16px;
   height: 16px;
+  opacity: 0.7;
 }
 
 .sidebar-tab-switcher {
@@ -2593,54 +3811,109 @@ html.dark .search-clear:hover {
   background: var(--reader-surface-2);
 }
 
-/* Sidebar Footer (Profile) */
+/* Sidebar Footer (ChatGPT-Style User Pill) */
 .sidebar-footer {
-  padding: 12px;
+  padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
   border-top: 1px solid var(--reader-border);
   position: relative;
   z-index: 9999;
 }
 
-.sidebar-profile-link {
+.chatgpt-user-pill {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px;
-  border-radius: 8px;
-  text-decoration: none;
-  transition: background 0.15s ease;
-}
-.sidebar-profile-link:hover {
-  background: var(--reader-surface);
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+  text-align: left;
+  user-select: none;
 }
 
-.sidebar-profile-avatar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.chatgpt-user-pill:hover,
+.chatgpt-user-pill.is-active {
+  background: var(--reader-surface-2);
+  border-color: var(--reader-border);
+}
+
+.chatgpt-user-avatar {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: var(--reader-surface-2);
-  color: var(--reader-text);
-}
-.sidebar-profile-avatar svg {
-  width: 18px;
-  height: 18px;
+  background: #10b981;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
 }
 
-.sidebar-profile-info {
+.chatgpt-user-avatar svg {
+  width: 17px;
+  height: 17px;
+}
+
+.chatgpt-user-avatar--sm {
+  width: 28px;
+  height: 28px;
+  font-size: 0.76rem;
+}
+
+.chatgpt-user-info {
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
 }
-.sidebar-profile-name {
-  font-size: 0.8rem;
-  font-weight: 600;
+
+.chatgpt-user-name {
+  font-size: 0.85rem;
+  font-weight: 500;
   color: var(--reader-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.25;
 }
-.sidebar-profile-plan {
-  font-size: 0.65rem;
+
+.chatgpt-user-role {
+  font-size: 0.68rem;
   color: var(--reader-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+
+.chatgpt-user-dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  color: var(--reader-muted);
+  flex-shrink: 0;
+  opacity: 0.7;
+  transition: opacity 0.15s ease, color 0.15s ease;
+}
+
+.chatgpt-user-dots svg {
+  width: 16px;
+  height: 16px;
+}
+
+.chatgpt-user-pill:hover .chatgpt-user-dots,
+.chatgpt-user-pill.is-active .chatgpt-user-dots {
+  opacity: 1;
+  color: var(--reader-text);
 }
 
 .side-panel__scroll {
@@ -2693,8 +3966,8 @@ html.dark .search-clear:hover {
 }
 
 .sidebar-section--sessions {
-  padding-top: 15px;
-  border-top: 1px solid var(--reader-border);
+  padding-top: 4px;
+  border-top: none;
 }
 
 .sidebar-section__title {
@@ -2875,10 +4148,41 @@ html.dark .search-clear:hover {
   opacity: 1;
 }
 
+.sidebar-group-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--reader-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 8px 12px 4px;
+  margin: 0;
+}
+
 .session-list {
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+.session-item-wrapper {
+  position: relative;
+}
+
+.session-rename-input {
+  width: 100%;
+  display: block;
+  padding: 7px 8px;
+  border: 1px solid var(--reader-border);
+  border-radius: 9px;
+  color: var(--reader-text);
+  background: var(--reader-surface-2);
+  font-family: inherit;
+  font-size: inherit;
+  outline: none;
+}
+.session-rename-input:focus {
+  border-color: var(--reader-accent);
+  box-shadow: 0 0 0 2px rgba(var(--reader-accent-rgb, 16, 185, 129), 0.2);
 }
 
 .session-item {
@@ -2896,9 +4200,100 @@ html.dark .search-clear:hover {
 }
 
 .session-item:hover,
-.session-item--active {
+.session-item--active,
+.session-item-wrapper:hover .session-item {
   border-color: var(--reader-border);
   background: var(--reader-surface);
+}
+
+.session-options-btn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  padding: 4px;
+  border-radius: 6px;
+  color: var(--reader-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.session-item-wrapper:hover .session-options-btn,
+.session-options-btn.is-visible {
+  opacity: 1;
+}
+
+.session-options-btn:hover,
+.session-options-btn.is-visible {
+  background: var(--reader-surface-2);
+  color: var(--reader-text);
+}
+
+.session-dropdown-menu {
+  position: absolute;
+  top: 80%;
+  right: 10px;
+  background: var(--reader-surface);
+  border: 1px solid var(--reader-border);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+  padding: 6px;
+  min-width: 180px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chat-page.dark .session-dropdown-menu,
+:global(html.dark) .session-dropdown-menu {
+  box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--reader-text);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.dropdown-item:not(:disabled):hover {
+  background: var(--reader-surface-2);
+}
+
+.dropdown-item:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.dropdown-item.text-danger {
+  color: var(--reader-error, #ef4444);
+}
+
+.dropdown-item.text-danger:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.dropdown-divider {
+  margin: 4px 0;
+  border: 0;
+  border-top: 1px solid var(--reader-border);
 }
 
 .session-item__title {
@@ -2998,32 +4393,29 @@ html.dark .search-clear:hover {
 }
 
 .btn-read-with-ai {
-  padding: 6px 12px;
-  border-radius: 9999px;
-  font-weight: 500;
-  font-size: 0.75rem;
-  color: var(--reader-text);
+  padding: 4px 8px;
+  font-weight: 600;
+  font-size: 0.72rem;
+  color: var(--reader-muted);
   background: transparent;
-  border: 1px solid var(--reader-border);
+  border: none;
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 6px;
-  transition: all 0.2s;
+  transition: color 0.2s;
 }
 
 .btn-read-with-ai:hover {
-  background: var(--reader-surface-2);
+  color: var(--reader-text);
 }
 
 .btn-read-with-ai.is-active {
   color: #10b981;
-  background: color-mix(in srgb, #10b981 12%, transparent);
-  border-color: color-mix(in srgb, #10b981 20%, transparent);
 }
 
 .btn-read-with-ai.is-active:hover {
-  background: color-mix(in srgb, #10b981 16%, transparent);
+  color: #0d9668;
 }
 
 .reader-header__right {
@@ -3239,84 +4631,648 @@ html.dark .search-clear:hover {
   text-overflow: ellipsis;
 }
 
-.popover-menu {
+/* ============================================================
+   CHATGPT-STYLE FLOATING POPOVER MENU
+============================================================ */
+
+.chatgpt-popover-menu {
   position: absolute;
-  right: 0;
-  top: calc(100% + 7px);
-  z-index: 9999;
-  width: 150px;
-  padding: 5px;
-  border: 1px solid var(--reader-border);
-  border-radius: 11px;
+  bottom: calc(100% + 8px);
+  left: 8px;
+  right: 8px;
+  z-index: 10000;
   background: var(--reader-surface);
-  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.14);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--reader-border);
+  border-radius: 14px;
+  box-shadow: 0 16px 36px -6px rgba(0, 0, 0, 0.28), 0 6px 16px -4px rgba(0, 0, 0, 0.12);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  transform-origin: bottom center;
+}
+
+.chatgpt-menu-user-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+}
+
+.chatgpt-menu-user-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
   overflow: hidden;
 }
 
-.popover-menu--theme {
-  width: 160px;
+.chatgpt-menu-user-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--reader-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.25;
 }
 
-.popover-menu--display-settings {
-  width: 260px;
-  padding: 12px;
-}
-
-.display-settings-group {
-  margin-bottom: 16px;
-}
-
-.display-settings-group:last-child {
-  margin-bottom: 0;
-}
-
-.display-settings-label {
-  font-size: 0.6rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+.chatgpt-menu-user-email {
+  font-size: 0.7rem;
   color: var(--reader-muted);
-  margin-bottom: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
 }
 
-.popover-menu button {
-  width: 100%;
-  min-height: 33px;
+.chatgpt-menu-divider {
+  height: 1px;
+  background: var(--reader-border);
+  margin: 4px 0;
+}
+
+.chatgpt-menu-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 7px 8px;
-  border: 0;
-  border-radius: 7px;
-  color: var(--reader-text);
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
   background: transparent;
-  font-size: 0.52rem;
-  font-weight: 700;
-  text-align: left;
+  border: none;
   cursor: pointer;
+  color: var(--reader-text);
+  font-size: 0.82rem;
+  font-weight: 450;
+  transition: background 0.15s ease, color 0.15s ease;
+  text-decoration: none;
 }
 
-.popover-menu button:hover,
-.popover-menu button.is-selected {
-  background: var(--reader-bg);
+.chatgpt-menu-item:hover,
+.chatgpt-menu-item.is-expanded {
+  background: var(--reader-surface-2);
 }
 
-.popover-menu button svg {
+.chatgpt-menu-item--danger {
+  color: var(--reader-error, #ef4444);
+}
+
+.chatgpt-menu-item--danger:hover {
+  background: color-mix(in srgb, var(--reader-error, #ef4444) 10%, transparent);
+}
+
+.chatgpt-menu-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  color: var(--reader-muted);
+  flex-shrink: 0;
+}
+
+.chatgpt-menu-item--danger .chatgpt-menu-icon {
+  color: var(--reader-error, #ef4444);
+}
+
+.chatgpt-menu-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.chatgpt-menu-label {
+  flex: 1;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chatgpt-menu-pill-tag {
+  font-size: 0.68rem;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  background: var(--reader-surface-2);
+  border: 1px solid var(--reader-border);
+  color: var(--reader-muted);
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.chatgpt-menu-chevron {
+  width: 14px;
+  height: 14px;
+  color: var(--reader-muted);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.chatgpt-menu-chevron.is-rotated {
+  transform: rotate(180deg);
+}
+
+/* Inline Accordions */
+.chatgpt-inline-accordion {
+  padding: 4px 6px 8px;
+}
+
+.chatgpt-inline-themes-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px;
+}
+
+.chatgpt-inline-theme-chip {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 8px;
+  border-radius: 7px;
+  border: 1px solid var(--reader-border);
+  background: var(--reader-surface-2);
+  color: var(--reader-text);
+  font-size: 0.72rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+  text-align: left;
+}
+
+.chatgpt-inline-theme-chip:hover {
+  border-color: var(--reader-accent);
+}
+
+.chatgpt-inline-theme-chip.is-selected {
+  border-color: var(--reader-accent);
+  background: color-mix(in srgb, var(--reader-accent) 12%, var(--reader-surface-2));
+  font-weight: 600;
+}
+
+.chatgpt-chip-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid;
+  flex-shrink: 0;
+}
+
+.chatgpt-chip-label {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chatgpt-chip-check {
   width: 12px;
   height: 12px;
   margin-left: auto;
   color: var(--reader-accent);
 }
 
-.menu-enter-active,
-.menu-leave-active {
-  transition: opacity 0.16s ease, transform 0.16s ease;
+.chatgpt-inline-font-switch {
+  display: flex;
+  gap: 6px;
 }
 
-.menu-enter-from,
-.menu-leave-to {
+.chatgpt-font-switch-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 6px;
+  border-radius: 8px;
+  border: 1px solid var(--reader-border);
+  background: var(--reader-surface-2);
+  color: var(--reader-text);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.chatgpt-font-switch-btn:hover {
+  border-color: var(--reader-accent);
+}
+
+.chatgpt-font-switch-btn.is-selected {
+  border-color: var(--reader-accent);
+  background: color-mix(in srgb, var(--reader-accent) 12%, var(--reader-surface-2));
+}
+
+.chatgpt-font-subtext {
+  font-size: 0.62rem;
+  color: var(--reader-muted);
+}
+
+/* Popover Transitions */
+.chatgpt-popover-enter-active,
+.chatgpt-popover-leave-active {
+  transition: opacity 0.18s cubic-bezier(0.16, 1, 0.3, 1), transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.chatgpt-popover-enter-from,
+.chatgpt-popover-leave-to {
   opacity: 0;
-  transform: translateY(-4px) scale(0.98);
+  transform: translateY(6px) scale(0.97);
+}
+
+/* ============================================================
+   CHATGPT-STYLE SETTINGS MODAL DIALOG
+============================================================ */
+
+.chatgpt-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 999999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.chatgpt-settings-dialog {
+  width: min(680px, 96vw);
+  max-height: min(580px, 88vh);
+  background: var(--reader-surface);
+  border: 1px solid var(--reader-border);
+  border-radius: 16px;
+  box-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.4), 0 8px 24px -6px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.chatgpt-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--reader-border);
+}
+
+.chatgpt-dialog-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chatgpt-dialog-header-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--reader-muted);
+}
+
+.chatgpt-dialog-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--reader-text);
+  margin: 0;
+}
+
+.chatgpt-dialog-close-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--reader-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.chatgpt-dialog-close-btn:hover {
+  background: var(--reader-surface-2);
+  color: var(--reader-text);
+}
+
+.chatgpt-dialog-close-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.chatgpt-dialog-body {
+  display: flex;
+  flex: 1;
+  min-height: 360px;
+  overflow: hidden;
+}
+
+.chatgpt-dialog-sidebar {
+  width: 170px;
+  padding: 14px 10px;
+  border-right: 1px solid var(--reader-border);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-shrink: 0;
+  background: color-mix(in srgb, var(--reader-surface-2) 30%, var(--reader-surface));
+}
+
+.chatgpt-tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--reader-muted);
+  font-size: 0.84rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+
+.chatgpt-tab-btn svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.chatgpt-tab-btn:hover {
+  background: var(--reader-surface-2);
+  color: var(--reader-text);
+}
+
+.chatgpt-tab-btn.is-active {
+  background: var(--reader-surface-2);
+  color: var(--reader-text);
+  font-weight: 600;
+}
+
+.chatgpt-dialog-content {
+  flex: 1;
+  padding: 22px 24px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.chatgpt-tab-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.chatgpt-panel-intro {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.chatgpt-setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.chatgpt-setting-row--stacked-sm {
+  align-items: flex-start;
+}
+
+.chatgpt-setting-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 340px;
+}
+
+.chatgpt-setting-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--reader-text);
+}
+
+.chatgpt-setting-desc {
+  font-size: 0.78rem;
+  color: var(--reader-muted);
+  line-height: 1.4;
+}
+
+.chatgpt-panel-divider {
+  height: 1px;
+  background: var(--reader-border);
+  margin: 4px 0;
+}
+
+.chatgpt-segmented-control {
+  display: inline-flex;
+  padding: 3px;
+  background: var(--reader-surface-2);
+  border: 1px solid var(--reader-border);
+  border-radius: 10px;
+  gap: 3px;
+}
+
+.chatgpt-segmented-btn {
+  padding: 6px 14px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: var(--reader-muted);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.chatgpt-segmented-btn.is-active {
+  background: var(--reader-surface);
+  color: var(--reader-text);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.chatgpt-system-pill {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--reader-accent) 15%, transparent);
+  color: var(--reader-accent);
+  border: 1px solid color-mix(in srgb, var(--reader-accent) 30%, transparent);
+}
+
+.chatgpt-themes-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.chatgpt-theme-card {
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid var(--reader-border);
+  background: var(--reader-surface-2);
+  cursor: pointer;
+  transition: all 0.18s ease;
+  text-align: left;
+}
+
+.chatgpt-theme-card:hover {
+  border-color: var(--reader-accent);
+  transform: translateY(-1px);
+}
+
+.chatgpt-theme-card.is-selected {
+  border-color: var(--reader-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--reader-accent) 35%, transparent);
+  background: var(--reader-surface);
+}
+
+.chatgpt-card-canvas {
+  height: 60px;
+  border-radius: 8px;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+.chatgpt-card-inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 6px;
+  border: 1px solid;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  justify-content: center;
+}
+
+.chatgpt-card-bar {
+  height: 4px;
+  width: 40%;
+  border-radius: 2px;
+}
+
+.chatgpt-card-line {
+  height: 3px;
+  width: 75%;
+  border-radius: 2px;
+  opacity: 0.8;
+}
+
+.chatgpt-card-subline {
+  height: 2px;
+  width: 55%;
+  border-radius: 2px;
+  opacity: 0.5;
+}
+
+.chatgpt-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 4px;
+}
+
+.chatgpt-card-name {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--reader-text);
+}
+
+.chatgpt-card-checkmark {
+  width: 14px;
+  height: 14px;
+  color: var(--reader-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chatgpt-card-checkmark svg {
+  width: 14px;
+  height: 14px;
+}
+
+.chatgpt-modal-danger-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--reader-error, #ef4444);
+  background: color-mix(in srgb, var(--reader-error, #ef4444) 10%, transparent);
+  color: var(--reader-error, #ef4444);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.chatgpt-modal-danger-btn svg {
+  width: 15px;
+  height: 15px;
+}
+
+.chatgpt-modal-danger-btn:hover {
+  background: var(--reader-error, #ef4444);
+  color: #ffffff;
+}
+
+/* Modal Transitions */
+.chatgpt-modal-fade-enter-active,
+.chatgpt-modal-fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.chatgpt-modal-fade-enter-active .chatgpt-settings-dialog,
+.chatgpt-modal-fade-leave-active .chatgpt-settings-dialog {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+}
+
+.chatgpt-modal-fade-enter-from,
+.chatgpt-modal-fade-leave-to {
+  opacity: 0;
+}
+
+.chatgpt-modal-fade-enter-from .chatgpt-settings-dialog,
+.chatgpt-modal-fade-leave-to .chatgpt-settings-dialog {
+  opacity: 0;
+  transform: scale(0.96) translateY(8px);
+}
+
+@media (max-width: 640px) {
+  .chatgpt-dialog-body {
+    flex-direction: column;
+  }
+  .chatgpt-dialog-sidebar {
+    width: 100%;
+    flex-direction: row;
+    border-right: none;
+    border-bottom: 1px solid var(--reader-border);
+    overflow-x: auto;
+    padding: 8px 12px;
+  }
+  .chatgpt-tab-btn {
+    white-space: nowrap;
+    padding: 6px 12px;
+  }
+  .chatgpt-dialog-content {
+    padding: 16px;
+  }
+  .chatgpt-themes-gallery {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 .assistant-header-button {
@@ -3357,29 +5313,37 @@ html.dark .search-clear:hover {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 28px 20px 44px;
+  padding: 0; /* padding moved to inner for fluid reading canvas */
   scroll-behavior: smooth;
   overscroll-behavior: contain;
+  background: var(--reader-surface);
 }
 
 .reader-column {
   position: relative;
+  width: 100%;
   margin: 0 auto;
 }
 
 .reader-paper {
   width: 100%;
+  max-width: 53em;
+  margin: 0 auto;
   color: var(--reader-body);
-  background: var(--reader-surface);
-  border: 1px solid color-mix(in srgb, var(--reader-border) 62%, transparent);
-  border-radius: 10px;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05), 0 20px 48px rgba(15, 23, 42, 0.06);
-  transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  transition: color 0.25s ease;
+}
+
+.reader-paper--preface {
+  max-width: 66em;
 }
 
 .reader-paper--serif,
 .reader-paper--serif * {
-  font-family: Georgia, Cambria, "Times New Roman", serif;
+  font-family: Literata, Merriweather, Georgia, Cambria, "Times New Roman", serif;
 }
 
 .reader-paper--sans,
@@ -3388,10 +5352,24 @@ html.dark .search-clear:hover {
 }
 
 .reader-paper__inner {
+  position: relative;
   min-height: inherit;
   display: flex;
   flex-direction: column;
-  padding: 52px clamp(24px, 5vw, 68px) 42px;
+  padding: 72px clamp(32px, 7vw, 120px) 120px;
+}
+
+.page-slide-enter-active,
+.page-slide-leave-active {
+  transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.page-slide-enter-from {
+  opacity: 0;
+  transform: translateY(40px);
+}
+.page-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-40px);
 }
 
 .section-chips {
@@ -3424,30 +5402,154 @@ html.dark .search-clear:hover {
   background: var(--reader-bg);
 }
 
+.reading-canvas-header {
+  margin-bottom: 48px;
+  text-align: center;
+}
+
+.reading-canvas-metadata {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--reader-muted);
+  margin-bottom: 8px;
+}
+
+.reading-canvas-chapter {
+  font-size: clamp(1.2rem, 2vw, 1.5rem);
+  font-weight: 600;
+  color: var(--reader-text);
+  letter-spacing: 0.02em;
+  line-height: 1.3;
+}
+
+.reading-canvas-divider {
+  border: 0;
+  height: 1px;
+  background: color-mix(in srgb, var(--reader-border) 50%, transparent);
+  margin: 32px auto 0;
+  width: 60px;
+}
+
+.reading-canvas-controls {
+  position: absolute;
+  top: 16px;
+  right: 24px;
+  display: flex;
+  gap: 8px;
+  z-index: 20;
+}
+
+.reading-canvas-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--reader-border) 40%, transparent);
+  background: color-mix(in srgb, var(--reader-surface) 40%, transparent);
+  color: var(--reader-text);
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.reading-canvas-btn:hover {
+  background: color-mix(in srgb, var(--reader-text) 10%, var(--reader-surface));
+  border-color: color-mix(in srgb, var(--reader-text) 20%, transparent);
+  transform: scale(1.1);
+}
+
+.reading-canvas-btn:hover svg {
+  stroke-width: 2.5;
+}
+
+.reading-canvas-btn:active {
+  transform: scale(0.95);
+}
+
+.reading-canvas-zoom-label {
+  background: transparent;
+  border: none;
+  color: var(--reader-text);
+  font-weight: 600;
+  font-size: 0.85rem;
+  width: 48px;
+  text-align: center;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.reading-canvas-zoom-label:hover {
+  color: var(--reader-heading);
+}
+
 .reader-content {
   width: 100%;
 }
 
 .reader-section + .reader-section {
-  margin-top: 38px;
+  margin-top: 64px;
 }
 
 .reader-section h2 {
-  margin: 0 0 16px;
+  margin: 0 0 1em;
   color: var(--reader-text);
-  font-size: 1.75em;
-  line-height: 1.14;
-  font-weight: 800;
+  font-size: 2.2em;
+  line-height: 1.25;
+  font-weight: 700;
   letter-spacing: -0.02em;
   scroll-margin-top: 24px;
 }
 
 .reader-section p {
-  margin: 0 0 14px;
+  margin: 0 0 2em;
   color: var(--reader-body);
-  font-size: 1em;
-  line-height: 1.88;
+  font-size: 1.15em;
+  line-height: 1.8;
   letter-spacing: 0.002em;
+}
+
+.reader-markdown-content {
+  color: var(--reader-body);
+  line-height: inherit;
+  font-size: inherit;
+}
+
+.reader-markdown-content > p:first-of-type {
+  font-size: 1.25em; /* Slight emphasis on first paragraph */
+  line-height: 1.7;
+}
+
+.reader-markdown-content p {
+  margin-bottom: 2em;
+}
+
+.reader-markdown-content ul, .reader-markdown-content ol {
+  margin-left: 2rem;
+  margin-bottom: 1.6em;
+}
+
+.reader-markdown-content li {
+  margin-bottom: 0.6em;
+  line-height: 1.7;
+}
+
+.reader-markdown-content h1, .reader-markdown-content h2, .reader-markdown-content h3 {
+  margin-top: 2em;
+  margin-bottom: 1em;
+  color: var(--reader-heading);
+}
+
+.reader-markdown-content blockquote {
+  margin: 2em 0;
+  padding: 1.2em 2em;
+  border-left: 3px solid var(--reader-border);
+  background: color-mix(in srgb, var(--reader-bg) 50%, transparent);
+  color: var(--reader-muted);
+  font-style: italic;
+  border-radius: 0 8px 8px 0;
 }
 
 .reader-bullet {
@@ -3502,8 +5604,8 @@ html.dark .search-clear:hover {
 .reader-footer {
   margin-top: 50px;
   padding-top: 20px;
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  display: flex;
+  justify-content: space-between;
   align-items: center;
   gap: 10px;
   border-top: 1px solid var(--reader-border);
@@ -3699,7 +5801,7 @@ html.dark .search-clear:hover {
   min-height: 0;
   flex: 1;
   overflow: auto;
-  padding: 14px;
+  padding: 14px 24px;
   scroll-behavior: smooth;
 }
 
@@ -3711,7 +5813,7 @@ html.dark .search-clear:hover {
 
 
 
-.chat-full-screen .ai-messages,
+.chat-full-screen .ai-messages > *,
 .chat-full-screen .ai-composer,
 .chat-full-screen .quick-prompts {
   max-width: 800px;
@@ -3754,6 +5856,17 @@ html.dark .search-clear:hover {
   letter-spacing: -0.5px;
 }
 
+.fade-greeting-enter-active,
+.fade-greeting-leave-active {
+  transition: opacity 0.22s ease, transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.fade-greeting-enter-from,
+.fade-greeting-leave-to {
+  opacity: 0;
+  transform: translateY(4px);
+}
+
 .ai-welcome {
   display: flex;
   flex-direction: column;
@@ -3784,7 +5897,7 @@ html.dark .search-clear:hover {
 
 .ai-welcome__eyebrow {
   color: var(--reader-accent);
-  font-size: 0.43rem;
+  font-size: 0.8rem;
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -3793,7 +5906,7 @@ html.dark .search-clear:hover {
 .ai-welcome h3 {
   margin-top: 6px;
   color: var(--reader-text);
-  font-size: 1rem;
+  font-size: 1.4rem;
   font-weight: 800;
   letter-spacing: -0.025em;
 }
@@ -3801,12 +5914,12 @@ html.dark .search-clear:hover {
 .ai-welcome p {
   margin-top: 5px;
   color: var(--reader-muted);
-  font-size: 0.55rem;
+  font-size: 1rem;
   line-height: 1.6;
 }
 
 .message-stack {
-  margin-bottom: 13px;
+  margin-bottom: 12px;
 }
 
 .message-stack__assistant {
@@ -3815,10 +5928,10 @@ html.dark .search-clear:hover {
 
 .message {
   width: fit-content;
-  max-width: 92%;
-  padding: 10px 11px;
-  border-radius: 13px;
-  font-size: 0.57rem;
+  max-width: 85%;
+  padding: 14px 18px;
+  border-radius: 16px;
+  font-size: 1rem;
   line-height: 1.65;
   word-break: break-word;
 }
@@ -3828,6 +5941,7 @@ html.dark .search-clear:hover {
   color: var(--reader-text);
   background: var(--reader-surface-2);
   border-radius: 20px;
+  margin-bottom: 24px;
 }
 
 .message--assistant {
@@ -3841,19 +5955,127 @@ html.dark .search-clear:hover {
   padding-right: 0;
 }
 
+/* Markdown AI Response Formatting */
+:deep(.ai-response-content) {
+  font-size: 1rem;
+  line-height: 1.65;
+  color: var(--reader-text);
+  word-wrap: break-word;
+}
+
+:deep(.ai-response-content p) {
+  margin-bottom: 1em;
+}
+
+:deep(.ai-response-content p:last-child) {
+  margin-bottom: 0;
+}
+
+:deep(.ai-response-content strong),
+:deep(.ai-response-content b) {
+  font-weight: 700;
+  color: var(--reader-text);
+}
+
+:deep(.ai-response-content em),
+:deep(.ai-response-content i) {
+  font-style: italic;
+  color: var(--reader-text-body);
+}
+
+:deep(.ai-response-content h1),
+:deep(.ai-response-content h2),
+:deep(.ai-response-content h3),
+:deep(.ai-response-content h4) {
+  font-weight: 800;
+  margin-top: 1.5em;
+  margin-bottom: 0.75em;
+  color: var(--reader-accent);
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+:deep(.ai-response-content h1) {
+  font-size: 1.5em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid color-mix(in srgb, var(--reader-accent) 25%, transparent);
+}
+:deep(.ai-response-content h2) {
+  font-size: 1.3em;
+  padding-bottom: 0.25em;
+  border-bottom: 1px solid color-mix(in srgb, var(--reader-accent) 18%, transparent);
+}
+:deep(.ai-response-content h3) { font-size: 1.1em; }
+
+:deep(.ai-response-content ul),
+:deep(.ai-response-content ol) {
+  margin-left: 0.3em;
+  margin-bottom: 1em;
+  padding-left: 1.2em;
+}
+
+:deep(.ai-response-content ul) {
+  list-style-type: none;
+}
+
+:deep(.ai-response-content ul li) {
+  position: relative;
+}
+
+:deep(.ai-response-content ul li)::before {
+  content: '';
+  position: absolute;
+  left: -1.1em;
+  top: 0.62em;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--reader-accent);
+}
+
+:deep(.ai-response-content ol) {
+  list-style-type: decimal;
+}
+
+:deep(.ai-response-content ol li)::marker {
+  color: var(--reader-accent);
+  font-weight: 700;
+}
+
+:deep(.ai-response-content li) {
+  margin-bottom: 0.5em;
+  padding-left: 0.2em;
+}
+
+:deep(.ai-response-content li) strong {
+  color: var(--reader-accent);
+}
+
+:deep(.ai-response-content blockquote) {
+  border-left: 4px solid var(--reader-accent);
+  padding-left: 1em;
+  margin-left: 0;
+  margin-bottom: 1em;
+  color: var(--reader-muted);
+  font-style: italic;
+  background: color-mix(in srgb, var(--reader-accent) 5%, transparent);
+  padding: 0.5em 1em;
+  border-radius: 0 8px 8px 0;
+}
+
 .assistant-label {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  margin: 0 0 5px 2px;
+  gap: 8px;
+  margin: 0 0 8px 2px;
   color: var(--reader-text);
-  font-size: 0.45rem;
-  font-weight: 800;
+  font-size: 0.85rem;
+  font-weight: 700;
 }
 
 .assistant-label__icon {
-  width: 18px;
-  height: 18px;
+  width: 24px;
+  height: 24px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -3863,8 +6085,8 @@ html.dark .search-clear:hover {
 }
 
 .assistant-label__icon svg {
-  width: 11px;
-  height: 11px;
+  width: 14px;
+  height: 14px;
 }
 
 .feedback-row {
@@ -3878,48 +6100,68 @@ html.dark .search-clear:hover {
 
 .feedback-button {
   min-height: 28px;
+  width: 28px;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 5px 7px;
-  border: 1px solid var(--reader-border);
+  justify-content: center;
+  padding: 4px;
+  border: none;
   border-radius: 8px;
   color: var(--reader-muted);
-  background: var(--reader-bg);
-  font-size: 0.44rem;
-  font-weight: 700;
+  background: transparent;
   cursor: pointer;
-  transition: color 0.16s ease, background 0.16s ease, border-color 0.16s ease;
+  transition: all 0.16s ease;
+}
+
+.feedback-button.feedback-source {
+  width: auto;
+  padding: 4px 8px;
+  white-space: nowrap;
 }
 
 .feedback-button:hover {
+  background: var(--reader-surface-2);
   color: var(--reader-text);
-  border-color: var(--reader-border);
 }
 
+.feedback-button.feedback-up:hover,
 .feedback-button.is-helpful {
   color: #2f8f63;
-  background: rgba(47, 143, 99, 0.08);
-  border-color: rgba(47, 143, 99, 0.22);
+  background: rgba(47, 143, 99, 0.15);
 }
 
+.feedback-button.feedback-down:hover,
 .feedback-button.is-unhelpful {
   color: #c43b3b;
-  background: rgba(196, 59, 59, 0.08);
-  border-color: rgba(196, 59, 59, 0.22);
+  background: rgba(196, 59, 59, 0.15);
+}
+
+.feedback-button.feedback-source:hover {
+  color: #3b82f6;
+  background: rgba(59, 130, 246, 0.15);
 }
 
 .feedback-button svg {
-  width: 11px;
-  height: 11px;
+  width: 14px;
+  height: 14px;
+}
+
+.message-stack__assistant {
+  min-height: 44px;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .streaming-text {
-  white-space: pre-wrap;
+  display: block;
+  width: 100%;
 }
 
 .streaming-cursor {
-  opacity: 0.7;
+  display: inline-block;
+  vertical-align: baseline;
+  color: var(--reader-brand, #3b82f6);
+  opacity: 0.8;
   animation: blink 0.9s steps(2, start) infinite;
 }
 
@@ -3982,13 +6224,13 @@ html.dark .search-clear:hover {
 }
 
 .error-message strong {
-  font-size: 0.53rem;
+  font-size: 0.95rem;
 }
 
 .error-message p {
-  margin-top: 2px;
-  font-size: 0.46rem;
-  opacity: 0.82;
+  margin-top: 4px;
+  font-size: 0.85rem;
+  opacity: 0.85;
 }
 
 .quick-prompts {
@@ -4001,18 +6243,18 @@ html.dark .search-clear:hover {
 .quick-prompts button {
   min-width: 0;
   flex: 1;
-  min-height: 35px;
+  min-height: 38px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 7px 8px;
+  padding: 8px 12px;
   border: 1px solid var(--reader-border);
-  border-radius: 9px;
+  border-radius: 12px;
   color: var(--reader-text);
   background: var(--reader-surface);
-  font-size: 0.48rem;
-  font-weight: 800;
+  font-size: 0.85rem;
+  font-weight: 600;
   cursor: pointer;
   transition: transform 0.16s ease, background 0.16s ease;
 }
@@ -4023,8 +6265,8 @@ html.dark .search-clear:hover {
 }
 
 .quick-prompts svg {
-  width: 13px;
-  height: 13px;
+  width: 14px;
+  height: 14px;
   flex: 0 0 auto;
 }
 
@@ -4035,19 +6277,15 @@ html.dark .search-clear:hover {
   background: transparent;
 }
 
-@media (max-width: 1023px) {
-  .ai-composer {
-    padding-bottom: calc(85px + env(safe-area-inset-bottom));
-  }
-}
+
 
 .ai-composer__field {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 7px;
   padding: 5px 5px 5px 12px;
   border: 1px solid var(--reader-border);
-  border-radius: 999px;
+  border-radius: 24px;
   background: var(--reader-surface);
   transition: border-color 0.18s ease, box-shadow 0.18s ease;
 }
@@ -4057,39 +6295,48 @@ html.dark .search-clear:hover {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--reader-accent) 12%, transparent);
 }
 
-.ai-composer__field input {
+.ai-composer__textarea {
   min-width: 0;
   flex: 1;
-  height: 31px;
+  height: auto;
+  min-height: 24px;
+  max-height: 120px;
   border: 0;
   outline: 0;
   color: var(--reader-text);
   background: transparent;
-  font-size: 0.55rem;
+  font-size: 1rem;
+  resize: none;
+  overflow-y: auto;
+  font-family: inherit;
+  line-height: 1.5;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  scrollbar-width: thin;
 }
 
-.ai-composer__field input::placeholder {
+.ai-composer__textarea::placeholder {
   color: var(--reader-muted);
 }
 
 .send-button {
-  width: 32px;
-  height: 32px;
-  flex: 0 0 32px;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border: 0;
   border-radius: 50%;
-  color: var(--reader-accent-text);
-  background: var(--reader-accent);
+  color: white;
+  background: #3b82f6;
   cursor: pointer;
   transition: transform 0.18s ease, opacity 0.18s ease, background 0.18s ease;
 }
 
 .send-button:hover:not(:disabled) {
   transform: translateY(-1px);
-  background: var(--reader-accent-hover);
+  background: #2563eb;
 }
 
 .send-button:disabled {
@@ -4169,14 +6416,9 @@ html.dark .search-clear:hover {
   .reader-header__right .theme-menu-label {
     display: none;
   }
-
-  .reader-paper__inner {
-    padding-left: 42px;
-    padding-right: 42px;
-  }
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 1024px) {
   .reader-header {
     padding-left: 10px;
     padding-right: 10px;
@@ -4190,13 +6432,9 @@ html.dark .search-clear:hover {
   .page-control--desktop {
     display: none;
   }
-
-  .reader-paper__inner {
-    padding: 38px 28px 34px;
-  }
 }
 
-@media (max-width: 1023px) {
+@media (max-width: 1024px) {
   .reader-header__left {
     flex: 1;
   }
@@ -4205,13 +6443,12 @@ html.dark .search-clear:hover {
     flex: 0 0 auto;
   }
 
-  .reader-header__right .reader-menu,
   .reader-header__right .segmented-control {
     display: none;
   }
 
   .reader-scroll {
-    padding: 18px 10px 30px;
+    padding: 0;
   }
 
   .reader-column {
@@ -4223,7 +6460,7 @@ html.dark .search-clear:hover {
   }
 }
 
-@media (max-width: 720px) {
+@media (max-width: 768px) {
   .reader-header {
     min-height: 54px;
   }
@@ -4244,11 +6481,11 @@ html.dark .search-clear:hover {
   }
 
   .reader-paper {
-    border-radius: 8px;
+    border-radius: 0;
   }
 
   .reader-paper__inner {
-    padding: 28px 18px 26px;
+    padding: 32px 20px 48px;
   }
 
   .reader-section h2 {
@@ -4276,7 +6513,7 @@ html.dark .search-clear:hover {
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 640px) {
   .reader-header__left .header-icon-button {
     display: none;
   }
@@ -4290,7 +6527,7 @@ html.dark .search-clear:hover {
   }
 
   .reader-paper__inner {
-    padding: 24px 14px 22px;
+    padding: 24px 16px 36px;
   }
 
   .reader-section + .reader-section {
@@ -4325,9 +6562,7 @@ html.dark .search-clear:hover {
     scroll-behavior: auto !important;
   }
 }
-.chat-page {
-  /* No global padding needed anymore as bottom nav floats over the bottom */
-}
+
 
 @media (max-width: 768px) {
   .reader-header {
@@ -4343,7 +6578,7 @@ html.dark .search-clear:hover {
     pointer-events: none;
     align-items: flex-start !important;
   }
-  
+
   .reader-header__right {
     pointer-events: auto;
   }
@@ -4351,10 +6586,10 @@ html.dark .search-clear:hover {
   .reader-header__left {
     pointer-events: none;
   }
-  
+
   .reader-paper {
     padding-top: 100px !important; /* Space so text isn't hidden under floating header initially */
-    padding-bottom: 100px !important; /* Space so text isn't hidden under bottom nav */
+    padding-bottom: 32px !important;
   }
 }
 
@@ -4423,11 +6658,36 @@ html.dark .search-clear:hover {
   pointer-events: none;
 }
 
+.mobile-header-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.mobile-header-top-row--right {
+  display: flex;
+  justify-content: flex-end;
+  pointer-events: none;
+}
+
+.mobile-header-bottom-row--right {
+  display: flex;
+  justify-content: flex-end;
+  pointer-events: none;
+}
+
+.mobile-ai-header {
+  border-bottom: 1px solid var(--reader-border);
+  padding: 12px 16px;
+}
+
 .mobile-sidebar-toggle {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--sa-taupe);
+  color: var(--rt-muted);
   background: var(--rt-surface, var(--sa-surface));
   border: 1px solid var(--rt-border, var(--sa-border));
   box-shadow: 0 4px 16px rgba(0,0,0,0.1);
@@ -4477,7 +6737,7 @@ html.dark .search-clear:hover {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  z-index: 100;
+  z-index: 999999;
 }
 
 .mobile-settings-section {
@@ -4509,7 +6769,7 @@ html.dark .search-clear:hover {
 
 .mobile-option-btn:hover,
 .mobile-option-btn.is-selected {
-  background: var(--sa-spotlight);
+  background: color-mix(in srgb, var(--rt-accent) 12%, transparent);
   color: #10b981;
   border-color: rgba(16, 185, 129, 0.25);
 }
@@ -4519,64 +6779,6 @@ html.dark .search-clear:hover {
   grid-template-columns: 1fr 1fr;
 }
 
-/* ============================================================
-   MOBILE BOTTOM NAVIGATION (FLOATING)
-============================================================ */
-
-.mobile-bottom-nav {
-  position: fixed;
-  bottom: 24px;
-  left: 16px;
-  right: 16px;
-  height: auto;
-  background: transparent;
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0;
-  z-index: 100;
-  pointer-events: none;
-}
-
-.mobile-nav-item {
-  pointer-events: auto;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  color: var(--rt-muted, var(--sa-text-muted));
-  text-decoration: none;
-  font-size: 0.65rem;
-  font-weight: 700;
-  background: var(--rt-surface, var(--sa-surface));
-  border: 1px solid var(--rt-border, var(--sa-border));
-  border-radius: 16px;
-  padding: 8px 10px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  transition: all 0.2s ease;
-  min-width: 60px;
-}
-
-.mobile-nav-item svg {
-  width: 18px;
-  height: 18px;
-}
-
-.mobile-nav-item:hover,
-.mobile-nav-item:active {
-  background: var(--sa-spotlight);
-  transform: translateY(-2px);
-}
-
-.mobile-nav-item.is-active {
-  color: #10b981;
-  background: var(--sa-spotlight);
-  border-color: rgba(16, 185, 129, 0.25);
-}
 </style>
 
 <style>
@@ -4594,126 +6796,172 @@ html.dark .search-clear:hover {
 .ai-response-content h2,
 .ai-response-content h3,
 .ai-response-content h4 {
-  margin: 1.15em 0 0.45em;
-  color: var(--rt-text);
-  line-height: 1.3;
-  font-weight: 800;
+  margin: 1.15em 0 0.45em !important;
+  color: var(--rt-accent, var(--rt-text)) !important;
+  line-height: 1.3 !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.01em !important;
 }
 
 .ai-response-content h1:first-child,
 .ai-response-content h2:first-child,
 .ai-response-content h3:first-child,
 .ai-response-content h4:first-child {
-  margin-top: 0;
+  margin-top: 0 !important;
 }
 
-.ai-response-content h1 { font-size: 1.45em; }
-.ai-response-content h2 { font-size: 1.27em; }
-.ai-response-content h3 { font-size: 1.08em; }
-.ai-response-content h4 { font-size: 1em; }
+.ai-response-content h1 {
+  font-size: 1.45em !important;
+  padding-bottom: 0.3em !important;
+  border-bottom: 1px solid color-mix(in srgb, var(--rt-accent, var(--rt-border)) 25%, transparent) !important;
+}
+.ai-response-content h2 {
+  font-size: 1.27em !important;
+  padding-bottom: 0.25em !important;
+  border-bottom: 1px solid color-mix(in srgb, var(--rt-accent, var(--rt-border)) 18%, transparent) !important;
+}
+.ai-response-content h3 { font-size: 1.08em !important; }
+.ai-response-content h4 { font-size: 1em !important; }
 
 .ai-response-content p {
-  margin: 0.7em 0;
+  margin: 0.7em 0 !important;
 }
 
 .ai-response-content p:first-child {
-  margin-top: 0;
+  margin-top: 0 !important;
 }
 
-.ai-response-content strong {
-  color: var(--rt-text);
-  font-weight: 800;
+.ai-response-content strong,
+.ai-response-content b {
+  color: var(--rt-accent, var(--rt-text)) !important;
+  font-weight: 800 !important;
 }
 
-.ai-response-content em {
-  font-style: italic;
+.ai-response-content em,
+.ai-response-content i {
+  font-style: italic !important;
+  color: var(--rt-text-body) !important;
 }
 
 .ai-response-content ul,
 .ai-response-content ol {
-  margin: 0.7em 0;
-  padding-left: 1.5em;
+  margin: 0.7em 0 !important;
+  padding-left: 1.4em !important;
+  display: block !important;
 }
 
 .ai-response-content ul {
-  list-style: disc;
+  list-style-type: none !important;
+}
+
+.ai-response-content ul li {
+  position: relative !important;
+}
+
+.ai-response-content ul li::before {
+  content: '' !important;
+  position: absolute !important;
+  left: -1.1em !important;
+  top: 0.62em !important;
+  width: 6px !important;
+  height: 6px !important;
+  border-radius: 50% !important;
+  background: var(--rt-accent) !important;
 }
 
 .ai-response-content ol {
-  list-style: decimal;
+  list-style-type: decimal !important;
+}
+
+.ai-response-content ol li::marker {
+  color: var(--rt-accent) !important;
+  font-weight: 700 !important;
 }
 
 .ai-response-content li {
-  margin: 0.3em 0;
+  margin: 0.3em 0 !important;
+  display: list-item !important;
+}
+
+.ai-response-content li strong {
+  color: var(--rt-accent, var(--rt-text)) !important;
 }
 
 .ai-response-content li > p {
-  margin: 0.2em 0;
+  margin: 0.2em 0 !important;
+  display: inline-block !important;
 }
 
 .ai-response-content code {
-  padding: 0.15em 0.35em;
-  border: 1px solid var(--rt-border);
-  border-radius: 5px;
-  color: var(--rt-text);
-  background: var(--rt-bg);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 0.9em;
+  padding: 0.15em 0.35em !important;
+  border: 1px solid var(--rt-border) !important;
+  border-radius: 5px !important;
+  color: var(--rt-text) !important;
+  background: var(--rt-surface) !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  font-size: 0.9em !important;
 }
 
 .ai-response-content pre {
-  margin: 1em 0;
-  padding: 0.9rem;
-  overflow-x: auto;
-  border: 1px solid var(--rt-border);
-  border-radius: 8px;
-  color: var(--rt-text-body);
-  background: var(--rt-bg);
+  margin: 1em 0 !important;
+  padding: 0.9rem !important;
+  overflow-x: auto !important;
+  border: 1px solid var(--rt-border) !important;
+  border-radius: 8px !important;
+  color: var(--rt-text-body) !important;
+  background: var(--rt-surface) !important;
 }
 
 .ai-response-content pre code {
-  padding: 0;
-  border: 0;
-  background: transparent;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
 }
 
 .ai-response-content a {
-  color: var(--rt-accent);
-  text-decoration: underline;
-  text-underline-offset: 2px;
+  color: var(--rt-accent) !important;
+  text-decoration: underline !important;
+  text-underline-offset: 2px !important;
 }
 
 .ai-response-content blockquote {
-  margin: 1em 0;
-  padding-left: 0.9em;
-  border-left: 3px solid var(--rt-accent);
-  color: var(--rt-muted);
+  margin: 1em 0 !important;
+  padding: 0.6em 1em !important;
+  border-left: 3px solid var(--rt-accent) !important;
+  color: var(--rt-muted) !important;
+  font-style: italic !important;
+  background: color-mix(in srgb, var(--rt-accent) 6%, transparent) !important;
+  border-radius: 0 8px 8px 0 !important;
+}
+
+.ai-response-content blockquote p {
+  margin: 0.3em 0 !important;
 }
 
 .ai-response-content hr {
-  margin: 1.25em 0;
-  border: 0;
-  border-top: 1px solid var(--rt-border);
+  margin: 1.25em 0 !important;
+  border: 0 !important;
+  border-top: 1px solid var(--rt-border) !important;
 }
 
 .ai-response-content table {
-  width: 100%;
-  margin: 1em 0;
-  border-collapse: collapse;
+  width: 100% !important;
+  margin: 1em 0 !important;
+  border-collapse: collapse !important;
 }
 
 .ai-response-content th,
 .ai-response-content td {
-  padding: 0.55em 0.65em;
-  border: 1px solid var(--rt-border);
-  text-align: left;
-  vertical-align: top;
+  padding: 0.55em 0.65em !important;
+  border: 1px solid var(--rt-border) !important;
+  text-align: left !important;
+  vertical-align: top !important;
 }
 
 .ai-response-content th {
-  color: var(--rt-text);
-  background: var(--rt-bg);
-  font-weight: 800;
+  color: var(--rt-text) !important;
+  background: var(--rt-surface-2) !important;
+  font-weight: 800 !important;
 }
 
 /* Scrollbars */

@@ -51,6 +51,16 @@ export const useProgressStore = defineStore('progress', () => {
     newlyEarnedBadges.value = []
   }
 
+  function chapterProgress(chapterId: string) {
+    if (summary.value?.chapterProgress) {
+      return summary.value.chapterProgress.find(p => p.chapter_id === chapterId) || null
+    }
+    if (dashboard.value?.chapter_progress) {
+      return dashboard.value.chapter_progress.find(p => p.chapter_id === chapterId) || null
+    }
+    return null
+  }
+
   return {
     dashboard,
     summary,
@@ -64,5 +74,6 @@ export const useProgressStore = defineStore('progress', () => {
     loadStreak,
     loadAll,
     clearNewlyEarned,
+    chapterProgress,
   }
 })

@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { chatApi } from '@/api/chat'
+import { apiBase } from '@/api/client'
 import { useAuthStore } from './auth'
 import { useChatStream, type ChatMessageStreamDone } from '@/composables/useChatStream'
 
@@ -24,9 +25,7 @@ export const useChatStore = defineStore('chat', () => {
 
   // Backwards-compatible streamingContent computed from currently active assistant message
   const streamingContent = computed(() => {
-    const activeMsg = currentSession.value?.messages?.findLast(
-      (m: App.ChatMessage) => m.role === 'assistant' && m.isStreaming
-    )
+    const activeMsg = currentSession.value?.messages?.find(m => m.isStreaming)
     return activeMsg?.content || accumulatedText.value || ''
   })
 
@@ -38,9 +37,14 @@ export const useChatStore = defineStore('chat', () => {
   // ── Session CRUD ───────────────────────────────────────────────────────────
 
   async function loadSessions(page = 1) {
-    const { data } = await chatApi.listSessions(page)
-    sessions.value = page === 1 ? data.sessions : [...sessions.value, ...data.sessions]
-    meta.value     = data.meta
+    try {
+      const { data } = await chatApi.listSessions(page)
+      sessions.value = page === 1 ? data.sessions : [...sessions.value, ...data.sessions]
+      meta.value     = data.meta
+    } catch (err) {
+      console.error('Failed to load chat sessions:', err)
+      if (page === 1) sessions.value = []
+    }
   }
 
   async function createSession(title?: string): Promise<App.ChatSession> {
@@ -161,8 +165,7 @@ export const useChatStore = defineStore('chat', () => {
     }
 
     // ── 2. Launch SSE stream targeting assistant message discrete ID ───────
-    const baseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
-    const url     = `${baseUrl}/api/v1/chat/sessions/${sessionId}/messages`
+    const url = `${apiBase}/chat/sessions/${sessionId}/messages`
 
     const streamPromise = streamRequest({
       url,

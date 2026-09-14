@@ -434,6 +434,7 @@ import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import { v4 as uuidv4 } from 'uuid'
 import { aiApi } from '@/api/ai'
+import { apiBase } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 import { useTheme } from '@/composables/useTheme'
 import { useI18n } from 'vue-i18n'
@@ -1017,13 +1018,9 @@ const sendMessage = async () => {
   await scrollToBottom()
 
   try {
-    const apiBase =
-      import.meta.env.VITE_API_BASE_URL ??
-      'http://localhost:8000'
-
     const response =
       await fetch(
-        `${apiBase}/api/v1/global-chat`,
+        `${apiBase}/global-chat`,
         {
           method: 'POST',
           headers: {

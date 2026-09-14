@@ -10,8 +10,21 @@ import axios, { type AxiosInstance, type AxiosError } from 'axios'
  * without parsing the raw Axios error themselves.
  */
 
+/**
+ * Normalizes backend URLs so that trailing slashes and redundant /api/v1 suffixes
+ * are cleanly handled regardless of environment configuration.
+ */
+export function getBackendUrls() {
+  const envUrl = (import.meta.env.VITE_API_BASE_URL || '').trim().replace(/\/+$/, '')
+  const serverRoot = envUrl ? envUrl.replace(/\/api\/v1$/, '') : 'http://localhost:8000'
+  const apiBase = envUrl.endsWith('/api/v1') ? envUrl : `${serverRoot}/api/v1`
+  return { serverRoot, apiBase }
+}
+
+export const { serverRoot, apiBase } = getBackendUrls()
+
 const apiClient: AxiosInstance = axios.create({
-  baseURL: `${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'}/api/v1`,
+  baseURL: apiBase,
   headers: {
     Accept: 'application/json',
     'Content-Type': 'application/json',

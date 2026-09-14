@@ -14,7 +14,7 @@ const dropdownRef = ref<HTMLElement | null>(null)
 const fetchNotifications = async () => {
   isLoading.value = true
   try {
-    const res = await api.get('/api/v1/admin/notifications')
+    const res = await api.get('/admin/notifications')
     notifications.value = res.data.notifications || []
     unreadCount.value = res.data.unread_count || 0
   } catch (error) {
@@ -26,7 +26,7 @@ const fetchNotifications = async () => {
 
 const markAsRead = async (id: string) => {
   try {
-    await api.post(`/api/v1/admin/notifications/${id}/mark-read`)
+    await api.post(`/admin/notifications/${id}/mark-read`)
     const n = notifications.value.find(x => x.id === id)
     if (n && !n.read_at) {
       n.read_at = new Date().toISOString()
@@ -39,7 +39,7 @@ const markAsRead = async (id: string) => {
 
 const markAllAsRead = async () => {
   try {
-    await api.post('/api/v1/admin/notifications/mark-all-read')
+    await api.post('/admin/notifications/mark-all-read')
     notifications.value.forEach(n => {
       if (!n.read_at) n.read_at = new Date().toISOString()
     })
@@ -51,7 +51,7 @@ const markAllAsRead = async () => {
 
 const seedMockData = async () => {
   try {
-    await api.post('/api/v1/admin/notifications/seed')
+    await api.post('/admin/notifications/seed')
     await fetchNotifications()
   } catch (error) {
     console.error('Failed to seed notifications', error)

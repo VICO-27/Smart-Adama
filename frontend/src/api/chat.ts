@@ -44,7 +44,7 @@ export const chatApi = {
    * Send feedback for a message (like or dislike).
    */
   sendFeedback: (messageId: string, feedback: 'like' | 'dislike', token: string) => {
-    const url = `${apiClient.defaults.baseURL}/api/v1/messages/${messageId}/feedback`
+    const url = `${apiClient.defaults.baseURL}/messages/${messageId}/feedback`
     return fetch(url, {
       method: 'POST',
       headers: {
@@ -59,7 +59,7 @@ export const chatApi = {
    * Delete feedback for a message.
    */
   deleteFeedback: (messageId: string, token: string) => {
-    const url = `${apiClient.defaults.baseURL}/api/v1/messages/${messageId}/feedback`
+    const url = `${apiClient.defaults.baseURL}/messages/${messageId}/feedback`
     return fetch(url, {
       method: 'DELETE',
       headers: {
@@ -72,7 +72,7 @@ export const chatApi = {
    * Get feedback status for a message.
    */
   getFeedback: (messageId: string, token: string) => {
-    const url = `${apiClient.defaults.baseURL}/api/v1/messages/${messageId}/feedback`
+    const url = `${apiClient.defaults.baseURL}/messages/${messageId}/feedback`
     return fetch(url, {
       method: 'GET',
       headers: {

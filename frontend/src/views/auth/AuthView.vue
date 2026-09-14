@@ -4,6 +4,7 @@ import { useRouter, useRoute, RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useTheme } from '@/composables/useTheme'
 import { authApi } from '@/api/auth'
+import { apiBase } from '@/api/client'
 import SaInput  from '@/components/ui/SaInput.vue'
 import SaButton from '@/components/ui/SaButton.vue'
 
@@ -37,7 +38,7 @@ const recoveryLoading = ref(false)
 
 // Function to handle OAuth redirects to Laravel backend
 function loginWith(provider: 'google' | 'facebook' | 'apple') {
-  window.location.href = `http://localhost:8000/api/v1/auth/${provider}/redirect`
+  window.location.href = `${apiBase}/auth/${provider}/redirect`
 }
 
 async function submitAuth() {

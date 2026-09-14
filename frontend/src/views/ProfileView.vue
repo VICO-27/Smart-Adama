@@ -15,7 +15,7 @@ import { useI18n } from 'vue-i18n'
 
 import AppShell from '@/components/layout/AppShell.vue'
 import SaCard from '@/components/ui/SaCard.vue'
-import apiClient from '@/api/client'
+import apiClient, { serverRoot } from '@/api/client'
 
 
 /* ============================================================
@@ -336,8 +336,7 @@ const avatarUrl = computed(() => {
     return rawUrl
   }
 
-  const baseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
-  return `${baseUrl}${rawUrl.startsWith('/') ? '' : '/'}${rawUrl}`
+  return `${serverRoot}${rawUrl.startsWith('/') ? '' : '/'}${rawUrl}`
 })
 
 

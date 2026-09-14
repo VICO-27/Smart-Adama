@@ -544,8 +544,8 @@ function badgeType(
 ============================================================ */
 
 onMounted(() => {
-  progress.loadAll()
-  chatStore.loadSessions(1)
+  progress.loadAll().catch((e) => console.error('Dashboard progress load error:', e))
+  chatStore.loadSessions(1).catch((e) => console.error('Dashboard chat sessions load error:', e))
 })
 </script>
 

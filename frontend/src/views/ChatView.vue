@@ -1574,7 +1574,7 @@ import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import hljs from 'highlight.js'
 import 'highlight.js/styles/github-dark.css'
-import apiClient from '@/api/client'
+import apiClient, { serverRoot } from '@/api/client'
 import IntroductionPreface from '@/components/IntroductionPreface.vue'
 import { useI18n } from 'vue-i18n'
 import { useConfirm } from '@/composables/useConfirm'
@@ -2178,10 +2178,9 @@ const renderMarkdown = (text: string | undefined): string => {
   cleanText = cleanText.replace(/<\/?p>/gi, '')
 
   // Ensure relative backend storage image URLs point to the backend server
-  const apiBase = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000').replace(/\/$/, '')
-  cleanText = cleanText.replace(/src="\/storage\//g, `src="${apiBase}/storage/`)
-  cleanText = cleanText.replace(/src='\/storage\//g, `src='${apiBase}/storage/`)
-  cleanText = cleanText.replace(/\(\/storage\//g, `(${apiBase}/storage/`)
+  cleanText = cleanText.replace(/src="\/storage\//g, `src="${serverRoot}/storage/`)
+  cleanText = cleanText.replace(/src='\/storage\//g, `src='${serverRoot}/storage/`)
+  cleanText = cleanText.replace(/\(\/storage\//g, `(${serverRoot}/storage/`)
 
   const parsed = marked.parse(cleanText)
   return DOMPurify.sanitize(parsed as string)
@@ -3300,7 +3299,7 @@ onMounted(async () => {
   }
 
   try {
-    await Promise.all(initialPromises)
+    await Promise.allSettled(initialPromises)
   } catch (err) {
     console.error('Initial study data loading error:', err)
   }

@@ -90,18 +90,20 @@ export function formatSupabaseError(error: AuthError | Error | unknown): Error {
 export function mapSupabaseUserToProfile(user: User): App.UserProfile {
   const metadata = user.user_metadata || {}
   const appMetadata = user.app_metadata || {}
+  const isAnonymous = Boolean(user.is_anonymous || appMetadata.provider === 'anonymous')
 
   const displayName =
     metadata.full_name ||
     metadata.name ||
     user.phone ||
-    (user.email ? user.email.split('@')[0] : 'Learner')
+    (user.email ? user.email.split('@')[0] : (isAnonymous ? 'Guest Learner' : 'Learner'))
 
   return {
     id: user.id,
     name: displayName,
     email: user.email || '',
-    role: (appMetadata.role as 'learner' | 'admin') || 'learner',
+    role: isAnonymous ? 'learner' : ((appMetadata.role as 'learner' | 'admin') || 'learner'),
+    is_anonymous: isAnonymous,
     avatar_url: metadata.avatar_url || null,
     locale: metadata.locale || 'en',
     notify_badges: metadata.notify_badges ?? true,
@@ -210,6 +212,16 @@ export const supabaseAuthService = {
         redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined,
       },
     })
+    if (error) throw formatSupabaseError(error)
+    return data
+  },
+
+  /**
+   * Sign in anonymously using Supabase Anonymous Sign-Ins.
+   */
+  async signInAnonymously(options?: { data?: object }) {
+    const supabase = getSupabaseClient()
+    const { data, error } = await supabase.auth.signInAnonymously(options)
     if (error) throw formatSupabaseError(error)
     return data
   },

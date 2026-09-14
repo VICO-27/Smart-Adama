@@ -12,6 +12,7 @@ vi.mock('@/services/supabaseAuth', () => {
       verifyEmailOtp: vi.fn().mockResolvedValue({ user: { id: 'test-email-id' }, session: { access_token: 'fake-email-token' } }),
       verifyTokenHash: vi.fn().mockResolvedValue({ user: { id: 'test-token-hash-id' }, session: { access_token: 'fake-token-hash' } }),
       signInWithOAuth: vi.fn().mockResolvedValue({ provider: 'google', url: 'https://example.com' }),
+      signInAnonymously: vi.fn().mockResolvedValue({ user: { id: 'test-anon-id', is_anonymous: true }, session: { access_token: 'fake-anon-token' } }),
       getSession: vi.fn().mockResolvedValue(null),
       getUser: vi.fn().mockResolvedValue(null),
       signOut: vi.fn().mockResolvedValue(undefined),
@@ -97,5 +98,26 @@ describe('useAuthState Composable', () => {
     expect(authState.step.value).toBe('otp')
     expect(authState.isOtpStep.value).toBe(true)
     expect(authState.isEmailSentStep.value).toBe(false)
+  })
+
+  it('triggers guest anonymous auth and returns session data', async () => {
+    const authState = useAuthState()
+    const result = await authState.triggerGuestAuth()
+
+    expect(result.success).toBe(true)
+    expect(supabaseAuth.supabaseAuthService.signInAnonymously).toHaveBeenCalled()
+    expect(result.data?.session?.access_token).toBe('fake-anon-token')
+  })
+
+  it('handles guest anonymous auth errors gracefully', async () => {
+    vi.mocked(supabaseAuth.supabaseAuthService.signInAnonymously).mockRejectedValueOnce(
+      new Error('Anonymous sign-in disabled')
+    )
+
+    const authState = useAuthState()
+    const result = await authState.triggerGuestAuth()
+
+    expect(result.success).toBe(false)
+    expect(authState.errorMessage.value).toBe('Anonymous sign-in disabled')
   })
 })

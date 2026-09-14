@@ -40,6 +40,14 @@ class UserController extends Controller
         ]);
 
         $user = $request->user();
+        if ($user->isAnonymous()) {
+            return response()->json([
+                'error' => [
+                    'code' => 'FORBIDDEN',
+                    'message' => 'Anonymous guest accounts cannot set or update passwords.',
+                ],
+            ], 403);
+        }
 
         if (!Hash::check($request->current_password, $user->password)) {
             throw ValidationException::withMessages([

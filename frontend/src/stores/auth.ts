@@ -26,9 +26,11 @@ export const useAuthStore = defineStore('auth', () => {
   const fieldErrors = ref<Record<string, string>>({})
 
   const isAuthenticated = computed(() => !!token.value)
-// Check the boolean is_admin flag provided by the backend API
-// Tell TS to ignore the missing property using 'as any'
-  const isAdmin = computed(() => (user.value as any)?.is_admin === true || user.value?.role === 'admin')  // ── Helpers ────────────────────────────────────────────────────────────────
+  const isAnonymous = computed(() => Boolean((user.value as any)?.is_anonymous))
+  // Check the boolean is_admin flag provided by the backend API, strictly denying anonymous users
+  const isAdmin = computed(() => !isAnonymous.value && ((user.value as any)?.is_admin === true || user.value?.role === 'admin'))
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
 
   function setToken(t: string) {
     token.value = t
@@ -104,6 +106,31 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function signInAnonymously() {
+    loading.value = true
+    clearErrors()
+    try {
+      if (!isSupabaseConfigured()) {
+        throw new Error('Supabase Auth is not configured.')
+      }
+      const data = await supabaseAuthService.signInAnonymously()
+      if (data.session?.access_token) {
+        setToken(data.session.access_token)
+      }
+      if (data.session?.user) {
+        user.value = mapSupabaseUserToProfile(data.session.user)
+      }
+      // Sync full backend profile in the background without blocking navigation
+      fetchMe().catch(() => {})
+      return data
+    } catch (e: any) {
+      handleError(e, 'Could not continue as guest.')
+      throw e
+    } finally {
+      loading.value = false
+    }
+  }
+
   // ── Realtime Supabase Auth Listener ───────────────────────────────────────
   if (isSupabaseConfigured()) {
     try {
@@ -147,8 +174,8 @@ export const useAuthStore = defineStore('auth', () => {
    * Called once from the router beforeEach guard.
    */
   async function fetchMe() {
-    // 1. Check Supabase active session first
-    if (isSupabaseConfigured()) {
+    // 1. Check Supabase active session only if user profile is not already populated
+    if (!user.value && isSupabaseConfigured()) {
       try {
         const session = await supabaseAuthService.getSession()
         if (session?.access_token) {
@@ -232,9 +259,11 @@ export const useAuthStore = defineStore('auth', () => {
     error,
     fieldErrors,
     isAuthenticated,
+    isAnonymous,
     isAdmin,
     register,
     login,
+    signInAnonymously,
     logout,
     fetchMe,
     updateProfile,

@@ -13,8 +13,9 @@ class UserResource extends JsonResource
             'id'         => $this->id,
             'name'       => $this->name,
             'email'      => $this->email,
-            'role'       => $this->role, // Ensures admin checks pass
-            'avatar_url' => $this->avatar_url,
+            'role'         => $this->role, // Ensures admin checks pass
+            'is_anonymous' => $this->isAnonymous(),
+            'avatar_url'   => $this->avatar_url,
             'locale'     => $this->locale,
             'created_at' => $this->created_at?->toISOString(),
         ];

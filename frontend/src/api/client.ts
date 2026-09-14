@@ -30,7 +30,7 @@ const apiClient: AxiosInstance = axios.create({
     Accept: 'application/json',
     'Content-Type': 'application/json',
   },
-  timeout: 600000, // 10 minutes (to allow Ollama generation)
+  timeout: 15000, // 15 seconds default timeout for REST requests (prevents infinite hanging)
   withCredentials: false,
 })
 

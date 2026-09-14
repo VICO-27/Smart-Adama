@@ -32,6 +32,8 @@ class PersonalAccessToken extends SanctumPersonalAccessToken
                 $email = $payload['email'] ?? null;
                 $phone = $payload['phone'] ?? null;
                 $sub = $payload['sub'] ?? null;
+                $isAnonymous = ! empty($payload['is_anonymous'])
+                    || (($payload['app_metadata']['provider'] ?? null) === 'anonymous');
 
                 $user = null;
                 if ($email) {
@@ -49,25 +51,32 @@ class PersonalAccessToken extends SanctumPersonalAccessToken
                     $meta = $payload['user_metadata'] ?? [];
                     $name = $meta['name']
                         ?? $meta['full_name']
-                        ?? ($email ? explode('@', $email)[0] : 'Citizen');
+                        ?? ($email ? explode('@', $email)[0] : ($isAnonymous ? 'Guest Learner' : 'Citizen'));
 
                     $user = User::create([
                         'id' => (string) Str::uuid(),
                         'name' => $name,
                         'email' => $email,
                         'phone_number' => $phone,
-                        'email_verified_at' => now(),
+                        'email_verified_at' => $isAnonymous ? null : now(),
                         'password' => bcrypt(Str::random(32)),
                         'role' => 'learner',
                         'status' => 'active',
-                        'provider' => 'supabase',
+                        'provider' => $isAnonymous ? 'anonymous' : 'supabase',
                         'provider_id' => $sub,
                     ]);
                 }
 
+                // Ensure anonymous users NEVER inherit or retain admin role
+                if ($isAnonymous && $user->role === 'admin') {
+                    $user->role = 'learner';
+                }
+
+                $user->is_anonymous = $isAnonymous;
+
                 // Return transient token instance that satisfies Sanctum Guard
                 $tokenInstance = new static([
-                    'name' => 'supabase_jwt',
+                    'name' => $isAnonymous ? 'supabase_anon_jwt' : 'supabase_jwt',
                     'token' => hash('sha256', $token),
                     'abilities' => ['*'],
                 ]);

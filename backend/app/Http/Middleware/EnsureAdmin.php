@@ -17,7 +17,7 @@ class EnsureAdmin
     {
         $user = $request->user();
 
-        if (! $user || $user->role !== 'admin') {
+        if (! $user || $user->role !== 'admin' || $user->isAnonymous()) {
             Log::warning('Admin route access denied', [
                 'user_id' => $user?->id,
                 'ip'      => $request->ip(),

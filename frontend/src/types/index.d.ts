@@ -5,6 +5,7 @@ declare namespace App {
     name: string
     email: string
     role: 'learner' | 'admin'
+    is_anonymous?: boolean
     avatar_url: string | null
     created_at: string
   }

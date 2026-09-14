@@ -1,5 +1,15 @@
 <template>
   <div class="global-assistant" :class="{ 'assistant-open': isOpen, 'global-assistant--dark': activeTheme === 'dark' }" :data-theme="activeTheme">
+    <!-- DEDICATED BACKDROP OVERLAY -->
+    <Transition name="assistant-backdrop">
+      <div
+        v-if="isOpen"
+        class="assistant-backdrop"
+        @click="closeAssistant"
+        aria-hidden="true"
+      ></div>
+    </Transition>
+
     <!-- =====================================================
          ASSISTANT PANEL
     ====================================================== -->
@@ -368,62 +378,53 @@
     <!-- =====================================================
          FLOATING ASSISTANT BUTTON
     ====================================================== -->
-    <button
-      ref="toggleButtonRef"
-      type="button"
-      class="assistant-toggle"
-      :class="{
-        'assistant-toggle--open': isOpen,
-        'assistant-toggle--dragging': isDragging,
-      }"
-      :style="toggleStyle"
-      aria-label="Toggle Smart Adama Assistant"
-      :aria-expanded="isOpen"
-      draggable="false"
-      @pointerdown.stop.prevent="onPointerDown"
-      @pointermove.stop.prevent="onPointerMove"
-      @pointerup.stop.prevent="onPointerUp"
-      @pointercancel.stop.prevent="onPointerUp"
-      @keydown.enter.prevent="toggleAssistant"
-      @keydown.space.prevent="toggleAssistant"
-    >
-      <span v-if="!isOpen" class="toggle-halo" aria-hidden="true"></span>
-
-      <span class="toggle-icon" aria-hidden="true">
-        <svg
-          v-if="!isOpen"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.6"
-        >
-          <circle cx="12" cy="12" r="3" />
-          <circle cx="5.5" cy="7.5" r="1.05" />
-          <circle cx="18.5" cy="7.5" r="1.05" />
-          <circle cx="5.5" cy="16.5" r="1.05" />
-          <circle cx="18.5" cy="16.5" r="1.05" />
-          <path d="m9.5 10-3-1.6M14.5 10l3-1.6M9.5 14l-3 1.6M14.5 14l3 1.6" />
-        </svg>
-
-        <svg
-          v-else
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.9"
-        >
-          <path d="M6 6l12 12M18 6 6 18" stroke-linecap="round" />
-        </svg>
-      </span>
-
-      <span
-        v-if="!isOpen && !isDragging && !isMobile"
-        class="toggle-tooltip"
-        :class="pos.x > windowWidth / 2 ? 'toggle-tooltip--left' : 'toggle-tooltip--right'"
+    <Transition name="assistant-toggle-fade">
+      <button
+        v-if="!isOpen"
+        ref="toggleButtonRef"
+        type="button"
+        class="assistant-toggle"
+        :class="{
+          'assistant-toggle--dragging': isDragging,
+        }"
+        :style="toggleStyle"
+        aria-label="Toggle Smart Adama Assistant"
+        :aria-expanded="isOpen"
+        draggable="false"
+        @pointerdown.stop.prevent="onPointerDown"
+        @pointermove.stop.prevent="onPointerMove"
+        @pointerup.stop.prevent="onPointerUp"
+        @pointercancel.stop.prevent="onPointerUp"
+        @keydown.enter.prevent="toggleAssistant"
+        @keydown.space.prevent="toggleAssistant"
       >
-        {{ $t('assistant.tooltip') }}
-      </span>
-    </button>
+        <span class="toggle-halo" aria-hidden="true"></span>
+
+        <span class="toggle-icon" aria-hidden="true">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.6"
+          >
+            <circle cx="12" cy="12" r="3" />
+            <circle cx="5.5" cy="7.5" r="1.05" />
+            <circle cx="18.5" cy="7.5" r="1.05" />
+            <circle cx="5.5" cy="16.5" r="1.05" />
+            <circle cx="18.5" cy="16.5" r="1.05" />
+            <path d="m9.5 10-3-1.6M14.5 10l3-1.6M9.5 14l-3 1.6M14.5 14l3 1.6" />
+          </svg>
+        </span>
+
+        <span
+          v-if="!isDragging && !isMobile"
+          class="toggle-tooltip"
+          :class="pos.x > windowWidth / 2 ? 'toggle-tooltip--left' : 'toggle-tooltip--right'"
+        >
+          {{ $t('assistant.tooltip') }}
+        </span>
+      </button>
+    </Transition>
   </div>
 </template>
 
@@ -1295,6 +1296,31 @@ onUnmounted(() => {
 
   --assistant-shadow: 0 24px 80px rgba(0, 0, 0, 0.52);
   --assistant-shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.32);
+}
+
+
+/* ============================================================
+   BACKDROP
+============================================================ */
+
+.assistant-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  background: rgba(15, 23, 42, 0.42);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  cursor: pointer;
+}
+
+.assistant-backdrop-enter-active,
+.assistant-backdrop-leave-active {
+  transition: opacity 0.24s ease;
+}
+
+.assistant-backdrop-enter-from,
+.assistant-backdrop-leave-to {
+  opacity: 0;
 }
 
 
@@ -2257,7 +2283,7 @@ onUnmounted(() => {
 
 .assistant-toggle {
   position: fixed;
-  z-index: 110;
+  z-index: 95;
   width: 62px;
   height: 62px;
   display: flex;
@@ -2365,6 +2391,17 @@ onUnmounted(() => {
 
 .toggle-tooltip--right {
   left: calc(100% + 10px);
+}
+
+.assistant-toggle-fade-enter-active,
+.assistant-toggle-fade-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.assistant-toggle-fade-enter-from,
+.assistant-toggle-fade-leave-to {
+  opacity: 0;
+  transform: scale(0.85);
 }
 
 

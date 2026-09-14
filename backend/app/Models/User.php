@@ -43,9 +43,16 @@ class User extends Authenticatable
         ];
     }
 
+    public bool $is_anonymous = false;
+
+    public function isAnonymous(): bool
+    {
+        return (bool) $this->is_anonymous;
+    }
+
     public function isAdmin(): bool
     {
-        return $this->role === 'admin';
+        return ! $this->isAnonymous() && $this->role === 'admin';
     }
 
     public function chatSessions(): HasMany

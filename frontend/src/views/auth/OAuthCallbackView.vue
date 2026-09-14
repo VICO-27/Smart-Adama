@@ -50,11 +50,7 @@ onMounted(async () => {
   const token = route.query.token as string
   if (token) {
     auth.setToken(token)
-    try {
-      await auth.fetchMe()
-    } catch {
-      // Backend profile optional if token valid
-    }
+    auth.fetchMe().catch(() => {})
     finishAuthentication()
     return
   }
@@ -71,9 +67,7 @@ onMounted(async () => {
           if (session.user) {
             auth.user = mapSupabaseUserToProfile(session.user)
           }
-          try {
-            await auth.fetchMe()
-          } catch {}
+          auth.fetchMe().catch(() => {})
           finishAuthentication()
           return
         }
@@ -89,15 +83,13 @@ onMounted(async () => {
           if (session.user) {
             auth.user = mapSupabaseUserToProfile(session.user)
           }
-          try {
-            await auth.fetchMe()
-          } catch {}
+          auth.fetchMe().catch(() => {})
           finishAuthentication()
           return
         }
       }
 
-      // B. Check for implicit hash tokens in URL
+      // C. Check for implicit hash tokens in URL
       if (hash.includes('access_token=')) {
         const hashParams = new URLSearchParams(hash.replace(/^#/, ''))
         const accessToken = hashParams.get('access_token')
@@ -113,9 +105,7 @@ onMounted(async () => {
               if (session.user) {
                 auth.user = mapSupabaseUserToProfile(session.user)
               }
-              try {
-                await auth.fetchMe()
-              } catch {}
+              auth.fetchMe().catch(() => {})
               finishAuthentication()
               return
             }
@@ -125,21 +115,19 @@ onMounted(async () => {
         }
       }
 
-      // C. Check active Supabase session
+      // D. Check active Supabase session
       const existingSession = await supabaseAuthService.getSession()
       if (existingSession?.access_token) {
         auth.setToken(existingSession.access_token)
         if (existingSession.user) {
           auth.user = mapSupabaseUserToProfile(existingSession.user)
         }
-        try {
-          await auth.fetchMe()
-        } catch {}
+        auth.fetchMe().catch(() => {})
         finishAuthentication()
         return
       }
 
-      // D. Listen for async auth resolution
+      // E. Listen for async auth resolution
       let resolved = false
       const { data: { subscription } } = supabaseAuthService.onAuthStateChange(
         async (event, newSession) => {
@@ -150,9 +138,7 @@ onMounted(async () => {
             if (newSession.user) {
               auth.user = mapSupabaseUserToProfile(newSession.user)
             }
-            try {
-              await auth.fetchMe()
-            } catch {}
+            auth.fetchMe().catch(() => {})
             finishAuthentication()
           }
         }

@@ -195,6 +195,26 @@ export function useAuthState() {
     }
   }
 
+  // ── Anonymous Guest Auth ───────────────────────────────────────────────
+  async function triggerGuestAuth() {
+    clearErrors()
+    status.value = 'sending_otp'
+    try {
+      if (!isSupabaseConfigured()) {
+        throw new Error(
+          'Supabase Auth is not yet configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your frontend .env file.'
+        )
+      }
+      const data = await supabaseAuthService.signInAnonymously()
+      status.value = 'success'
+      return { success: true, data }
+    } catch (err: any) {
+      status.value = 'error'
+      errorMessage.value = err.message || 'Failed to continue as guest.'
+      return { success: false, error: err }
+    }
+  }
+
   if (getCurrentInstance()) {
     onUnmounted(() => {
       if (cooldownTimer) {
@@ -235,6 +255,7 @@ export function useAuthState() {
     verifyOtp,
     resendOtp,
     triggerSocialAuth,
+    triggerGuestAuth,
     clearErrors,
   }
 }

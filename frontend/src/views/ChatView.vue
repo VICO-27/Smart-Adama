@@ -984,9 +984,9 @@
 
       <div ref="messagesContainerRef" class="ai-messages" @scroll="handleChatScroll" @click="handleMessagesClick">
         <!-- WELCOME SCREEN: Visible ONLY when conversation has 0 messages -->
-        <div v-if="!hasMessages" class="chat-welcome-screen flex flex-col items-center justify-center pt-[15vh] w-full max-w-2xl mx-auto px-6">
+        <div v-if="!hasMessages" class="chat-welcome-screen flex flex-col items-center justify-center w-full max-w-2xl mx-auto px-6">
           <Transition name="fade-greeting" mode="out-in">
-            <h2 :key="activeGreetingKey + (chatStore.currentSession?.id || 'new')" class="text-3xl md:text-4xl font-semibold text-[var(--rt-text)] mb-10 text-center tracking-tight">
+            <h2 :key="activeGreetingKey + (chatStore.currentSession?.id || 'new')" class="text-2xl sm:text-3xl md:text-4xl font-semibold text-[var(--rt-text)] mb-6 text-center tracking-tight">
               {{ dynamicGreeting }}
             </h2>
           </Transition>
@@ -1780,6 +1780,98 @@ const toggleAiSidebar = (open?: boolean) => {
   if (isMobile.value && isAiSidebarOpen.value) {
     isSidebarOpen.value = false
   }
+}
+
+/* ============================================================
+   MOBILE EDGE SWIPE GESTURES
+============================================================ */
+let touchStartX = 0
+let touchStartY = 0
+let eligibleGesture: 'open-left' | 'open-right' | 'close-left' | 'close-right' | null = null
+
+const handleTouchStart = (e: TouchEvent) => {
+  if (!isMobile.value || e.touches.length !== 1) {
+    eligibleGesture = null
+    return
+  }
+
+  const target = e.target as HTMLElement | null
+  // Do not initiate gestures on interactive elements
+  if (target?.closest('input, textarea, button, select, a, [contenteditable="true"], .session-dropdown-menu, .theme-switcher, .session-options-btn')) {
+    eligibleGesture = null
+    return
+  }
+
+  const touch = e.touches[0]
+  touchStartX = touch.clientX
+  touchStartY = touch.clientY
+
+  const EDGE_ZONE = 30 // px from screen edge
+  const screenWidth = window.innerWidth
+
+  if (isSidebarOpen.value) {
+    // When left sidebar is open, swiping left closes it
+    eligibleGesture = 'close-left'
+  } else if (isAiSidebarOpen.value) {
+    // When right sidebar is open, swiping right closes it
+    eligibleGesture = 'close-right'
+  } else {
+    // Both sidebars closed: check edge zones
+    if (touchStartX <= EDGE_ZONE) {
+      eligibleGesture = 'open-left'
+    } else if (touchStartX >= screenWidth - EDGE_ZONE) {
+      eligibleGesture = 'open-right'
+    } else {
+      eligibleGesture = null
+    }
+  }
+}
+
+const handleTouchMove = (e: TouchEvent) => {
+  if (!eligibleGesture || e.touches.length !== 1) return
+
+  const touch = e.touches[0]
+  const deltaX = touch.clientX - touchStartX
+  const deltaY = touch.clientY - touchStartY
+
+  // If user is scrolling vertically, cancel swipe gesture so we don't interfere with normal scrolling
+  if (Math.abs(deltaY) > 15 && Math.abs(deltaY) > Math.abs(deltaX)) {
+    eligibleGesture = null
+  }
+}
+
+const handleTouchEnd = (e: TouchEvent) => {
+  if (!eligibleGesture || e.changedTouches.length === 0) {
+    eligibleGesture = null
+    return
+  }
+
+  const touch = e.changedTouches[0]
+  const deltaX = touch.clientX - touchStartX
+  const deltaY = touch.clientY - touchStartY
+  const absX = Math.abs(deltaX)
+  const absY = Math.abs(deltaY)
+
+  const SWIPE_THRESHOLD = 50
+
+  // Must be predominantly horizontal and exceed threshold distance
+  if (absX >= SWIPE_THRESHOLD && absX > absY * 1.5) {
+    if (eligibleGesture === 'open-left' && deltaX > 0) {
+      openSidebar()
+    } else if (eligibleGesture === 'open-right' && deltaX < 0) {
+      openAiSidebar()
+    } else if (eligibleGesture === 'close-left' && deltaX < 0) {
+      isSidebarOpen.value = false
+    } else if (eligibleGesture === 'close-right' && deltaX > 0) {
+      isAiSidebarOpen.value = false
+    }
+  }
+
+  eligibleGesture = null
+}
+
+const handleTouchCancel = () => {
+  eligibleGesture = null
 }
 
 /* ============================================================
@@ -3281,6 +3373,10 @@ onMounted(async () => {
   pickDynamicGreeting()
   applyStudyTheme(readerTheme.value)
   window.addEventListener('resize', handleResize)
+  window.addEventListener('touchstart', handleTouchStart, { passive: true })
+  window.addEventListener('touchmove', handleTouchMove, { passive: true })
+  window.addEventListener('touchend', handleTouchEnd, { passive: true })
+  window.addEventListener('touchcancel', handleTouchCancel, { passive: true })
   document.addEventListener('mouseup', handleTextSelection)
   document.addEventListener('keydown', handleKeydown)
   document.addEventListener('click', handleClickOutsideMenus)
@@ -3342,6 +3438,10 @@ onMounted(async () => {
 onUnmounted(() => {
   restoreGlobalTheme()
   window.removeEventListener('resize', handleResize)
+  window.removeEventListener('touchstart', handleTouchStart)
+  window.removeEventListener('touchmove', handleTouchMove)
+  window.removeEventListener('touchend', handleTouchEnd)
+  window.removeEventListener('touchcancel', handleTouchCancel)
   document.removeEventListener('mousemove', onDragLeft)
   document.removeEventListener('mouseup', handleTextSelection)
   document.removeEventListener('keydown', handleKeydown)
@@ -5802,6 +5902,7 @@ watch(
   overflow: auto;
   padding: 14px 24px;
   scroll-behavior: smooth;
+  transition: padding 0.25s ease;
 }
 
 /* Chat Full-Screen Adjustments (ChatGPT/Claude style) */
@@ -5809,8 +5910,6 @@ watch(
   background: var(--reader-bg);
   border-left: none;
 }
-
-
 
 .chat-full-screen .ai-messages > *,
 .chat-full-screen .ai-composer,
@@ -5824,35 +5923,36 @@ watch(
   padding: 0 14px 24px 14px;
 }
 
+.side-panel--right.chat-is-empty {
+  display: flex;
+  flex-direction: column;
+}
+
 .chat-is-empty .ai-messages {
   flex: 0 0 auto;
   margin-top: auto;
+  padding: 0 20px 8px 20px;
+  overflow: visible;
+}
+
+.chat-is-empty .chat-welcome-screen {
+  padding-top: 0 !important;
+  margin-bottom: 0;
+}
+
+.chat-is-empty .chat-welcome-screen h2 {
+  margin-bottom: 24px;
 }
 
 .chat-is-empty .ai-composer {
+  flex: 0 0 auto;
   margin-bottom: auto;
-}
-
-.chat-is-empty .ai-welcome {
-  align-items: center;
-  text-align: center;
-  border: none;
-  background: transparent;
-  padding: 0;
-  margin-bottom: 32px;
-}
-
-.chat-is-empty .ai-welcome__icon,
-.chat-is-empty .ai-welcome p,
-.chat-is-empty .ai-welcome__eyebrow {
-  display: none;
-}
-
-.chat-is-empty .ai-welcome h3 {
-  font-size: clamp(1.4rem, 4vw, 2.2rem);
-  font-weight: 600;
-  color: var(--reader-text);
-  letter-spacing: -0.5px;
+  margin-top: 0;
+  width: 100%;
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 0 20px 24px 20px;
 }
 
 .fade-greeting-enter-active,
@@ -6274,6 +6374,7 @@ watch(
   padding: 10px 12px calc(12px + env(safe-area-inset-bottom));
   border-top: none;
   background: transparent;
+  transition: padding 0.25s ease, margin 0.25s ease;
 }
 
 

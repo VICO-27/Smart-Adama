@@ -1,4 +1,5 @@
 import axios, { type AxiosInstance, type AxiosError } from 'axios'
+import { isSupabaseConfigured, supabaseAuthService } from '@/services/supabaseAuth'
 
 /**
  * Central Axios instance for all Smart Adama API calls.
@@ -43,11 +44,28 @@ apiClient.interceptors.request.use((config) => {
 // ── Response: normalise errors ────────────────────────────────────────────────
 apiClient.interceptors.response.use(
   (res) => res,
-  (error: AxiosError<ApiErrorEnvelope>) => {
+  async (error: AxiosError<ApiErrorEnvelope>) => {
+    const originalRequest = error.config as any
     const status = error.response?.status
 
-    // 401 — clear token (do not redirect to non-existent /login route)
-    if (status === 401) {
+    // 401 — attempt transparent token refresh via Supabase before clearing
+    if (status === 401 && originalRequest && !originalRequest._retry) {
+      originalRequest._retry = true
+      try {
+        if (isSupabaseConfigured()) {
+          const session = await supabaseAuthService.refreshSession()
+          if (session?.access_token) {
+            localStorage.setItem('sa_token', session.access_token)
+            originalRequest.headers = originalRequest.headers || {}
+            originalRequest.headers.Authorization = `Bearer ${session.access_token}`
+            return apiClient(originalRequest)
+          }
+        }
+      } catch {
+        // Refresh failed, proceed to clear token
+      }
+      localStorage.removeItem('sa_token')
+    } else if (status === 401) {
       localStorage.removeItem('sa_token')
     }
 

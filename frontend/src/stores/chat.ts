@@ -6,7 +6,15 @@ import { useAuthStore } from './auth'
 import { useChatStream, type ChatMessageStreamDone } from '@/composables/useChatStream'
 
 export const useChatStore = defineStore('chat', () => {
-  const sessions        = ref<App.ChatSession[]>([])
+  const CACHED_SESSIONS_KEY = 'smart_adama_cached_chat_sessions'
+
+  let initialSessions: App.ChatSession[] = []
+  try {
+    const raw = localStorage.getItem(CACHED_SESSIONS_KEY)
+    if (raw) initialSessions = JSON.parse(raw)
+  } catch (e) {}
+
+  const sessions        = ref<App.ChatSession[]>(initialSessions)
   const currentSession  = ref<App.ChatSession | null>(null)
   const meta            = ref<App.PaginationMeta | null>(null)
   const error           = ref<string | null>(null)
@@ -41,9 +49,16 @@ export const useChatStore = defineStore('chat', () => {
       const { data } = await chatApi.listSessions(page)
       sessions.value = page === 1 ? data.sessions : [...sessions.value, ...data.sessions]
       meta.value     = data.meta
+      if (page === 1 && data.sessions) {
+        try {
+          localStorage.setItem(CACHED_SESSIONS_KEY, JSON.stringify(data.sessions))
+        } catch (e) {}
+      }
     } catch (err) {
       console.error('Failed to load chat sessions:', err)
-      if (page === 1) sessions.value = []
+      if (page === 1 && sessions.value.length === 0) {
+        sessions.value = []
+      }
     }
   }
 
@@ -51,6 +66,9 @@ export const useChatStore = defineStore('chat', () => {
     const { data } = await chatApi.createSession(title)
     sessions.value.unshift(data.session)
     currentSession.value = data.session
+    try {
+      localStorage.setItem(CACHED_SESSIONS_KEY, JSON.stringify(sessions.value))
+    } catch (e) {}
     return data.session
   }
 
@@ -107,6 +125,9 @@ export const useChatStore = defineStore('chat', () => {
     await chatApi.deleteSession(sessionId)
     sessions.value = sessions.value.filter((s) => s.id !== sessionId)
     if (currentSession.value?.id === sessionId) currentSession.value = null
+    try {
+      localStorage.setItem(CACHED_SESSIONS_KEY, JSON.stringify(sessions.value))
+    } catch (e) {}
   }
 
   async function deleteAllSessions() {
@@ -114,6 +135,9 @@ export const useChatStore = defineStore('chat', () => {
     await chatApi.deleteAllSessions()
     sessions.value = []
     currentSession.value = null
+    try {
+      localStorage.removeItem(CACHED_SESSIONS_KEY)
+    } catch (e) {}
   }
 
   // ── Message streaming with concurrency & discrete IDs ─────────────────────

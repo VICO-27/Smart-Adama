@@ -32,7 +32,21 @@ const { t } = useI18n()
    DASHBOARD
 ============================================================ */
 
-const d = computed(() => progress.dashboard)
+const fallbackDashboard: App.Dashboard = {
+  completion_pct: 0,
+  total_chapters: 13,
+  completed_chapters: 0,
+  quizzes_passed: 0,
+  average_quiz_score: null,
+  current_streak: 0,
+  total_chat_sessions: 0,
+  earned_badge_count: 0,
+  current_chapter: null,
+  current_position: null,
+  chapter_progress: [],
+}
+
+const d = computed(() => progress.dashboard || fallbackDashboard)
 
 
 const firstName = computed(() => {
@@ -133,18 +147,14 @@ const continueChapter = computed(() => {
 
 
 const recommendedChapter = computed(() => {
-  if (!d.value?.chapter_progress) return 1
+  if (!d.value?.chapter_progress || d.value.chapter_progress.length === 0) return 1
 
-  const firstUnfinished = d.value.chapter_progress.find(c => c.status !== 'COMPLETED')
-  if (firstUnfinished) {
-    // Assuming chapter_progress has chapter_id, we would need the chapter object or order.
-    // Wait, chapter_progress in Dashboard controller doesn't have order.
-    // I should probably map the actual chapter order. But for now return its ID or just say Chapter.
-    // Actually, we can return the firstUnfinished directly.
-    return firstUnfinished.chapter_id // We might need to find the actual number if chapter is UUID.
+  const firstUnfinishedIndex = d.value.chapter_progress.findIndex(c => c.status !== 'COMPLETED')
+  if (firstUnfinishedIndex !== -1) {
+    return firstUnfinishedIndex + 1
   }
 
-  return null
+  return 1
 })
 
 
@@ -611,7 +621,7 @@ onMounted(() => {
         <!-- ========================================================
              LOADING STATE
         ========================================================= -->
-        <template v-if="!d">
+        <template v-if="!progress.dashboard && progress.loading">
           <div class="loading-journey mt-8"></div>
           <div class="loading-line"></div>
           <div class="loading-grid">

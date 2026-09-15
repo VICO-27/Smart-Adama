@@ -6286,18 +6286,22 @@ watch(
   transform: translate(-50%, -50%);
   background: conic-gradient(
     from 0deg,
-    #4285f4,   /* Google blue */
-    #9b72cb,   /* purple */
-    #ea4335,   /* red-pink */
-    #fbbc04,   /* yellow */
-    #34a853,   /* green */
-    #4285f4    /* back to blue */
+    transparent 0deg,
+    transparent 240deg,
+    #4285f4 360deg
   );
-  animation: ai-ring-spin 3s linear infinite;
+  animation: 
+    ai-ring-spin 2.5s linear infinite,
+    ai-color-cycle 10s linear infinite;
 }
 
 @keyframes ai-ring-spin {
   to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+@keyframes ai-color-cycle {
+  0% { filter: hue-rotate(0deg); }
+  100% { filter: hue-rotate(360deg); }
 }
 
 /* The actual icon button — circle, no text */

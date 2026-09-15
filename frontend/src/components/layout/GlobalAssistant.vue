@@ -1681,7 +1681,6 @@ onUnmounted(() => {
 
 .assistant-body {
   min-height: 0;
-  flex: 1;
   display: flex;
   flex-direction: column;
 }
@@ -2537,13 +2536,22 @@ onUnmounted(() => {
   transform: translate(-50%, -50%);
   background: conic-gradient(
     from 0deg,
-    #4285f4, #9b72cb, #ea4335, #fbbc04, #34a853, #4285f4
+    transparent 0deg,
+    transparent 240deg,
+    #4285f4 360deg
   );
-  animation: ai-ring-spin 3s linear infinite;
+  animation: 
+    ai-ring-spin 2.5s linear infinite,
+    ai-color-cycle 10s linear infinite;
 }
 
 @keyframes ai-ring-spin {
   to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+@keyframes ai-color-cycle {
+  0% { filter: hue-rotate(0deg); }
+  100% { filter: hue-rotate(360deg); }
 }
 
 /* "Smart AI" label pill — pops out left of button */

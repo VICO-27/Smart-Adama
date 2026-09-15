@@ -20,6 +20,7 @@
         class="assistant-panel"
         :class="[
           `assistant-panel--${panelPlacement}`,
+          `assistant-panel--${mode}`,
           { 'assistant-panel--mobile': isMobile }
         ]"
         role="dialog"
@@ -1511,6 +1512,14 @@ onUnmounted(() => {
   border-radius: 24px;
 }
 
+.assistant-panel--chat {
+  height: calc(100dvh - 120px);
+}
+
+.assistant-panel--mobile.assistant-panel--chat {
+  height: calc(100dvh - 20px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+}
+
 .assistant-panel--mobile .assistant-header {
   padding-top: 14px;
 }
@@ -2828,7 +2837,6 @@ onUnmounted(() => {
 
   .assistant-panel--mobile {
     width: calc(100vw - 20px);
-    height: calc(100dvh - 20px - env(safe-area-inset-bottom) - env(safe-area-inset-top));
   }
 
   .hub-hero {

@@ -1034,38 +1034,85 @@
       :class="{ 'side-panel--mobile': isMobile, 'chat-full-screen': !isReaderOpen && !isMobile, 'chat-is-empty': !hasMessages }"
       aria-label="Smart Adama AI Assistant"
     >
-      <!-- Mobile header for AI sidebar -->
-      <div v-if="isMobile" class="side-panel__header mobile-ai-header">
-        <div class="side-panel__brand-row" style="margin-bottom: 0;">
-          <div class="flex items-center gap-2">
-            <span class="font-bold text-sm text-[var(--rt-text)]">Smart Adama AI</span>
+      <!-- Mobile header for AI sidebar — ChatGPT style -->
+      <div v-if="isMobile" class="mobile-ai-topbar">
+        <div class="mobile-ai-topbar__left">
+          <div class="mobile-ai-model-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-3.5 h-3.5"><path d="M13 10V3L4 14h7v7l9-11h-7Z" stroke-linejoin="round"/></svg>
+            <span>Smart Adama AI</span>
           </div>
+        </div>
+        <div class="mobile-ai-topbar__right">
           <button
             type="button"
-            class="icon-button"
+            class="mobile-ai-icon-btn"
+            aria-label="New chat"
+            title="New chat"
+            @click="startNewChat"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <button
+            type="button"
+            class="mobile-ai-icon-btn"
             aria-label="Close AI panel"
             title="Close AI panel"
             @click="isAiSidebarOpen = false"
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4">
-              <path d="M18 6 6 18M6 6l12 12" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
         </div>
       </div>
 
-      <div ref="messagesContainerRef" class="ai-messages" @scroll="handleChatScroll" @click="handleMessagesClick">
-        <!-- WELCOME SCREEN: Visible ONLY when conversation has 0 messages -->
-        <div v-if="!hasMessages" class="chat-welcome-screen flex flex-col items-center justify-center w-full max-w-2xl mx-auto px-6">
+      <!-- EMPTY / WELCOME STATE: greeting + composer centered together -->
+      <div v-if="!hasMessages" class="ai-empty-state">
+        <div class="ai-empty-state__center">
           <Transition name="fade-greeting" mode="out-in">
-            <h2 :key="activeGreetingKey + (chatStore.currentSession?.id || 'new')" class="text-2xl sm:text-3xl md:text-4xl font-semibold text-[var(--rt-text)] mb-6 text-center tracking-tight">
+            <h2
+              :key="activeGreetingKey + (chatStore.currentSession?.id || 'new')"
+              class="ai-empty-state__greeting"
+            >
               {{ dynamicGreeting }}
             </h2>
           </Transition>
+          <form class="ai-composer ai-composer--empty" @submit.prevent="sendMessage">
+            <div class="ai-composer__field">
+              <textarea
+                ref="chatInputRef"
+                v-model="chatInput"
+                @input="autoResizeInput"
+                @keydown="handleEnter"
+                rows="1"
+                class="ai-composer__textarea"
+                :placeholder="$t('chapter.ask_placeholder')"
+              ></textarea>
+              <button
+                v-if="!chatStore.streaming || chatInput.trim()"
+                type="submit"
+                class="send-button"
+                :class="{ 'send-button--active': !!chatInput.trim() }"
+                :disabled="!chatInput.trim() || isSubmitting"
+                :aria-label="$t('chat.send')"
+              >
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 11h11.586l-5.293-5.293 1.414-1.414L20.414 12l-8.707 8.707-1.414-1.414L15.586 13H4v-2z"/></svg>
+              </button>
+              <button
+                v-else
+                type="button"
+                class="send-button stop-button"
+                aria-label="Stop generating"
+                @click.prevent="chatStore.cancelAllStreams()"
+              >
+                <svg viewBox="0 0 24 24" fill="currentColor"><rect x="7" y="7" width="10" height="10" rx="1.5"/></svg>
+              </button>
+            </div>
+          </form>
         </div>
+      </div>
 
-        <!-- CONVERSATION THREAD: Visible when messages count >= 1 (including pending/streaming) -->
-        <template v-else>
+      <!-- CONVERSATION THREAD + COMPOSER (when messages exist) -->
+      <template v-else>
+        <div ref="messagesContainerRef" class="ai-messages" @scroll="handleChatScroll" @click="handleMessagesClick">
           <div v-for="msg in currentMessages" :key="msg.id" :id="'msg-' + msg.id" class="message-stack w-full flex mb-8">
 
             <!-- USER MESSAGE -->
@@ -1201,71 +1248,72 @@
               </div>
             </div>
           </div>
-        </template>
-      </div>
-
-      <!-- Scroll to bottom button -->
-      <button
-        v-show="showScrollButton"
-        @click="scrollToBottom"
-        class="absolute bottom-28 left-1/2 -translate-x-1/2 z-50 p-2 bg-(--rt-surface-2) border border-(--rt-border) rounded-full shadow-md text-(--rt-text-body) hover:text-(--rt-text) hover:bg-(--rt-surface) transition-all"
-        title="Scroll to bottom"
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4">
-          <path d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
-        </svg>
-      </button>
-
-      <!-- Feedback Toast -->
-      <div
-        v-if="feedbackToastMessage"
-        class="absolute bottom-32 left-1/2 -translate-x-1/2 z-50 px-3 py-1.5 bg-[#10b981] text-white text-xs font-medium rounded-full shadow-lg transition-opacity duration-300"
-      >
-        {{ feedbackToastMessage }}
-      </div>
-
-      <form class="ai-composer" @submit.prevent="sendMessage">
-        <div class="ai-composer__field">
-          <textarea
-            ref="chatInputRef"
-            v-model="chatInput"
-            @input="autoResizeInput"
-            @keydown="handleEnter"
-            rows="1"
-            class="ai-composer__textarea"
-            :placeholder="$t('chapter.ask_placeholder')"
-          ></textarea>
-
-          <button
-            v-if="!chatStore.streaming || chatInput.trim()"
-            type="submit"
-            class="send-button"
-            :class="{ 'send-button--active': !!chatInput.trim() }"
-            :disabled="!chatInput.trim() || isSubmitting"
-            :aria-label="$t('chat.send')"
-          >
-            <svg viewBox="0 0 24 24" fill="currentColor">
-              <path d="M4 11h11.586l-5.293-5.293 1.414-1.414L20.414 12l-8.707 8.707-1.414-1.414L15.586 13H4v-2z" />
-            </svg>
-          </button>
-
-          <button
-            v-else
-            type="button"
-            class="send-button stop-button"
-            aria-label="Stop generating"
-            @click.prevent="chatStore.cancelAllStreams()"
-          >
-            <svg viewBox="0 0 24 24" fill="currentColor">
-              <rect x="7" y="7" width="10" height="10" rx="1.5" />
-            </svg>
-          </button>
         </div>
-      </form>
+
+        <!-- Scroll to bottom button -->
+        <button
+          v-show="showScrollButton"
+          @click="scrollToBottom"
+          class="absolute bottom-28 left-1/2 -translate-x-1/2 z-50 p-2 bg-(--rt-surface-2) border border-(--rt-border) rounded-full shadow-md text-(--rt-text-body) hover:text-(--rt-text) hover:bg-(--rt-surface) transition-all"
+          title="Scroll to bottom"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4">
+            <path d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+          </svg>
+        </button>
+
+        <!-- Feedback Toast -->
+        <div
+          v-if="feedbackToastMessage"
+          class="absolute bottom-32 left-1/2 -translate-x-1/2 z-50 px-3 py-1.5 bg-[#10b981] text-white text-xs font-medium rounded-full shadow-lg transition-opacity duration-300"
+        >
+          {{ feedbackToastMessage }}
+        </div>
+
+        <form class="ai-composer" @submit.prevent="sendMessage">
+          <div class="ai-composer__field">
+            <textarea
+              ref="chatInputRef"
+              v-model="chatInput"
+              @input="autoResizeInput"
+              @keydown="handleEnter"
+              rows="1"
+              class="ai-composer__textarea"
+              :placeholder="$t('chapter.ask_placeholder')"
+            ></textarea>
+
+            <button
+              v-if="!chatStore.streaming || chatInput.trim()"
+              type="submit"
+              class="send-button"
+              :class="{ 'send-button--active': !!chatInput.trim() }"
+              :disabled="!chatInput.trim() || isSubmitting"
+              :aria-label="$t('chat.send')"
+            >
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M4 11h11.586l-5.293-5.293 1.414-1.414L20.414 12l-8.707 8.707-1.414-1.414L15.586 13H4v-2z" />
+              </svg>
+            </button>
+
+            <button
+              v-else
+              type="button"
+              class="send-button stop-button"
+              aria-label="Stop generating"
+              @click.prevent="chatStore.cancelAllStreams()"
+            >
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <rect x="7" y="7" width="10" height="10" rx="1.5" />
+              </svg>
+            </button>
+          </div>
+        </form>
+      </template>
     </aside>
 
       </div> <!-- /workspace-content -->
     </div> <!-- /workspace -->
+
 
     <!-- =========================================================
          TEXT SELECTION ACTION
@@ -1869,8 +1917,8 @@ const handleTouchStart = (e: TouchEvent) => {
   }
 
   const target = e.target as HTMLElement | null
-  // Do not initiate gestures on interactive elements or inside the AI chat panel
-  if (target?.closest('input, textarea, button, select, a, [contenteditable="true"], .session-dropdown-menu, .theme-switcher, .session-options-btn, .ai-composer, .message-bubble, .message, .message-stack, .ai-messages')) {
+  // Do not initiate gestures on interactive elements
+  if (target?.closest('input, textarea, button, select, a, [contenteditable="true"], .session-dropdown-menu, .theme-switcher, .session-options-btn, .ai-composer')) {
     eligibleGesture = null
     return
   }
@@ -1879,24 +1927,33 @@ const handleTouchStart = (e: TouchEvent) => {
   touchStartX = touch.clientX
   touchStartY = touch.clientY
 
-  const EDGE_ZONE = 30 // px from screen edge
+  const EDGE_ZONE = 44 // px — wider edge zone for easier triggering
   const screenWidth = window.innerWidth
 
   if (isSidebarOpen.value) {
-    // When left sidebar is open, swiping left closes it
+    // Left sidebar open: swipe left anywhere to close it
     eligibleGesture = 'close-left'
   } else if (isAiSidebarOpen.value) {
-    // When right AI sidebar is open, only deliberate edge swipe closes it
-    if (touchStartX <= EDGE_ZONE) {
+    // AI sidebar open: swipe right anywhere to close it
+    // (but not from inside message thread — let that scroll normally)
+    if (!target?.closest('.ai-messages')) {
       eligibleGesture = 'close-right'
     } else {
       eligibleGesture = null
     }
   } else {
-    // Both sidebars closed: check edge zones
+    // Both sidebars closed:
+    // — Swipe right from left edge (or broadly left side) → open left sidebar
+    // — Swipe left from right edge (or broadly right side) → open AI sidebar
     if (touchStartX <= EDGE_ZONE) {
       eligibleGesture = 'open-left'
     } else if (touchStartX >= screenWidth - EDGE_ZONE) {
+      eligibleGesture = 'open-right'
+    } else if (touchStartX <= screenWidth * 0.35) {
+      // Allow swipe right from the left 35% of screen to open left sidebar
+      eligibleGesture = 'open-left'
+    } else if (touchStartX >= screenWidth * 0.65) {
+      // Allow swipe left from the right 35% of screen to open AI sidebar
       eligibleGesture = 'open-right'
     } else {
       eligibleGesture = null
@@ -6260,6 +6317,116 @@ watch(
     margin-top: auto;
     padding: 10px 12px calc(12px + env(safe-area-inset-bottom));
   }
+}
+
+/* ============================================================
+   MOBILE AI TOPBAR (ChatGPT-style)
+============================================================ */
+
+.mobile-ai-topbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--reader-border);
+  background: var(--reader-surface);
+}
+
+.mobile-ai-topbar__left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mobile-ai-topbar__right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.mobile-ai-model-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--reader-accent) 10%, transparent);
+  color: var(--reader-accent);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  cursor: default;
+  user-select: none;
+}
+
+.mobile-ai-icon-btn {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--reader-muted);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.mobile-ai-icon-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.mobile-ai-icon-btn:hover {
+  background: var(--reader-surface-2);
+  color: var(--reader-text);
+}
+
+/* ============================================================
+   AI EMPTY STATE (Welcome — greeting + composer centered)
+============================================================ */
+
+.ai-empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px calc(24px + env(safe-area-inset-bottom));
+  min-height: 0;
+}
+
+.ai-empty-state__center {
+  width: 100%;
+  max-width: 600px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.ai-empty-state__greeting {
+  font-size: clamp(1.4rem, 5vw, 2rem);
+  font-weight: 700;
+  color: var(--reader-text);
+  text-align: center;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.ai-empty-state .ai-composer--empty {
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  border-top: none;
+  background: transparent;
+}
+
+.ai-empty-state .ai-composer--empty .ai-composer__field {
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08);
 }
 
 .fade-greeting-enter-active,

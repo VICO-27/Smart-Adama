@@ -37,14 +37,40 @@ export const useBooksStore = defineStore('books', () => {
       return
     }
     loading.value = books.value.length === 0
+    let lastError: any = null
     try {
-      const payload = (await booksApi.list()) as any
-      const fetched = payload.books || payload.data?.books || payload.data || payload || []
-      books.value = fetched
-      try { localStorage.setItem(CACHED_BOOKS_KEY, JSON.stringify(fetched)) } catch (e) {}
-    } catch (error) {
-      console.error('Failed to load books:', error)
-      if (books.value.length === 0) books.value = []
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const payload = (await booksApi.list()) as any
+          const fetched = payload.books || payload.data?.books || payload.data || payload || []
+          if (fetched.length) {
+            books.value = fetched
+            try { localStorage.setItem(CACHED_BOOKS_KEY, JSON.stringify(fetched)) } catch (e) {}
+            return
+          }
+        } catch (error: any) {
+          lastError = error
+          console.warn(`Attempt ${attempt + 1} to load books failed:`, error?.message || error)
+          if (attempt < 2) {
+            await new Promise((res) => setTimeout(res, 1200 * (attempt + 1)))
+          }
+        }
+      }
+
+      // Fallback: If network failed, attempt to restore from localStorage
+      if (books.value.length === 0) {
+        try {
+          const rawBooks = localStorage.getItem(CACHED_BOOKS_KEY)
+          if (rawBooks) {
+            const parsed = JSON.parse(rawBooks)
+            if (Array.isArray(parsed) && parsed.length) {
+              books.value = parsed
+              return
+            }
+          }
+        } catch (e) {}
+        if (lastError) throw lastError
+      }
     } finally {
       loading.value = false
     }
@@ -75,22 +101,47 @@ export const useBooksStore = defineStore('books', () => {
       }
     }
 
+    let lastError: any = null
     try {
-      const payload = (await booksApi.getChapter(chapterId)) as any
-      const chapterData = payload.chapter || payload.data?.chapter || payload
-      const progressData = payload.progress || payload.data?.progress || null
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const payload = (await booksApi.getChapter(chapterId)) as any
+          const chapterData = payload.chapter || payload.data?.chapter || payload
+          const progressData = payload.progress || payload.data?.progress || null
 
-      currentChapter.value = chapterData
-      chapterProgress.value = progressData
-      chapterCache.set(chapterId, { chapter: chapterData, progress: progressData })
-      try {
-        localStorage.setItem(
-          `${CACHED_CHAPTER_PREFIX}${chapterId}`,
-          JSON.stringify({ chapter: chapterData, progress: progressData })
-        )
-      } catch (e) {}
-    } catch (error) {
-      console.error('Failed to load chapter:', error)
+          currentChapter.value = chapterData
+          chapterProgress.value = progressData
+          chapterCache.set(chapterId, { chapter: chapterData, progress: progressData })
+          try {
+            localStorage.setItem(
+              `${CACHED_CHAPTER_PREFIX}${chapterId}`,
+              JSON.stringify({ chapter: chapterData, progress: progressData })
+            )
+          } catch (e) {}
+          return
+        } catch (error: any) {
+          lastError = error
+          console.warn(`Attempt ${attempt + 1} to load chapter ${chapterId} failed:`, error?.message || error)
+          if (attempt < 2) {
+            await new Promise((res) => setTimeout(res, 1200 * (attempt + 1)))
+          }
+        }
+      }
+
+      // If all attempts failed, try reading from localStorage one more time
+      if (!currentChapter.value) {
+        try {
+          const raw = localStorage.getItem(`${CACHED_CHAPTER_PREFIX}${chapterId}`)
+          if (raw) {
+            const cached = JSON.parse(raw)
+            currentChapter.value = cached.chapter
+            chapterProgress.value = cached.progress
+            chapterCache.set(chapterId, cached)
+            return
+          }
+        } catch (e) {}
+        throw lastError || new Error('Failed to load chapter content')
+      }
     } finally {
       loading.value = false
     }

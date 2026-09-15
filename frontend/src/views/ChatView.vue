@@ -597,27 +597,6 @@
         {{ $t('chat.read_ai') }}
       </button>
 
-      <!-- Floating Mobile "Ask AI Tutor" pill button -->
-      <button
-        v-if="isMobile && !isAiSidebarOpen && !isSidebarOpen"
-        type="button"
-        class="floating-mobile-ai-btn"
-        aria-label="Open AI Tutor"
-        @click="openAiSidebar"
-      >
-        <span class="floating-ai-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="3" />
-            <circle cx="5.5" cy="7.5" r="1.05" />
-            <circle cx="18.5" cy="7.5" r="1.05" />
-            <circle cx="5.5" cy="16.5" r="1.05" />
-            <circle cx="18.5" cy="16.5" r="1.05" />
-            <path d="m9.5 10-3-1.6M14.5 10l3-1.6M9.5 14l-3 1.6M14.5 14l3 1.6" />
-          </svg>
-        </span>
-        <span class="floating-ai-label">{{ $t('chapter.ask_ai') }}</span>
-      </button>
-
       <header v-if="isMobile" class="reader-header">
         <div class="reader-header__left">
           <div class="mobile-header-left">
@@ -756,20 +735,15 @@
             <div class="mobile-header-bottom-row mobile-header-bottom-row--right">
               <button
                 type="button"
-                class="mobile-sidebar-toggle mobile-sidebar-toggle--ai"
+                class="mobile-sidebar-toggle"
                 aria-label="Open AI assistant"
                 title="Open AI assistant"
                 @click="openAiSidebar"
               >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <circle cx="12" cy="12" r="3" />
-                  <circle cx="5.5" cy="7.5" r="1.05" />
-                  <circle cx="18.5" cy="7.5" r="1.05" />
-                  <circle cx="5.5" cy="16.5" r="1.05" />
-                  <circle cx="18.5" cy="16.5" r="1.05" />
-                  <path d="m9.5 10-3-1.6M14.5 10l3-1.6M9.5 14l-3 1.6M14.5 14l3 1.6" />
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="m13 17-5-5 5-5" stroke-linecap="round" stroke-linejoin="round" />
+                  <path d="m18 17-5-5 5-5" stroke-linecap="round" stroke-linejoin="round" />
                 </svg>
-                <span>{{ $t('chapter.ask_ai') }}</span>
               </button>
             </div>
           </div>
@@ -889,6 +863,27 @@
                 </div>
               </template>
 
+              <template v-else-if="!booksStore.currentChapter">
+                <div class="reader-empty">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                  </svg>
+                  <h2>{{ booksStore.books.length === 0 ? 'Unable to load course materials' : 'Select a chapter' }}</h2>
+                  <p>{{ booksStore.books.length === 0 ? 'Could not connect to the course server. Please check your connection and tap below to retry.' : 'Please select a chapter from the course menu to start reading.' }}</p>
+                  <button type="button" class="reader-retry-btn" @click="retryLoadChapter">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4">
+                      <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                      <path d="M3 3v5h5" />
+                      <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
+                      <path d="M16 21h5v-5" />
+                    </svg>
+                    <span>{{ booksStore.books.length === 0 ? 'Reload Course' : 'Open First Chapter' }}</span>
+                  </button>
+                </div>
+              </template>
+
               <template v-else>
                 <div v-if="currentPageData && currentPageData.sections.length > 1" class="section-chips">
                   <button
@@ -931,7 +926,7 @@
                 </div>
               </template>
 
-              <template v-if="currentPage === totalPages && booksStore.currentChapter?.title !== 'Introduction & Preface'">
+              <template v-if="booksStore.currentChapter && currentPageData && currentPage === totalPages && booksStore.currentChapter?.title !== 'Introduction & Preface'">
                 <div class="mt-16 mb-8 p-8 bg-[var(--rt-surface-2)] border border-[var(--rt-border)] rounded-2xl flex flex-col items-center justify-center text-center shadow-sm">
                   <div class="w-16 h-16 bg-[var(--rt-surface)] border border-[var(--rt-border)] rounded-full flex items-center justify-center shadow-sm mb-4">
                     <span class="text-3xl">🎉</span>
@@ -2319,16 +2314,22 @@ const retryLoadChapter = async () => {
   chapterLoadError.value = null
   isChapterLoading.value = true
   try {
-    const savedChapterId = localStorage.getItem(LAST_CHAPTER_KEY)
-    if (savedChapterId) {
-      await booksStore.loadChapter(savedChapterId)
-    } else {
-      await booksStore.loadBooks()
-      const chapters = allSortedChapters.value
-      if (chapters.length) {
-        const defaultChapter = chapters.find((c: any) => c.title?.includes('Ch-1') || c.title?.includes('Chapter 1')) || chapters[1] || chapters[0]
-        await booksStore.loadChapter(defaultChapter.id)
+    if (!booksStore.books?.length) {
+      await booksStore.loadBooks(true)
+    }
+    const chapters = allSortedChapters.value
+    if (chapters.length) {
+      const savedChapterId = localStorage.getItem(LAST_CHAPTER_KEY)
+      const targetChapter =
+        (savedChapterId && chapters.find((c: any) => c.id === savedChapterId)) ||
+        chapters.find((c: any) => c.title?.includes('Ch-1') || c.title?.includes('Chapter 1')) ||
+        chapters[1] ||
+        chapters[0]
+      if (targetChapter) {
+        await loadBookChapter(targetChapter.id)
       }
+    } else {
+      chapterLoadError.value = 'No chapters found. Please check your connection and try again.'
     }
   } catch (err: any) {
     chapterLoadError.value = err?.message || 'Failed to reload chapter. Please check your network connection.'
@@ -2621,6 +2622,7 @@ watch(
     if (!newId) return
 
     localStorage.setItem(LAST_CHAPTER_KEY, newId)
+    expandedChapters.value[newId] = true
 
     const savedPage = getReadPosition(newId)
     currentPage.value = savedPage ?? 1
@@ -3404,8 +3406,10 @@ const loadBookChapter = async (chapterId: string) => {
   } finally {
     isChapterLoading.value = false
   }
-  currentPage.value = 1
-  jumpPageInput.value = '1'
+
+  const savedPage = getReadPosition(chapterId)
+  currentPage.value = savedPage ?? 1
+  jumpPageInput.value = String(currentPage.value)
 
   isReaderOpen.value = true
   isAiSidebarOpen.value = false
@@ -3414,6 +3418,25 @@ const loadBookChapter = async (chapterId: string) => {
     isSidebarOpen.value = false
   }
 }
+
+// Automatically load chapter as soon as chapters are available if none is currently selected
+watch(
+  allSortedChapters,
+  async (chapters) => {
+    if (chapters.length && !booksStore.currentChapter && !isChapterLoading.value) {
+      const savedChapterId = localStorage.getItem(LAST_CHAPTER_KEY)
+      const targetChapter =
+        (savedChapterId && chapters.find((c: any) => c.id === savedChapterId)) ||
+        chapters.find((c: any) => c.title?.includes('Ch-1') || c.title?.includes('Chapter 1')) ||
+        chapters[1] ||
+        chapters[0]
+      if (targetChapter) {
+        await loadBookChapter(targetChapter.id)
+      }
+    }
+  },
+  { immediate: true },
+)
 
 const toggleFeedback = async (
   message: any,
@@ -3526,15 +3549,7 @@ onMounted(async () => {
     const chapters = allSortedChapters.value
     if (chapters.length) {
       const defaultChapter = chapters.find((c: any) => c.title?.includes('Ch-1') || c.title?.includes('Chapter 1')) || chapters[1] || chapters[0]
-      try {
-        isChapterLoading.value = true
-        await booksStore.loadChapter(defaultChapter.id)
-      } catch (err: any) {
-        chapterLoadError.value = err?.message || 'Failed to load chapter content'
-        console.error('Failed to load default chapter:', err)
-      } finally {
-        isChapterLoading.value = false
-      }
+      await loadBookChapter(defaultChapter.id)
     }
   }
 
@@ -7100,41 +7115,6 @@ watch(
 .mobile-sidebar-toggle svg {
   width: 16px;
   height: 16px;
-}
-
-.mobile-sidebar-toggle--ai {
-  color: var(--rt-accent, #3b82f6);
-  border-color: color-mix(in srgb, var(--rt-accent, #3b82f6) 30%, transparent);
-}
-
-.floating-mobile-ai-btn {
-  position: fixed;
-  bottom: calc(20px + env(safe-area-inset-bottom));
-  right: 16px;
-  z-index: 45;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 18px 10px 14px;
-  background: var(--rt-accent, #3b82f6);
-  color: #ffffff;
-  border: none;
-  border-radius: 9999px;
-  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.4), 0 2px 8px rgba(0, 0, 0, 0.12);
-  font-size: 0.875rem;
-  font-weight: 700;
-  cursor: pointer;
-  touch-action: manipulation;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.floating-mobile-ai-btn:active {
-  transform: scale(0.95);
-}
-
-.floating-ai-icon svg {
-  width: 18px;
-  height: 18px;
 }
 
 /* ============================================================

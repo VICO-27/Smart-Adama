@@ -22,7 +22,7 @@
           <router-link to="/study">{{ $t('landing.footer.study') }}</router-link>
           <router-link to="/game">{{ $t('landing.footer.game') }}</router-link>
           <router-link to="/language">{{ $t('landing.footer.language') }}</router-link>
-          <a href="/books/SA-Book.pdf" target="_blank" rel="noopener noreferrer">
+          <a href="https://giknfkibnyzrlegxraio.supabase.co/storage/v1/object/public/books/SA-Book.pdf" target="_blank" rel="noopener noreferrer">
             {{ $t('landing.footer.download') }}
           </a>
         </div>

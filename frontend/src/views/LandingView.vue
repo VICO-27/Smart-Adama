@@ -1340,7 +1340,7 @@ function handleStudyAI() {
 
 
 function handleDownloadBook() {
-  window.open('/books/SA-Book.pdf', '_blank')
+  window.open('https://giknfkibnyzrlegxraio.supabase.co/storage/v1/object/public/books/SA-Book.pdf', '_blank')
 }
 
 

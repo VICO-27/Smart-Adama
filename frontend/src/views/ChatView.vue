@@ -2033,7 +2033,7 @@ const readerContainerRef = ref<HTMLElement | null>(null)
 const scrollAreaRef = ref<HTMLElement | null>(null)
 let readerDragCenter = 0
 
-const LOCAL_BOOK_FALLBACK_URL = '/books/SA-Book.pdf'
+const LOCAL_BOOK_FALLBACK_URL = 'https://giknfkibnyzrlegxraio.supabase.co/storage/v1/object/public/books/SA-Book.pdf'
 
 const ZOOM_STEPS = [50, 60, 75, 80, 90, 100, 110, 125, 150, 175, 200, 234, 250, 300, 400]
 

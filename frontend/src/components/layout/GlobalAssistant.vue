@@ -415,6 +415,10 @@
         @keydown.space.prevent="toggleAssistant"
       >
         <span class="toggle-halo" aria-hidden="true"></span>
+        
+        <Transition name="ai-label">
+          <span v-if="aiLabelVisible" class="toggle-ai-label" aria-hidden="true">Smart AI</span>
+        </Transition>
 
         <span class="toggle-icon" aria-hidden="true">
           <svg
@@ -502,6 +506,20 @@ const isThinking = ref(false)
 const userInput = ref('')
 const messages = ref<Message[]>([])
 const copiedMessageIndex = ref<number | null>(null)
+
+// ── AI Label pulse (shows "Smart AI" on load then every 30s) ─────────────
+const aiLabelVisible = ref(false)
+let aiLabelInterval: ReturnType<typeof setInterval> | null = null
+
+function startAiLabelPulse() {
+  aiLabelVisible.value = true
+  setTimeout(() => { aiLabelVisible.value = false }, 3000)
+
+  aiLabelInterval = setInterval(() => {
+    aiLabelVisible.value = true
+    setTimeout(() => { aiLabelVisible.value = false }, 3000)
+  }, 30000)
+}
 
 const panelRef = ref<HTMLElement | null>(null)
 const inputRef = ref<HTMLTextAreaElement | null>(null)
@@ -1316,6 +1334,8 @@ onMounted(() => {
     'keydown',
     handleEscape,
   )
+
+  setTimeout(startAiLabelPulse, 1500)
 })
 
 
@@ -1329,6 +1349,11 @@ onUnmounted(() => {
     'keydown',
     handleEscape,
   )
+
+  if (aiLabelInterval) {
+    clearInterval(aiLabelInterval)
+    aiLabelInterval = null
+  }
 })
 </script>
 
@@ -2489,22 +2514,66 @@ onUnmounted(() => {
 
 .toggle-halo {
   position: absolute;
-  inset: -1px;
-  border: 1px solid var(--assistant-brand);
-  border-radius: 18px;
-  animation: assistant-pulse 2.8s ease-out infinite;
+  inset: -3px; /* slight overflow for glow */
+  border-radius: 20px; /* match button border-radius + inset */
+  background: conic-gradient(
+    from 0deg,
+    #4285f4, #9b72cb, #ea4335, #fbbc04, #34a853, #4285f4
+  );
+  animation: ai-ring-spin 3s linear infinite;
+  filter: blur(1px);
+  opacity: 0.85;
+  pointer-events: none;
+  z-index: -2;
+}
+
+@keyframes ai-ring-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* "Smart AI" label pill — pops out top of button */
+.toggle-ai-label {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  white-space: nowrap;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #4285f4 0%, #9b72cb 50%, #ea4335 100%);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  box-shadow: 0 4px 16px rgba(66, 133, 244, 0.45);
   pointer-events: none;
 }
 
-@keyframes assistant-pulse {
-  0% {
-    transform: scale(1);
-    opacity: 0.42;
-  }
-  70%, 100% {
-    transform: scale(1.16);
-    opacity: 0;
-  }
+.toggle-ai-label::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: #9b72cb;
+}
+
+.ai-label-enter-active {
+  transition: opacity 0.35s ease, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.ai-label-leave-active {
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.ai-label-enter-from {
+  opacity: 0;
+  transform: translateX(-50%) translateY(10px) scale(0.8);
+}
+.ai-label-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(6px) scale(0.9);
 }
 
 .toggle-tooltip {

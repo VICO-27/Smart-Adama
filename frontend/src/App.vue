@@ -25,9 +25,16 @@ import GlobalAssistant from '@/components/layout/GlobalAssistant.vue'
 import AuthModal from '@/components/auth/AuthModal.vue'
 import ErrorBoundary from '@/components/ErrorBoundary.vue'
 import GlobalConfirmModal from '@/components/ui/GlobalConfirmModal.vue'
+import { useTheme } from '@/composables/useTheme'
+import { onMounted } from 'vue'
 
 const authStore = useAuthStore()
 const route = useRoute()
+const { initializeTheme } = useTheme()
+
+onMounted(() => {
+  initializeTheme()
+})
 </script>
 
 <style>

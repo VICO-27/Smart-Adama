@@ -33,7 +33,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
     <title>Smart Adama</title>
   <script>
-  if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+  // Default to light mode unless explicitly set to dark or system(with dark os)
+  const saTheme = localStorage.getItem('sa_theme') || localStorage.getItem('theme');
+  if (saTheme === 'dark' || (saTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
     document.documentElement.classList.add('dark');
   } else {
     document.documentElement.classList.remove('dark');

@@ -1504,10 +1504,8 @@ onUnmounted(() => {
 .assistant-panel--mobile {
   left: 10px;
   right: 10px;
-  top: max(10px, env(safe-area-inset-top));
   bottom: max(10px, env(safe-area-inset-bottom));
-  height: calc(100dvh - 20px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
-  max-height: calc(100dvh - 20px);
+  max-height: calc(100dvh - 20px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
   transform: none;
   width: auto;
   border-radius: 24px;

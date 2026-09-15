@@ -26,31 +26,26 @@ function isPrivateLan(host: string): boolean {
  */
 export function getBackendUrls() {
   const envUrl = (import.meta.env.VITE_API_BASE_URL || '').trim().replace(/\/+$/, '')
-  // Default to production Render backend if in production or loaded over HTTPS without env override
   const isHttps = typeof window !== 'undefined' && window.location?.protocol === 'https:'
-  const defaultRoot = (import.meta.env.PROD || isHttps)
+  const isProd = Boolean(import.meta.env.PROD)
+  const isLocalhostEnv = !envUrl || envUrl.includes('localhost') || envUrl.includes('127.0.0.1')
+
+  // If in production or accessed over HTTPS, never attempt to call localhost (which fails on mobile or is blocked as mixed content)
+  let serverRoot = (isHttps || isProd) && isLocalhostEnv
     ? 'https://smart-adama-api.onrender.com'
-    : 'http://localhost:8000'
+    : (envUrl ? envUrl.replace(/\/api\/v1$/, '') : (isProd || isHttps ? 'https://smart-adama-api.onrender.com' : 'http://localhost:8000'))
 
-  let serverRoot = envUrl ? envUrl.replace(/\/api\/v1$/, '') : defaultRoot
-
-  // If accessed from a mobile phone or client on LAN (e.g. 192.168.x.x),
+  // If accessed from a mobile phone on LAN (e.g. 192.168.x.x) during local dev (HTTP),
   // dynamically substitute localhost / 127.0.0.1 with the current host IP
   // so mobile devices reach the dev server instead of their own loopback.
-  if (typeof window !== 'undefined' && window.location?.hostname) {
+  if (!isHttps && !isProd && typeof window !== 'undefined' && window.location?.hostname) {
     const host = window.location.hostname
     if (isPrivateLan(host)) {
       serverRoot = serverRoot.replace(/localhost|127\.0\.0\.1/g, host)
     }
   }
 
-  let apiBase = envUrl.endsWith('/api/v1') ? envUrl : `${serverRoot}/api/v1`
-  if (typeof window !== 'undefined' && window.location?.hostname) {
-    const host = window.location.hostname
-    if (isPrivateLan(host)) {
-      apiBase = apiBase.replace(/localhost|127\.0\.0\.1/g, host)
-    }
-  }
+  const apiBase = `${serverRoot}/api/v1`
 
   return { serverRoot, apiBase }
 }

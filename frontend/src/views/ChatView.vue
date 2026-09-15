@@ -597,6 +597,27 @@
         {{ $t('chat.read_ai') }}
       </button>
 
+      <!-- Floating Mobile "Ask AI Tutor" pill button -->
+      <button
+        v-if="isMobile && !isAiSidebarOpen && !isSidebarOpen"
+        type="button"
+        class="floating-mobile-ai-btn"
+        aria-label="Open AI Tutor"
+        @click="openAiSidebar"
+      >
+        <span class="floating-ai-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3" />
+            <circle cx="5.5" cy="7.5" r="1.05" />
+            <circle cx="18.5" cy="7.5" r="1.05" />
+            <circle cx="5.5" cy="16.5" r="1.05" />
+            <circle cx="18.5" cy="16.5" r="1.05" />
+            <path d="m9.5 10-3-1.6M14.5 10l3-1.6M9.5 14l-3 1.6M14.5 14l3 1.6" />
+          </svg>
+        </span>
+        <span class="floating-ai-label">{{ $t('chapter.ask_ai') }}</span>
+      </button>
+
       <header v-if="isMobile" class="reader-header">
         <div class="reader-header__left">
           <div class="mobile-header-left">
@@ -740,10 +761,15 @@
                 title="Open AI assistant"
                 @click="openAiSidebar"
               >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <path d="m13 17-5-5 5-5" stroke-linecap="round" stroke-linejoin="round" />
-                  <path d="m18 17-5-5 5-5" stroke-linecap="round" stroke-linejoin="round" />
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="3" />
+                  <circle cx="5.5" cy="7.5" r="1.05" />
+                  <circle cx="18.5" cy="7.5" r="1.05" />
+                  <circle cx="5.5" cy="16.5" r="1.05" />
+                  <circle cx="18.5" cy="16.5" r="1.05" />
+                  <path d="m9.5 10-3-1.6M14.5 10l3-1.6M9.5 14l-3 1.6M14.5 14l3 1.6" />
                 </svg>
+                <span>{{ $t('chapter.ask_ai') }}</span>
               </button>
             </div>
           </div>
@@ -810,6 +836,57 @@
                   :current-page="currentPage"
                   @go-to-chapter="handleTocClick"
                 />
+              </template>
+
+              <template v-else-if="(booksStore.loading || isChapterLoading) && !currentPageData">
+                <div class="reader-skeleton" aria-busy="true" aria-live="polite">
+                  <div class="skeleton-header">
+                    <div class="skeleton-line skeleton-meta"></div>
+                    <div class="skeleton-line skeleton-title"></div>
+                    <div class="skeleton-divider"></div>
+                  </div>
+                  <div class="skeleton-body">
+                    <div class="skeleton-line skeleton-h2"></div>
+                    <div class="skeleton-line skeleton-p"></div>
+                    <div class="skeleton-line skeleton-p"></div>
+                    <div class="skeleton-line skeleton-p" style="width: 85%;"></div>
+                    <div class="skeleton-line skeleton-p" style="width: 65%;"></div>
+                    <div class="skeleton-line skeleton-h2" style="margin-top: 2rem;"></div>
+                    <div class="skeleton-line skeleton-p"></div>
+                    <div class="skeleton-line skeleton-p" style="width: 90%;"></div>
+                    <div class="skeleton-line skeleton-p" style="width: 70%;"></div>
+                  </div>
+                  <div class="reader-loading-label">
+                    <svg class="animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10" stroke-opacity="0.25" />
+                      <path d="M12 2a10 10 0 0 1 10 10" />
+                    </svg>
+                    <span>{{ $t('chat.loading_chapter') || 'Loading chapter content...' }}</span>
+                  </div>
+                </div>
+              </template>
+
+              <template v-else-if="chapterLoadError && !currentPageData">
+                <div class="reader-error">
+                  <div class="reader-error__icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10" />
+                      <line x1="12" y1="8" x2="12" y2="12" />
+                      <line x1="12" y1="16" x2="12.01" y2="16" />
+                    </svg>
+                  </div>
+                  <h2>Unable to load chapter content</h2>
+                  <p>{{ chapterLoadError }}</p>
+                  <button type="button" class="reader-retry-btn" @click="retryLoadChapter">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4">
+                      <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                      <path d="M3 3v5h5" />
+                      <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
+                      <path d="M16 21h5v-5" />
+                    </svg>
+                    <span>Try Again</span>
+                  </button>
+                </div>
               </template>
 
               <template v-else>
@@ -1681,7 +1758,7 @@ onErrorCaptured((err: unknown) => {
 const isSidebarOpen = ref(false)
 const isAiSidebarOpen = ref(false)
 const storedReaderState = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('smart_adama_reader_open') : null
-const isReaderOpen = ref(storedReaderState !== null ? storedReaderState === 'true' : true)
+const isReaderOpen = ref(typeof window !== 'undefined' && window.innerWidth < 1024 ? true : (storedReaderState !== null ? storedReaderState === 'true' : true))
 
 const saveReaderState = () => {
   if (typeof sessionStorage !== 'undefined') {
@@ -1759,6 +1836,7 @@ const closeMobilePanels = () => {
   if (!isMobile.value) return
   isSidebarOpen.value = false
   isAiSidebarOpen.value = false
+  isReaderOpen.value = true
 }
 
 const openSidebar = () => {
@@ -1796,8 +1874,8 @@ const handleTouchStart = (e: TouchEvent) => {
   }
 
   const target = e.target as HTMLElement | null
-  // Do not initiate gestures on interactive elements
-  if (target?.closest('input, textarea, button, select, a, [contenteditable="true"], .session-dropdown-menu, .theme-switcher, .session-options-btn')) {
+  // Do not initiate gestures on interactive elements or inside the AI chat panel
+  if (target?.closest('input, textarea, button, select, a, [contenteditable="true"], .session-dropdown-menu, .theme-switcher, .session-options-btn, .ai-composer, .message-bubble, .message, .message-stack, .ai-messages')) {
     eligibleGesture = null
     return
   }
@@ -1813,8 +1891,12 @@ const handleTouchStart = (e: TouchEvent) => {
     // When left sidebar is open, swiping left closes it
     eligibleGesture = 'close-left'
   } else if (isAiSidebarOpen.value) {
-    // When right sidebar is open, swiping right closes it
-    eligibleGesture = 'close-right'
+    // When right AI sidebar is open, only deliberate edge swipe closes it
+    if (touchStartX <= EDGE_ZONE) {
+      eligibleGesture = 'close-right'
+    } else {
+      eligibleGesture = null
+    }
   } else {
     // Both sidebars closed: check edge zones
     if (touchStartX <= EDGE_ZONE) {
@@ -2229,6 +2311,31 @@ const scrollToSection = (sectionId: string) => {
 
 const READ_POSITION_KEY = 'smart-adama-read-position'
 const LAST_CHAPTER_KEY = 'smart-adama-last-chapter'
+
+const isChapterLoading = ref(false)
+const chapterLoadError = ref<string | null>(null)
+
+const retryLoadChapter = async () => {
+  chapterLoadError.value = null
+  isChapterLoading.value = true
+  try {
+    const savedChapterId = localStorage.getItem(LAST_CHAPTER_KEY)
+    if (savedChapterId) {
+      await booksStore.loadChapter(savedChapterId)
+    } else {
+      await booksStore.loadBooks()
+      const chapters = allSortedChapters.value
+      if (chapters.length) {
+        const defaultChapter = chapters.find((c: any) => c.title?.includes('Ch-1') || c.title?.includes('Chapter 1')) || chapters[1] || chapters[0]
+        await booksStore.loadChapter(defaultChapter.id)
+      }
+    }
+  } catch (err: any) {
+    chapterLoadError.value = err?.message || 'Failed to reload chapter. Please check your network connection.'
+  } finally {
+    isChapterLoading.value = false
+  }
+}
 
 const saveReadPosition = (chapterId: string, page: number) => {
   try {
@@ -3219,7 +3326,7 @@ const reloadPage = () => {
 
 const startNewChat = async () => {
   activeSidebarTab.value = 'chats'
-  isReaderOpen.value = false
+  isReaderOpen.value = true
   isAiSidebarOpen.value = true
   pickDynamicGreeting()
   await chatStore.createSession()
@@ -3232,7 +3339,7 @@ const startNewChat = async () => {
 
     saveReaderState()
 
-    router.push({
+    router.replace({
       name: 'study',
       params: { sessionId: chatStore.currentSession.id },
     })
@@ -3255,7 +3362,11 @@ const toggleSplitScreen = () => {
 const startNewChatAndOpen = async () => {
   await startNewChat()
   isAiSidebarOpen.value = true
-  isReaderOpen.value = false
+  if (!isMobile.value) {
+    isReaderOpen.value = false
+  } else {
+    isReaderOpen.value = true
+  }
 }
 
 const switchSession = async (sessionId: string) => {
@@ -3266,23 +3377,33 @@ const switchSession = async (sessionId: string) => {
     localStorage.setItem(`smart_adama_chat_session_${booksStore.currentChapter.id}`, sessionId)
   }
 
+  isAiSidebarOpen.value = true
+  if (isMobile.value) {
+    isSidebarOpen.value = false
+    isReaderOpen.value = true
+  } else {
+    isReaderOpen.value = false
+  }
+
   saveReaderState()
 
-  router.push({
+  router.replace({
     name: 'study',
     params: { sessionId },
   })
-
-  isAiSidebarOpen.value = true
-  isReaderOpen.value = false
-
-  if (isMobile.value) {
-    isSidebarOpen.value = false
-  }
 }
 
 const loadBookChapter = async (chapterId: string) => {
-  await booksStore.loadChapter(chapterId)
+  chapterLoadError.value = null
+  isChapterLoading.value = true
+  try {
+    await booksStore.loadChapter(chapterId)
+  } catch (err: any) {
+    chapterLoadError.value = err?.message || 'Failed to load chapter content.'
+    console.error('Failed to load chapter:', err)
+  } finally {
+    isChapterLoading.value = false
+  }
   currentPage.value = 1
   jumpPageInput.value = '1'
 
@@ -3405,9 +3526,13 @@ onMounted(async () => {
     if (chapters.length) {
       const defaultChapter = chapters.find((c: any) => c.title?.includes('Ch-1') || c.title?.includes('Chapter 1')) || chapters[1] || chapters[0]
       try {
+        isChapterLoading.value = true
         await booksStore.loadChapter(defaultChapter.id)
-      } catch (err) {
+      } catch (err: any) {
+        chapterLoadError.value = err?.message || 'Failed to load chapter content'
         console.error('Failed to load default chapter:', err)
+      } finally {
+        isChapterLoading.value = false
       }
     }
   }
@@ -3460,6 +3585,9 @@ watch(
     if (newSessionId !== oldSessionId) {
       pickDynamicGreeting()
       if (newSessionId) {
+        if (chatStore.currentSession?.id === newSessionId) {
+          return
+        }
         try {
           await chatStore.loadSession(newSessionId as string)
         } catch (e) {
@@ -3671,10 +3799,15 @@ watch(
 
 .side-panel--left.side-panel--mobile {
   left: 0;
+  z-index: 50;
 }
 
 .side-panel--right.side-panel--mobile {
   right: 0;
+  z-index: 50;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
 }
 
 .side-panel__header {
@@ -5670,6 +5803,144 @@ watch(
   opacity: 0.8;
 }
 
+/* ============================================================
+   READER SKELETON & ERROR STATES
+============================================================ */
+
+.reader-skeleton {
+  min-height: 480px;
+  padding: 1.5rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.skeleton-header {
+  margin-bottom: 1.5rem;
+}
+
+.skeleton-line {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--reader-border) 40%, transparent) 0%,
+    color-mix(in srgb, var(--reader-border) 85%, transparent) 50%,
+    color-mix(in srgb, var(--reader-border) 40%, transparent) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.8s infinite ease-in-out;
+  border-radius: 6px;
+}
+
+@keyframes skeletonShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.skeleton-meta {
+  width: 140px;
+  height: 14px;
+  margin-bottom: 0.75rem;
+}
+
+.skeleton-title {
+  width: 65%;
+  height: 28px;
+  margin-bottom: 1rem;
+}
+
+.skeleton-divider {
+  width: 100%;
+  height: 1px;
+  background: var(--reader-border);
+  opacity: 0.5;
+  margin-top: 1rem;
+}
+
+.skeleton-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.skeleton-h2 {
+  width: 45%;
+  height: 22px;
+  margin-bottom: 0.5rem;
+}
+
+.skeleton-p {
+  width: 100%;
+  height: 16px;
+}
+
+.reader-loading-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+  color: var(--reader-muted);
+  font-size: 0.85rem;
+}
+
+.reader-loading-label svg {
+  width: 18px;
+  height: 18px;
+  color: var(--reader-accent);
+}
+
+.reader-error {
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2rem 1rem;
+  color: var(--reader-muted);
+}
+
+.reader-error__icon svg {
+  width: 44px;
+  height: 44px;
+  color: #ef4444;
+  margin-bottom: 1rem;
+}
+
+.reader-error h2 {
+  margin: 0;
+  color: var(--reader-text);
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.reader-error p {
+  max-width: 400px;
+  margin: 0.5rem 0 1.25rem;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.reader-retry-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.25rem;
+  border-radius: 10px;
+  background: var(--reader-accent, #395886);
+  color: #ffffff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(57, 88, 134, 0.25);
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.reader-retry-btn:hover {
+  opacity: 0.92;
+  transform: translateY(-1px);
+}
+
 .reader-empty {
   min-height: 420px;
   display: flex;
@@ -5953,6 +6224,19 @@ watch(
   margin-left: auto;
   margin-right: auto;
   padding: 0 20px 24px 20px;
+}
+
+@media (max-width: 1023px) {
+  .side-panel--mobile.chat-is-empty .ai-messages {
+    flex: 1 1 auto;
+    margin-top: 0;
+    overflow-y: auto;
+  }
+  .side-panel--mobile.chat-is-empty .ai-composer {
+    margin-bottom: 0;
+    margin-top: auto;
+    padding: 10px 12px calc(12px + env(safe-area-inset-bottom));
+  }
 }
 
 .fade-greeting-enter-active,
@@ -6691,6 +6975,19 @@ watch(
     padding-top: 100px !important; /* Space so text isn't hidden under floating header initially */
     padding-bottom: 32px !important;
   }
+
+  .side-panel--right.side-panel--mobile {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    left: 0 !important;
+    right: 0 !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    height: 100% !important;
+    max-height: 100dvh !important;
+    z-index: 60 !important;
+    background: var(--reader-surface-2) !important;
+  }
 }
 
 /* ============================================================
@@ -6787,6 +7084,7 @@ watch(
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 6px;
   color: var(--rt-muted);
   background: var(--rt-surface, var(--sa-surface));
   border: 1px solid var(--rt-border, var(--sa-border));
@@ -6794,11 +7092,48 @@ watch(
   border-radius: 12px;
   padding: 8px 12px;
   pointer-events: auto;
+  font-size: 0.8rem;
+  font-weight: 700;
 }
 
 .mobile-sidebar-toggle svg {
   width: 16px;
   height: 16px;
+}
+
+.mobile-sidebar-toggle--ai {
+  color: var(--rt-accent, #3b82f6);
+  border-color: color-mix(in srgb, var(--rt-accent, #3b82f6) 30%, transparent);
+}
+
+.floating-mobile-ai-btn {
+  position: fixed;
+  bottom: calc(20px + env(safe-area-inset-bottom));
+  right: 16px;
+  z-index: 45;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px 10px 14px;
+  background: var(--rt-accent, #3b82f6);
+  color: #ffffff;
+  border: none;
+  border-radius: 9999px;
+  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.4), 0 2px 8px rgba(0, 0, 0, 0.12);
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.floating-mobile-ai-btn:active {
+  transform: scale(0.95);
+}
+
+.floating-ai-icon svg {
+  width: 18px;
+  height: 18px;
 }
 
 /* ============================================================

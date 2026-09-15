@@ -391,10 +391,11 @@
         aria-label="Toggle Smart Adama Assistant"
         :aria-expanded="isOpen"
         draggable="false"
-        @pointerdown.stop.prevent="onPointerDown"
-        @pointermove.stop.prevent="onPointerMove"
-        @pointerup.stop.prevent="onPointerUp"
-        @pointercancel.stop.prevent="onPointerUp"
+        @pointerdown.stop="onPointerDown"
+        @pointermove.stop="onPointerMove"
+        @pointerup.stop="onPointerUp"
+        @pointercancel.stop="onPointerUp"
+        @click.stop="handleToggleClick"
         @keydown.enter.prevent="toggleAssistant"
         @keydown.space.prevent="toggleAssistant"
       >
@@ -553,6 +554,9 @@ const pos = ref({
 const isDragging = ref(false)
 
 let hasMoved = false
+let wasDragging = false
+let pointerStartTime = 0
+let lastToggledTime = 0
 let startPoint = {
   x: 0,
   y: 0,
@@ -756,8 +760,22 @@ const goBack = () => {
 }
 
 
+const handleToggleClick = () => {
+  if (wasDragging) {
+    wasDragging = false
+    return
+  }
+  toggleAssistant()
+}
+
 const toggleAssistant = () => {
-  if (isDragging.value) {
+  const now = Date.now()
+  if (now - lastToggledTime < 300) {
+    return
+  }
+  lastToggledTime = now
+
+  if (isDragging.value || wasDragging) {
     return
   }
 
@@ -803,7 +821,13 @@ const clampTogglePosition = (
 const onPointerDown = (
   event: PointerEvent,
 ) => {
+  if (event.pointerType === 'mouse' && event.button !== 0) {
+    return
+  }
+
   hasMoved = false
+  wasDragging = false
+  pointerStartTime = Date.now()
 
   startPoint = {
     x: event.clientX,
@@ -818,16 +842,18 @@ const onPointerDown = (
   const target =
     event.currentTarget as HTMLElement
 
-  target.setPointerCapture(
-    event.pointerId,
-  )
+  try {
+    target.setPointerCapture(
+      event.pointerId,
+    )
+  } catch {}
 }
 
 
 const onPointerMove = (
   event: PointerEvent,
 ) => {
-  if (!event.buttons) {
+  if (event.pointerType === 'mouse' && !event.buttons) {
     return
   }
 
@@ -837,12 +863,17 @@ const onPointerMove = (
   const dy =
     event.clientY - startPoint.y
 
+  const dist = Math.hypot(dx, dy)
+  // Use higher threshold on touch (16px) because fingers naturally wobble when tapping
+  const dragThreshold = event.pointerType === 'touch' ? 16 : 8
+
   if (
-    Math.abs(dx) > 3 ||
-    Math.abs(dy) > 3
+    !hasMoved &&
+    dist > dragThreshold
   ) {
     hasMoved = true
     isDragging.value = true
+    wasDragging = true
   }
 
   if (!hasMoved) {
@@ -864,15 +895,24 @@ const onPointerUp = (
   const target =
     event.currentTarget as HTMLElement
 
-  if (
-    target.hasPointerCapture(
-      event.pointerId,
-    )
-  ) {
-    target.releasePointerCapture(
-      event.pointerId,
-    )
-  }
+  try {
+    if (
+      target.hasPointerCapture(
+        event.pointerId,
+      )
+    ) {
+      target.releasePointerCapture(
+        event.pointerId,
+      )
+    }
+  } catch {}
+
+  const elapsed = Date.now() - pointerStartTime
+  const dx = event.clientX - startPoint.x
+  const dy = event.clientY - startPoint.y
+  const dist = Math.hypot(dx, dy)
+  const dragThreshold = event.pointerType === 'touch' ? 16 : 8
+  const isTap = !hasMoved && dist < dragThreshold && elapsed < 400
 
   isDragging.value = false
 
@@ -884,11 +924,19 @@ const onPointerUp = (
           ? 16
           : windowWidth.value - 80
     }
+    window.setTimeout(() => {
+      wasDragging = false
+    }, 150)
   } else {
-    toggleAssistant()
+    wasDragging = false
   }
 
   hasMoved = false
+
+  // For touch devices, reliably open immediately on tap rather than waiting for synthetic click
+  if (isTap && event.pointerType === 'touch') {
+    toggleAssistant()
+  }
 }
 
 
@@ -1124,11 +1172,13 @@ const copyMessage = async (
 }
 
 const handleClickOutside = (event: MouseEvent) => {
-  if (!isOpen.value || isDragging.value) return
+  if (!isOpen.value || isDragging.value || Date.now() - lastToggledTime < 350) return
 
   const path = event.composedPath()
   const clickedInsidePanel = panelRef.value && path.includes(panelRef.value)
-  const clickedToggleButton = toggleButtonRef.value && path.includes(toggleButtonRef.value)
+  const clickedToggleButton =
+    (toggleButtonRef.value && path.includes(toggleButtonRef.value)) ||
+    path.some((el) => (el as HTMLElement)?.classList?.contains('assistant-toggle'))
 
   if (!clickedInsidePanel && !clickedToggleButton) {
     isOpen.value = false
@@ -1350,15 +1400,17 @@ onUnmounted(() => {
 .assistant-panel--mobile {
   left: 10px;
   right: 10px;
-  bottom: 10px;
+  top: max(10px, env(safe-area-inset-top));
+  bottom: max(10px, env(safe-area-inset-bottom));
+  height: calc(100dvh - 20px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  max-height: calc(100dvh - 20px);
   transform: none;
   width: auto;
-  max-height: calc(100dvh - 20px);
   border-radius: 24px;
 }
 
 .assistant-panel--mobile .assistant-header {
-  padding-top: max(12px, env(safe-area-inset-top));
+  padding-top: 14px;
 }
 
 
@@ -1922,6 +1974,8 @@ onUnmounted(() => {
 
 .chat-body {
   min-height: 0;
+  flex: 1 1 auto;
+  height: 100%;
 }
 
 .chat-scroll {
@@ -2594,6 +2648,7 @@ onUnmounted(() => {
 
   .assistant-panel--mobile {
     width: calc(100vw - 20px);
+    height: calc(100dvh - 20px - env(safe-area-inset-bottom) - env(safe-area-inset-top));
   }
 
   .hub-hero {

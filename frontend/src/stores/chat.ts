@@ -80,8 +80,8 @@ export const useChatStore = defineStore('chat', () => {
       cancelAllStreams()
     }
 
-    if (streaming.value && currentSession.value?.id === sessionId) {
-      return currentSession.value // Lock out stale DB fetches during active stream
+    if (currentSession.value?.id === sessionId && (streaming.value || (currentSession.value?.messages && currentSession.value.messages.length > 0))) {
+      return currentSession.value // Lock out stale DB fetches if already loaded in memory with messages or active stream
     }
 
     if (pendingRequests.has(sessionId)) {

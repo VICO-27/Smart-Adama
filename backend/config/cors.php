@@ -20,7 +20,12 @@ return [
         'http://localhost:5174',
     ]),
 
-    'allowed_origins_patterns' => [],
+    'allowed_origins_patterns' => array_filter([
+        // Allow private network IPs (192.168.*, 10.*, 172.16-31.*) in non-production for mobile devices on LAN
+        env('APP_ENV') !== 'production'
+            ? '#^https?://(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?$#'
+            : null,
+    ]),
 
     'allowed_headers' => ['*'],
 

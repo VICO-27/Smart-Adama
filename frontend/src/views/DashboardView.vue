@@ -619,25 +619,8 @@ onMounted(() => {
 
         </header>
 
-        <!-- ========================================================
-             LOADING STATE
-        ========================================================= -->
-        <template v-if="!progress.dashboard && progress.loading">
-          <div class="loading-journey mt-8"></div>
-          <div class="loading-line"></div>
-          <div class="loading-grid">
-            <div
-              v-for="n in 4"
-              :key="n"
-              class="loading-block"
-            ></div>
-          </div>
-        </template>
-
-        <!-- ====================================================
-             LEARNING JOURNEY
-        ===================================================== -->
-        <template v-else>
+        <!-- PROGRESSIVE LOADING PROGRESS BAR -->
+        <div v-if="progress.loading" class="dashboard-loading-bar" aria-hidden="true"></div>
 
         <section class="journey-section">
 
@@ -1799,8 +1782,6 @@ onMounted(() => {
 
         </section>
 
-
-        </template>
       </div>
 
       <!-- ====================================================

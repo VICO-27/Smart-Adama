@@ -15,6 +15,7 @@ export default defineConfig({
     },
   },
   server: {
+    host: true,
     port: 5173,
     watch: {
       // Tell Vite's file watcher to completely ignore the corrupted folder

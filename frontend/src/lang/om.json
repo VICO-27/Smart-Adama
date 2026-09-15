@@ -214,7 +214,18 @@
     "start_chat": "Haasaa jalqabi →",
     "daily_challenge": "Qormaata Guyyaa",
     "coming_soon": "Dhiyeenyatti",
-    "ecosystem": "Haaromsawwan Ikoosistimii"
+    "ecosystem": "Haaromsawwan Ikoosistimii",
+    "reading_complete": "Dubbisuun xumurameera",
+    "reading_progress": "Dubbisuu {pct}%",
+    "no_quiz_attempts": "Qormaata hin yaalamne",
+    "resume_reading": "Dubbisuu itti fufi.",
+    "complete": "xumurameera",
+    "overall_progress": "guddina waliigalaa",
+    "next_chapter": "Itti aana: Boqonnaa",
+    "review_learning": "Barumsa irra deebi'i",
+    "continue_reading": "Dubbisuu itti fufi",
+    "course_complete": "Koorasiin xumurameera",
+    "start_learning": "Barachuu Eegali"
   },
   "quiz": {
     "back_dash": "← Gara Daashboordii",
@@ -505,7 +516,7 @@
     "sources": "Madda",
     "no_sources": "Deebii kanaaf maddi addaa hin caqasamne.",
     "ai_down": "AI yeroof hin jiru",
-    "try_again": "Maaloo yeroo muraasa booda irra deebi'ii yaali.",
+    "try_again": "Irra deebi'ii yaali",
     "ask_ai": "Smart AI Gaafadhu",
     "ask": "Gaafadhu",
     "home": "Mana",
@@ -517,7 +528,20 @@
     "current_msgs": "Ergaawwan Marii Ammaa",
     "knowledge": "Beekumsa Kitaabaa",
     "rrf": "Qabxii RRF",
-    "no_chunks": "Kutaaleen walqabatan hin argamne."
+    "no_chunks": "Kutaaleen walqabatan hin argamne.",
+    "reload_course": "Koorasii irra deebi'ii fe'i",
+    "open_first": "Boqonnaa jalqabaa bani",
+    "conn_error": "Sarvaraa koorasii waliin wal qunnamsiisuun hin danda'amne. Maaloo toora kee mirkaneeffadhuutii irra deebi'uuf gadi tuqi.",
+    "select_chapter": "Maaloo dubbisuu eegaluuf baafata koorasii irraa boqonnaa tokko filadhu.",
+    "complete_to_unlock": "Qormaata isaa banuuf boqonnaa kana xumuri.",
+    "take_quiz": "Qormaata Fudhadhu",
+    "mind_map": "Kaartaa Sammuu",
+    "new_conversation": "Haasawaa Haaraa",
+    "active_reader": "Dubbisaa Si'aawaa",
+    "err_load_chapter": "Qabiyyee boqonnaa fe'uun hin danda'amne",
+    "err_load_course": "Meeshaalee koorasii fe'uun hin danda'amne",
+    "select_a_chapter": "Boqonnaa filadhu",
+    "loading_quiz": "Qormaata fe'uutti jira..."
   },
   "prof": {
     "account": "Herrega",
@@ -719,6 +743,62 @@
     "quiz_ace": {
       "name": "Qorumsa Moo'ataa",
       "desc": "Qorumsa 10 darbi."
+    }
+  },
+  "tour": {
+    "home": {
+      "step1": {
+        "title": "Baga nagaan gara Smart Adama dhuftan.",
+        "content": "Karra dijitaalaa gara magaalaa qaroomaa — fi qarooma keetii."
+      },
+      "step2": {
+        "title": "Hundinuu asuma jira.",
+        "content": "Gadaa, Qorannoo, AI, Guddina, Profaayilii. Daandii kee asirraa sakatta'i."
+      },
+      "step3": {
+        "title": "Kitaaba Smart Adama",
+        "content": "Dubbisi, baradhu, fi guddina kee of-umaan hordofi."
+      },
+      "step4": {
+        "title": "Waan feete gaafadhu.",
+        "content": "Smart Adama AI ni ibsa, ni gabaabsa, ni deebisa — kitaabicha irratti hundaa'uun."
+      },
+      "step5": {
+        "title": "Beekumsa kee guddachaa deemu ilaali.",
+        "content": "Qormaatawwan fi milkaayinni akka fuulduratti tarkaanfattu si gargaaru."
+      }
+    },
+    "study": {
+      "step1": {
+        "title": "Kun Kitaaba Smart Adama ti.",
+        "content": "Guddinni kee yeroo dubbisu of-umaan ni hordofama."
+      },
+      "step2": {
+        "title": "Boqonnaawwan asitti sakatta'i.",
+        "content": "Jalqabuuf tokko filadhu."
+      },
+      "step3": {
+        "title": "Saffisa keetiin dubbisi.",
+        "content": "Iddoo sirriitti itti dhaabde ni yaadanna."
+      },
+      "step4": {
+        "title": "Waan tokko irratti rakkattee?",
+        "content": "Qorannoon AI asuma jira."
+      },
+      "step5": {
+        "title": "Qorannoon AI hojii irratti.",
+        "content": "Yaali: \"Kana salphaatti ibsi,\" \"Boqonnaa kana gabaabsi,\" ykn \"Fakkeenya addunyaa dhugaa naaf kenni.\""
+      },
+      "step6": {
+        "title": "Of qori.",
+        "content": "Boqonnaa tokko xumuri, sana booda of qori. Qormaanni hundi guddina kee ijaara."
+      }
+    },
+    "controls": {
+      "skip": "Dabarsi",
+      "back": "Duuba",
+      "next": "Itti Aanu",
+      "finish": "Xumuri"
     }
   }
 }

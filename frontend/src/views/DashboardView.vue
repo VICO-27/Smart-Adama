@@ -171,7 +171,7 @@ const continueTitle = computed(() => {
     return continueChapter.value.title || `Chapter`
   }
 
-  return 'Start Learning'
+  return t('dashboard.start_learning')
 })
 
 
@@ -187,12 +187,18 @@ const continueSubtext = computed(() => {
   const cp = d.value?.chapter_progress?.find(p => p.chapter_id === continueChapter.value?.id)
 
   if (cp) {
-    const readingStatus = cp.reading_progress >= 100 ? 'Reading complete' : `Reading ${cp.reading_progress}%`
-    const quizScore = cp.best_quiz_score_pct !== null ? `Quiz: ${cp.best_quiz_score_pct}%` : 'No quiz attempts'
+    const readingStatus = cp.reading_progress >= 100 
+      ? t('dashboard.reading_complete') 
+      : t('dashboard.reading_progress', { pct: cp.reading_progress })
+    
+    const quizScore = cp.best_quiz_score_pct !== null 
+      ? `Quiz: ${cp.best_quiz_score_pct}%` 
+      : t('dashboard.no_quiz_attempts')
+      
     return `${readingStatus} • ${quizScore}`
   }
 
-  return 'Resume reading.'
+  return t('dashboard.resume_reading')
 })
 
 
@@ -553,9 +559,16 @@ function badgeType(
    LIFECYCLE
 ============================================================ */
 
+import { useTour } from '@/composables/useTour'
+import { homeTour } from '@/composables/tourRegistry'
+
 onMounted(() => {
   progress.loadAll().catch((e) => console.error('Dashboard progress load error:', e))
   chatStore.loadSessions(1).catch((e) => console.error('Dashboard chat sessions load error:', e))
+  
+  const { registerTour, startTour } = useTour()
+  registerTour(homeTour)
+  setTimeout(() => startTour('home'), 800) // slight delay for visual stability
 })
 </script>
 
@@ -642,7 +655,7 @@ onMounted(() => {
               </strong>
 
               <span>
-                complete
+                {{ $t('dashboard.complete') }}
               </span>
 
             </div>
@@ -748,14 +761,13 @@ onMounted(() => {
 
                 <span>
                   {{ completionPct }}%
-                  overall progress
+                  {{ $t('dashboard.overall_progress') }}
                 </span>
 
                 <span
                   v-if="!isBookComplete"
                 >
-                  Next:
-                  Chapter
+                  {{ $t('dashboard.next_chapter') }}
                   {{ recommendedChapter }}
                 </span>
 
@@ -778,8 +790,8 @@ onMounted(() => {
               <span>
                 {{
                   isBookComplete
-                    ? 'Review learning'
-                    : 'Continue reading'
+                    ? $t('dashboard.review_learning')
+                    : $t('dashboard.continue_reading')
                 }}
               </span>
 

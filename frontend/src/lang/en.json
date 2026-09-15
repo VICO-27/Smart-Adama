@@ -214,7 +214,18 @@
     "start_chat": "Start a Chat in Study Mode →",
     "daily_challenge": "Daily Challenge",
     "coming_soon": "Coming Soon",
-    "ecosystem": "Ecosystem Updates"
+    "ecosystem": "Ecosystem Updates",
+    "reading_complete": "Reading complete",
+    "reading_progress": "Reading {pct}%",
+    "no_quiz_attempts": "No quiz attempts",
+    "resume_reading": "Resume reading.",
+    "complete": "complete",
+    "overall_progress": "overall progress",
+    "next_chapter": "Next: Chapter",
+    "review_learning": "Review learning",
+    "continue_reading": "Continue reading",
+    "course_complete": "Course complete",
+    "start_learning": "Start Learning"
   },
   "quiz": {
     "back_dash": "← Back to Dashboard",
@@ -505,7 +516,7 @@
     "sources": "Sources",
     "no_sources": "No specific sources cited for this response.",
     "ai_down": "AI is temporarily unavailable",
-    "try_again": "Please try again in a moment.",
+    "try_again": "Try Again",
     "ask_ai": "Ask Smart AI",
     "ask": "Ask",
     "home": "Home",
@@ -517,7 +528,20 @@
     "current_msgs": "Current Chat Messages",
     "knowledge": "Book Knowledge",
     "rrf": "RRF Score",
-    "no_chunks": "No relevant chunks found."
+    "no_chunks": "No relevant chunks found.",
+    "reload_course": "Reload Course",
+    "open_first": "Open First Chapter",
+    "conn_error": "Could not connect to the course server. Please check your connection and tap below to retry.",
+    "select_chapter": "Please select a chapter from the course menu to start reading.",
+    "complete_to_unlock": "Complete this chapter to unlock its quiz.",
+    "take_quiz": "Take Quiz",
+    "mind_map": "Mind Map",
+    "new_conversation": "New Conversation",
+    "active_reader": "Active Reader",
+    "err_load_chapter": "Unable to load chapter content",
+    "err_load_course": "Unable to load course materials",
+    "select_a_chapter": "Select a chapter",
+    "loading_quiz": "Loading Quiz..."
   },
   "prof": {
     "account": "Account",
@@ -719,6 +743,62 @@
     "quiz_ace": {
       "name": "Quiz Ace",
       "desc": "Pass 10 quizzes."
+    }
+  },
+  "tour": {
+    "home": {
+      "step1": {
+        "title": "Welcome to Smart Adama.",
+        "content": "Your digital gateway to a smarter city — and a smarter you."
+      },
+      "step2": {
+        "title": "Everything lives here.",
+        "content": "Home, Study, AI, Progress, Profile. Navigate your journey from this bar."
+      },
+      "step3": {
+        "title": "The Smart Adama Book",
+        "content": "Read, learn, and track your progress automatically."
+      },
+      "step4": {
+        "title": "Ask anything.",
+        "content": "Smart Adama AI explains, summarizes, and answers — grounded in the book."
+      },
+      "step5": {
+        "title": "Watch your knowledge compound.",
+        "content": "Quizzes, streaks, and achievements keep you moving forward."
+      }
+    },
+    "study": {
+      "step1": {
+        "title": "This is the Smart Adama Book.",
+        "content": "Your progress is tracked automatically as you read."
+      },
+      "step2": {
+        "title": "Browse chapters here.",
+        "content": "Pick one to begin."
+      },
+      "step3": {
+        "title": "Read at your pace.",
+        "content": "We'll remember exactly where you left off."
+      },
+      "step4": {
+        "title": "Stuck on something?",
+        "content": "Study AI is right here."
+      },
+      "step5": {
+        "title": "Study AI in action.",
+        "content": "Try: \"Explain this simply,\" \"Summarize this chapter,\" or \"Give me a real-world example.\""
+      },
+      "step6": {
+        "title": "Test yourself.",
+        "content": "Finish a chapter, then test yourself. Every quiz builds your progress."
+      }
+    },
+    "controls": {
+      "skip": "Skip",
+      "back": "Back",
+      "next": "Next",
+      "finish": "Finish"
     }
   }
 }

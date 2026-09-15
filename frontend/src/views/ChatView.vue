@@ -212,7 +212,7 @@
                     @click="switchSession(session.id)"
                     style="flex: 1; margin: 0; position: relative;"
                   >
-                    <span class="session-item__title" style="padding-right: 28px;">{{ session.title || 'New Conversation' }}</span>
+                    <span class="session-item__title" style="padding-right: 28px;">{{ session.title || $t('chat.new_conversation') }}</span>
                   </button>
 
                   <input
@@ -427,7 +427,7 @@
               </div>
               <div class="chatgpt-menu-user-meta">
                 <span class="chatgpt-menu-user-name">{{ authStore?.user?.name || authStore?.user?.first_name || 'User' }}</span>
-                <span class="chatgpt-menu-user-email">{{ authStore?.user?.email || 'Active Reader' }}</span>
+                <span class="chatgpt-menu-user-email">{{ authStore?.user?.email || $t('chat.active_reader') }}</span>
               </div>
             </div>
 
@@ -693,7 +693,7 @@
                             <path d="m9 11 3 3L22 4" stroke-linecap="round" stroke-linejoin="round"/>
                             <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" stroke-linecap="round" stroke-linejoin="round"/>
                           </svg>
-                          <span>Take Quiz</span>
+                          <span>{{ $t('chat.take_quiz') }}</span>
                         </button>
                         <button
                           type="button"
@@ -706,7 +706,7 @@
                             <rect x="14" y="14" width="7" height="7" rx="1"/>
                             <rect x="3" y="14" width="7" height="7" rx="1"/>
                           </svg>
-                          <span>Mind Map</span>
+                          <span>{{ $t('chat.mind_map') }}</span>
                         </button>
                       </div>
                     </template>
@@ -849,7 +849,7 @@
                       <line x1="12" y1="16" x2="12.01" y2="16" />
                     </svg>
                   </div>
-                  <h2>Unable to load chapter content</h2>
+                  <h2>{{ $t('chat.err_load_chapter') }}</h2>
                   <p>{{ chapterLoadError }}</p>
                   <button type="button" class="reader-retry-btn" @click="retryLoadChapter">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4">
@@ -858,7 +858,7 @@
                       <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
                       <path d="M16 21h5v-5" />
                     </svg>
-                    <span>Try Again</span>
+                    <span>{{ $t('chat.try_again') }}</span>
                   </button>
                 </div>
               </template>
@@ -870,8 +870,8 @@
                     <line x1="12" y1="8" x2="12" y2="12" />
                     <line x1="12" y1="16" x2="12.01" y2="16" />
                   </svg>
-                  <h2>{{ booksStore.books.length === 0 ? 'Unable to load course materials' : 'Select a chapter' }}</h2>
-                  <p>{{ booksStore.books.length === 0 ? 'Could not connect to the course server. Please check your connection and tap below to retry.' : 'Please select a chapter from the course menu to start reading.' }}</p>
+                  <h2>{{ booksStore.books.length === 0 ? $t('chat.err_load_course') : $t('chat.select_a_chapter') }}</h2>
+                  <p>{{ booksStore.books.length === 0 ? $t('chat.conn_error') : $t('chat.select_chapter') }}</p>
                   <button type="button" class="reader-retry-btn" @click="retryLoadChapter">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4">
                       <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
@@ -879,7 +879,7 @@
                       <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
                       <path d="M16 21h5v-5" />
                     </svg>
-                    <span>{{ booksStore.books.length === 0 ? 'Reload Course' : 'Open First Chapter' }}</span>
+                    <span>{{ booksStore.books.length === 0 ? $t('chat.reload_course') : $t('chat.open_first') }}</span>
                   </button>
                 </div>
               </template>
@@ -932,7 +932,7 @@
                     <span class="text-3xl">🎉</span>
                   </div>
                   <h3 class="text-xl font-bold text-[var(--rt-text)] mb-2">You've reached the end of {{ booksStore.currentChapter?.title }}</h3>
-                  <p class="text-[var(--rt-muted)] mb-6 max-w-md">Complete this chapter to unlock its quiz.</p>
+                  <p class="text-[var(--rt-muted)] mb-6 max-w-md">{{ $t('chat.complete_to_unlock') }}</p>
                   <div class="flex flex-wrap items-center justify-center gap-3">
                     <button
                       type="button"
@@ -949,7 +949,7 @@
                       @click="takeChapterQuiz"
                     >
                       <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                      {{ isNavigatingToQuiz ? 'Loading Quiz...' : 'Take Quiz' }}
+                      {{ isNavigatingToQuiz ? $t('chat.loading_quiz') : $t('chat.take_quiz') }}
                     </button>
                   </div>
                 </div>
@@ -1681,6 +1681,8 @@
 </template>
 
 <script setup lang="ts">
+import { useTour } from '@/composables/useTour'
+import { studyTour } from '@/composables/tourRegistry'
 import {
   computed,
   nextTick,
@@ -3665,6 +3667,13 @@ onMounted(async () => {
   if (!isReaderOpen.value && !isAiSidebarOpen.value) {
     isReaderOpen.value = true
   }
+
+  // Start study tour if appropriate
+  setTimeout(() => {
+    const { registerTour, startTour } = useTour()
+    registerTour(studyTour)
+    startTour('study')
+  }, 1200)
 })
 
 onUnmounted(() => {

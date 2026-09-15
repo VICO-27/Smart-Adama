@@ -14,7 +14,8 @@
     <AuthModal v-if="authStore.isAuthModalOpen" />
 
     <!-- Global Confirm Modal -->
-    <GlobalConfirmModal />
+    <!-- Global Product Tour -->
+    <ProductTour />
   </ErrorBoundary>
 </template>
 
@@ -25,6 +26,7 @@ import GlobalAssistant from '@/components/layout/GlobalAssistant.vue'
 import AuthModal from '@/components/auth/AuthModal.vue'
 import ErrorBoundary from '@/components/ErrorBoundary.vue'
 import GlobalConfirmModal from '@/components/ui/GlobalConfirmModal.vue'
+import ProductTour from '@/components/ui/ProductTour.vue'
 import { useTheme } from '@/composables/useTheme'
 import { onMounted } from 'vue'
 

@@ -519,7 +519,7 @@ function startAiLabelPulse() {
   aiLabelInterval = setInterval(() => {
     aiLabelVisible.value = true
     setTimeout(() => { aiLabelVisible.value = false }, 3000)
-  }, 30000)
+  }, 10000)
 }
 
 const panelRef = ref<HTMLElement | null>(null)

@@ -3546,11 +3546,11 @@ function startAiLabelPulse() {
   aiLabelVisible.value = true
   setTimeout(() => { aiLabelVisible.value = false }, 3000)
 
-  // Then pulse every 30 seconds
+  // Then pulse every 10 seconds
   aiLabelInterval = setInterval(() => {
     aiLabelVisible.value = true
     setTimeout(() => { aiLabelVisible.value = false }, 3000)
-  }, 30000)
+  }, 10000)
 }
 
 const isSubmitting = ref(false)

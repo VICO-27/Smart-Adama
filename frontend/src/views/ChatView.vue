@@ -3489,9 +3489,16 @@ const sendMessage = async () => {
 
     if (!chatStore.currentSession) return
 
-    const context = {
-      chapter_id: booksStore.currentChapter?.id,
+    // Only pass chapter_id when it is a well-formed UUID.
+    // Sending undefined / null / "undefined" causes PostgreSQL to throw
+    // "invalid input syntax for type uuid" → HTTP 500 on the backend.
+    const rawChapterId = booksStore.currentChapter?.id
+    const isValidUuid = typeof rawChapterId === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawChapterId)
+    const context: Record<string, unknown> = {
       page: currentPage.value,
+    }
+    if (isValidUuid) {
+      context.chapter_id = rawChapterId
     }
 
     // 2. Force scroll to bottom so user sees their new message immediately

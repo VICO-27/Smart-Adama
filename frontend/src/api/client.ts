@@ -38,7 +38,11 @@ export function getBackendUrls() {
   // If accessed from a mobile phone on LAN (e.g. 192.168.x.x) during local dev (HTTP),
   // dynamically substitute localhost / 127.0.0.1 with the current host IP
   // so mobile devices reach the dev server instead of their own loopback.
-  if (!isHttps && !isProd && typeof window !== 'undefined' && window.location?.hostname) {
+  // IMPORTANT: only rewrite if serverRoot actually points to localhost/127.0.0.1
+  // — never rewrite a production HTTPS URL (e.g. onrender.com) just because
+  //   the phone is accessing the page over HTTP from a LAN address.
+  const serverRootIsLocal = /localhost|127\.0\.0\.1/.test(serverRoot)
+  if (!isHttps && !isProd && serverRootIsLocal && typeof window !== 'undefined' && window.location?.hostname) {
     const host = window.location.hostname
     if (isPrivateLan(host)) {
       serverRoot = serverRoot.replace(/localhost|127\.0\.0\.1/g, host)

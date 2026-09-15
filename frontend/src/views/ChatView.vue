@@ -6264,16 +6264,8 @@ watch(
   position: absolute;
   inset: -4px;
   border-radius: 999px;
-  background: conic-gradient(
-    from 0deg,
-    #4285f4,   /* Google blue */
-    #9b72cb,   /* purple */
-    #ea4335,   /* red-pink */
-    #fbbc04,   /* yellow */
-    #34a853,   /* green */
-    #4285f4    /* back to blue */
-  );
-  animation: ai-ring-spin 3s linear infinite;
+  overflow: hidden;
+  pointer-events: none;
 
   /* Use a CSS mask to punch a hole in the center, so only the border glows */
   padding: 3px; 
@@ -6284,8 +6276,28 @@ watch(
   mask-composite: exclude;
 }
 
+.ai-fab-ring::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 200%;
+  height: 200%;
+  transform: translate(-50%, -50%);
+  background: conic-gradient(
+    from 0deg,
+    #4285f4,   /* Google blue */
+    #9b72cb,   /* purple */
+    #ea4335,   /* red-pink */
+    #fbbc04,   /* yellow */
+    #34a853,   /* green */
+    #4285f4    /* back to blue */
+  );
+  animation: ai-ring-spin 3s linear infinite;
+}
+
 @keyframes ai-ring-spin {
-  to { transform: rotate(360deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
 }
 
 /* The actual icon button — circle, no text */
@@ -6320,12 +6332,12 @@ watch(
   height: 20px;
 }
 
-/* "Smart AI" label pill — floats above the button */
+/* "Smart AI" label pill — floats left of the button */
 .ai-fab-label {
   position: absolute;
-  bottom: calc(100% + 10px);
-  left: 50%;
-  transform: translateX(-50%);
+  right: calc(100% + 14px);
+  top: 50%;
+  transform: translateY(-50%);
   z-index: 2;
   white-space: nowrap;
   padding: 5px 12px;
@@ -6338,17 +6350,17 @@ watch(
   text-transform: uppercase;
   box-shadow: 0 4px 16px rgba(57, 88, 134, 0.45);
   pointer-events: none;
-  /* small downward arrow */
+  /* right-pointing arrow */
 }
 
 .ai-fab-label::after {
   content: '';
   position: absolute;
-  top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
   border: 5px solid transparent;
-  border-top-color: var(--reader-brand, #395886);
+  border-left-color: var(--reader-brand, #395886);
 }
 
 /* Label enter/leave transition — spring pop-up from button */
@@ -6358,13 +6370,10 @@ watch(
 .ai-label-leave-active {
   transition: opacity 0.25s ease, transform 0.25s ease;
 }
-.ai-label-enter-from {
-  opacity: 0;
-  transform: translateX(-50%) translateY(10px) scale(0.8);
-}
+.ai-label-enter-from,
 .ai-label-leave-to {
   opacity: 0;
-  transform: translateX(-50%) translateY(6px) scale(0.9);
+  transform: translateY(-50%) translateX(10px) scale(0.9);
 }
 
 

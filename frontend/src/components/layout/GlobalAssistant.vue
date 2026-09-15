@@ -2514,11 +2514,7 @@ onUnmounted(() => {
   position: absolute;
   inset: -3px; /* slight overflow for glow */
   border-radius: 20px; /* match button border-radius + inset */
-  background: conic-gradient(
-    from 0deg,
-    #4285f4, #9b72cb, #ea4335, #fbbc04, #34a853, #4285f4
-  );
-  animation: ai-ring-spin 3s linear infinite;
+  overflow: hidden;
   pointer-events: none;
   z-index: -2;
 
@@ -2531,16 +2527,31 @@ onUnmounted(() => {
   mask-composite: exclude;
 }
 
-@keyframes ai-ring-spin {
-  to { transform: rotate(360deg); }
+.toggle-halo::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 200%;
+  height: 200%;
+  transform: translate(-50%, -50%);
+  background: conic-gradient(
+    from 0deg,
+    #4285f4, #9b72cb, #ea4335, #fbbc04, #34a853, #4285f4
+  );
+  animation: ai-ring-spin 3s linear infinite;
 }
 
-/* "Smart AI" label pill — pops out top of button */
+@keyframes ai-ring-spin {
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* "Smart AI" label pill — pops out left of button */
 .toggle-ai-label {
   position: absolute;
-  bottom: calc(100% + 12px);
-  left: 50%;
-  transform: translateX(-50%);
+  right: calc(100% + 14px);
+  top: 50%;
+  transform: translateY(-50%);
   z-index: 20;
   white-space: nowrap;
   padding: 5px 12px;
@@ -2558,11 +2569,11 @@ onUnmounted(() => {
 .toggle-ai-label::after {
   content: '';
   position: absolute;
-  top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
   border: 5px solid transparent;
-  border-top-color: var(--assistant-brand, #395886);
+  border-left-color: var(--assistant-brand, #395886);
 }
 
 .ai-label-enter-active {
@@ -2571,13 +2582,11 @@ onUnmounted(() => {
 .ai-label-leave-active {
   transition: opacity 0.25s ease, transform 0.25s ease;
 }
-.ai-label-enter-from {
-  opacity: 0;
-  transform: translateX(-50%) translateY(10px) scale(0.8);
-}
+
+.ai-label-enter-from,
 .ai-label-leave-to {
   opacity: 0;
-  transform: translateX(-50%) translateY(6px) scale(0.9);
+  transform: translateY(-50%) translateX(10px) scale(0.9);
 }
 
 .toggle-tooltip {

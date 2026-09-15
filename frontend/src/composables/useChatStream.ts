@@ -87,20 +87,36 @@ export function useChatStream() {
     let isComplete = false
 
     try {
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'text/event-stream',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-        signal: controller.signal,
-      })
+      let response: Response | null = null
+      for (let attempt = 0; attempt <= 1; attempt++) {
+        try {
+          response = await fetch(url, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'text/event-stream',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify(payload),
+            signal: controller.signal,
+          })
+          if ([502, 503, 504].includes(response.status) && attempt < 1) {
+            await new Promise((r) => setTimeout(r, 1500))
+            continue
+          }
+          break
+        } catch (fetchErr: any) {
+          if (attempt < 1 && !controller.signal.aborted) {
+            await new Promise((r) => setTimeout(r, 1500))
+            continue
+          }
+          throw fetchErr
+        }
+      }
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.message || `HTTP ${response.status}`)
+      if (!response || !response.ok) {
+        const errorData = await response?.json().catch(() => ({}))
+        throw new Error(errorData?.error?.message || errorData?.message || `HTTP ${response?.status || 500}`)
       }
 
       if (!response.body) {

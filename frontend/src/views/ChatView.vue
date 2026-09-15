@@ -1651,7 +1651,7 @@ import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import hljs from 'highlight.js'
 import 'highlight.js/styles/github-dark.css'
-import apiClient, { serverRoot } from '@/api/client'
+import apiClient, { serverRoot, warmUpBackend } from '@/api/client'
 import IntroductionPreface from '@/components/IntroductionPreface.vue'
 import { useI18n } from 'vue-i18n'
 import { useConfirm } from '@/composables/useConfirm'
@@ -3491,6 +3491,7 @@ const sendMessage = async () => {
 ============================================================ */
 
 onMounted(async () => {
+  warmUpBackend()
   pickDynamicGreeting()
   applyStudyTheme(readerTheme.value)
   window.addEventListener('resize', handleResize)

@@ -302,6 +302,21 @@
                   v-if="msg.role === 'ai'"
                   class="message-actions"
                 >
+                  <button
+                    v-if="msg.isError"
+                    type="button"
+                    class="retry-action-btn"
+                    @click="retryMessage(index)"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                      <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                      <path d="M3 3v5h5" />
+                      <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
+                      <path d="M16 21h5v-5" />
+                    </svg>
+                    <span>Retry</span>
+                  </button>
+
                   <button type="button" @click="copyMessage(msg.content)">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
                       <rect x="9" y="9" width="11" height="11" rx="2" />
@@ -436,7 +451,7 @@ import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import { v4 as uuidv4 } from 'uuid'
 import { aiApi } from '@/api/ai'
-import { apiBase } from '@/api/client'
+import { apiBase, warmUpBackend } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 import { useTheme } from '@/composables/useTheme'
 import { useI18n } from 'vue-i18n'
@@ -464,6 +479,7 @@ type AssistantMode = 'hub' | 'help' | 'ai'
 type Message = {
   role: 'user' | 'ai'
   content: string
+  isError?: boolean
 }
 
 
@@ -781,7 +797,9 @@ const toggleAssistant = () => {
 
   isOpen.value = !isOpen.value
 
-  if (!isOpen.value) {
+  if (isOpen.value) {
+    warmUpBackend()
+  } else {
     mode.value = 'hub'
   }
 }
@@ -1041,66 +1059,101 @@ const scrollToBottom = async () => {
 }
 
 
-const sendMessage = async () => {
-  const text =
-    userInput.value.trim()
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit,
+  retries = 2,
+  delayMs = 1500,
+): Promise<Response> {
+  let lastError: any = null
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const response = await fetch(url, options)
+      // If server is 502, 503, or 504 (cold start / gateway restarting), retry before failing
+      if ([502, 503, 504].includes(response.status) && attempt < retries) {
+        await new Promise((r) => setTimeout(r, delayMs * (attempt + 1)))
+        continue
+      }
+      return response
+    } catch (err: any) {
+      lastError = err
+      if (attempt < retries) {
+        await new Promise((r) => setTimeout(r, delayMs * (attempt + 1)))
+        continue
+      }
+    }
+  }
+  throw lastError || new Error('Network request failed')
+}
 
-  if (
-    !text ||
-    isThinking.value
-  ) {
+const sendMessage = async () => {
+  const text = userInput.value.trim()
+  if (!text || isThinking.value) {
     return
   }
 
-  const currentHistory =
-    [...messages.value]
-
-  messages.value.push({
-    role: 'user',
-    content: text,
-  })
-
   userInput.value = ''
-  isThinking.value = true
+  await executeSendMessage(text, true)
+}
 
+const executeSendMessage = async (text: string, isNewUserMessage = true) => {
+  if (isNewUserMessage) {
+    messages.value.push({
+      role: 'user',
+      content: text,
+    })
+  }
+
+  // Conversation history excluding error bubbles and the current message
+  const currentHistory = messages.value
+    .filter((m) => !m.isError)
+    .slice(0, -1)
+
+  isThinking.value = true
   autoResizeTextarea()
   await scrollToBottom()
 
   try {
-    const response =
-      await fetch(
-        `${apiBase}/global-chat`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type':
-              'application/json',
-            Accept:
-              'application/json',
-            ...(authStore.token
-              ? {
-                  Authorization:
-                    `Bearer ${authStore.token}`,
-                }
-              : {}),
-          },
-          body: JSON.stringify({
-            message: text,
-            route: route.path,
-            history:
-              currentHistory,
-          }),
+    const response = await fetchWithRetry(
+      `${apiBase}/global-chat`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          ...(authStore.token
+            ? {
+                Authorization: `Bearer ${authStore.token}`,
+              }
+            : {}),
         },
-      )
+        body: JSON.stringify({
+          message: text,
+          route: route.path,
+          history: currentHistory,
+        }),
+      },
+      2,
+      1500,
+    )
 
     if (!response.ok) {
-      throw new Error(
-        `Assistant request failed: ${response.status}`,
-      )
+      let serverMsg = ''
+      try {
+        const errJson = await response.json()
+        serverMsg = errJson.error?.message || errJson.message || ''
+      } catch {}
+
+      if (response.status === 429) {
+        throw new Error(serverMsg || 'Chat rate limit reached. Please wait a moment before sending another message.')
+      } else if (response.status >= 500) {
+        throw new Error(serverMsg || 'The assistant server is warming up or busy. Please tap Retry in a moment.')
+      } else {
+        throw new Error(serverMsg || `Assistant request failed (${response.status}). Please try again.`)
+      }
     }
 
-    const data =
-      await response.json()
+    const data = await response.json()
 
     messages.value.push({
       role: 'ai',
@@ -1108,21 +1161,47 @@ const sendMessage = async () => {
         data.reply ||
         'I could not generate a response. Please try again.',
     })
-  } catch (error) {
-    console.error(
-      'Global assistant error:',
-      error,
-    )
+  } catch (error: any) {
+    console.error('Global assistant error:', error)
+
+    const isNetworkErr =
+      error?.name === 'TypeError' ||
+      error?.message?.includes('Failed to fetch') ||
+      error?.message?.includes('NetworkError')
+
+    const fallbackMessage = isNetworkErr
+      ? 'Could not connect to the assistant server (it may be waking up from idle). Please tap Retry to send again.'
+      : (error?.message || 'I could not reach the Smart Adama assistant right now. Please try again in a moment.')
 
     messages.value.push({
       role: 'ai',
-      content:
-        'I could not reach the Smart Adama assistant right now. Please try again in a moment.',
+      content: fallbackMessage,
+      isError: true,
     })
   } finally {
     isThinking.value = false
     await scrollToBottom()
   }
+}
+
+const retryMessage = async (errorIndex: number) => {
+  if (isThinking.value) return
+
+  // Find the preceding user message
+  let userText = ''
+  for (let i = errorIndex - 1; i >= 0; i--) {
+    if (messages.value[i].role === 'user') {
+      userText = messages.value[i].content
+      break
+    }
+  }
+  if (!userText) return
+
+  // Remove the failed AI message
+  messages.value.splice(errorIndex, 1)
+
+  // Resend user message
+  await executeSendMessage(userText, false)
 }
 
 
@@ -2160,6 +2239,17 @@ onUnmounted(() => {
 .message-actions button:hover {
   color: var(--assistant-text);
   background: var(--assistant-surface-muted);
+}
+
+.message-actions button.retry-action-btn {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  margin-right: 6px;
+}
+
+.message-actions button.retry-action-btn:hover {
+  color: #dc2626;
+  background: rgba(239, 68, 68, 0.18);
 }
 
 .message-actions svg {

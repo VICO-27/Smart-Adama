@@ -11,20 +11,35 @@ import { isSupabaseConfigured, supabaseAuthService } from '@/services/supabaseAu
  * without parsing the raw Axios error themselves.
  */
 
+function isPrivateLan(host: string): boolean {
+  return (
+    /^192\.168\./.test(host) ||
+    /^10\./.test(host) ||
+    /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(host) ||
+    host.endsWith('.local')
+  )
+}
+
 /**
  * Normalizes backend URLs so that trailing slashes and redundant /api/v1 suffixes
  * are cleanly handled regardless of environment configuration.
  */
 export function getBackendUrls() {
   const envUrl = (import.meta.env.VITE_API_BASE_URL || '').trim().replace(/\/+$/, '')
-  let serverRoot = envUrl ? envUrl.replace(/\/api\/v1$/, '') : 'http://localhost:8000'
+  // Default to production Render backend if in production or loaded over HTTPS without env override
+  const isHttps = typeof window !== 'undefined' && window.location?.protocol === 'https:'
+  const defaultRoot = (import.meta.env.PROD || isHttps)
+    ? 'https://smart-adama-api.onrender.com'
+    : 'http://localhost:8000'
+
+  let serverRoot = envUrl ? envUrl.replace(/\/api\/v1$/, '') : defaultRoot
 
   // If accessed from a mobile phone or client on LAN (e.g. 192.168.x.x),
   // dynamically substitute localhost / 127.0.0.1 with the current host IP
   // so mobile devices reach the dev server instead of their own loopback.
   if (typeof window !== 'undefined' && window.location?.hostname) {
     const host = window.location.hostname
-    if (host !== 'localhost' && host !== '127.0.0.1') {
+    if (isPrivateLan(host)) {
       serverRoot = serverRoot.replace(/localhost|127\.0\.0\.1/g, host)
     }
   }
@@ -32,7 +47,7 @@ export function getBackendUrls() {
   let apiBase = envUrl.endsWith('/api/v1') ? envUrl : `${serverRoot}/api/v1`
   if (typeof window !== 'undefined' && window.location?.hostname) {
     const host = window.location.hostname
-    if (host !== 'localhost' && host !== '127.0.0.1') {
+    if (isPrivateLan(host)) {
       apiBase = apiBase.replace(/localhost|127\.0\.0\.1/g, host)
     }
   }
@@ -41,6 +56,18 @@ export function getBackendUrls() {
 }
 
 export const { serverRoot, apiBase } = getBackendUrls()
+
+let hasWarmedUp = false
+/**
+ * Wakes up the backend container in the background (preventing Render cold-start lag).
+ */
+export function warmUpBackend() {
+  if (hasWarmedUp) return
+  hasWarmedUp = true
+  try {
+    fetch(`${serverRoot}/up`, { mode: 'no-cors' }).catch(() => {})
+  } catch {}
+}
 
 const apiClient: AxiosInstance = axios.create({
   baseURL: apiBase,

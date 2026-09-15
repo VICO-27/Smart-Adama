@@ -2293,7 +2293,13 @@ onUnmounted(() => {
 .mobile-menu-panel {
 
   width:
-    100%;
+    240px;
+
+  margin-left:
+    auto;
+
+  transform-origin:
+    top right;
 
   margin-top:
     0.55rem;
@@ -2372,7 +2378,7 @@ onUnmounted(() => {
 .mobile-language-button {
 
   padding:
-    0.58rem;
+    0.4rem 0.2rem;
 
   border:
     1px solid

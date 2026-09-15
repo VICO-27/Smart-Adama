@@ -1015,12 +1015,21 @@
           <h2>{{ $t('chapter.no_pdf') }}</h2>
         </div>
 
-        <button type="button" class="pdf-ai-button" @click="toggleAiSidebar(true)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M13 10V3L4 14h7v7l9-11h-7Z" stroke-linejoin="round" />
-          </svg>
-          {{ $t('chapter.ask_ai') }}
-        </button>
+        <!-- Floating AI FAB with spinning glow border + Smart AI label -->
+        <div class="ai-fab-wrap" :class="{ 'ai-fab-wrap--label': aiLabelVisible }">
+          <!-- Spinning conic-gradient glow ring -->
+          <div class="ai-fab-ring" aria-hidden="true"></div>
+          <!-- Animated "Smart AI" label pill -->
+          <Transition name="ai-label">
+            <span v-if="aiLabelVisible" class="ai-fab-label" aria-hidden="true">Smart AI</span>
+          </Transition>
+          <button type="button" class="pdf-ai-button" @click="toggleAiSidebar(true)" aria-label="Open Smart AI Assistant">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M13 10V3L4 14h7v7l9-11h-7Z" stroke-linejoin="round" />
+            </svg>
+          </button>
+        </div>
+
       </div>
     </main>
 
@@ -3528,6 +3537,22 @@ const toggleFeedback = async (
   }
 }
 
+// ── AI FAB label pulse (shows "Smart AI" on load then every 30s) ─────────────
+const aiLabelVisible = ref(false)
+let aiLabelInterval: ReturnType<typeof setInterval> | null = null
+
+function startAiLabelPulse() {
+  // Show immediately
+  aiLabelVisible.value = true
+  setTimeout(() => { aiLabelVisible.value = false }, 3000)
+
+  // Then pulse every 30 seconds
+  aiLabelInterval = setInterval(() => {
+    aiLabelVisible.value = true
+    setTimeout(() => { aiLabelVisible.value = false }, 3000)
+  }, 30000)
+}
+
 const isSubmitting = ref(false)
 
 const sendMessage = async () => {
@@ -3579,6 +3604,8 @@ const sendMessage = async () => {
 
 onMounted(async () => {
   warmUpBackend()
+  // Start the "Smart AI" label pulse on the floating AI button
+  setTimeout(startAiLabelPulse, 1200)
   pickDynamicGreeting()
   applyStudyTheme(readerTheme.value)
   window.addEventListener('resize', handleResize)
@@ -3654,6 +3681,11 @@ onUnmounted(() => {
 
   if (overscrollResetTimer) {
     clearTimeout(overscrollResetTimer)
+  }
+
+  if (aiLabelInterval) {
+    clearInterval(aiLabelInterval)
+    aiLabelInterval = null
   }
 
   document.body.style.cursor = ''
@@ -6211,35 +6243,134 @@ watch(
   font-weight: 800;
 }
 
-.pdf-ai-button {
+/* ============================================================
+   AI FLOATING ACTION BUTTON — spinning glow + label pulse
+============================================================ */
+
+/* Outer wrapper — positions everything relative */
+.ai-fab-wrap {
   position: absolute;
   right: 18px;
   bottom: 18px;
-  min-height: 42px;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* extra bottom space so label doesn't clip */
+}
+
+/* Spinning conic-gradient glow ring */
+.ai-fab-ring {
+  position: absolute;
+  inset: -4px;
+  border-radius: 999px;
+  background: conic-gradient(
+    from 0deg,
+    #4285f4,   /* Google blue */
+    #9b72cb,   /* purple */
+    #ea4335,   /* red-pink */
+    #fbbc04,   /* yellow */
+    #34a853,   /* green */
+    #4285f4    /* back to blue */
+  );
+  animation: ai-ring-spin 3s linear infinite;
+  filter: blur(1px);
+  opacity: 0.9;
+}
+
+/* Mask the inside so only the border glows */
+.ai-fab-ring::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 999px;
+  background: var(--reader-surface, #fff);
+}
+
+@keyframes ai-ring-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* The actual icon button — circle, no text */
+.pdf-ai-button {
+  position: relative;
+  z-index: 1;
+  width: 48px;
+  height: 48px;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 9px 14px;
+  justify-content: center;
   border: 0;
   border-radius: 999px;
-  color: var(--reader-accent-text);
-  background: var(--reader-accent);
-  box-shadow: 0 14px 30px color-mix(in srgb, var(--reader-accent) 24%, transparent);
-  font-size: 0.62rem;
-  font-weight: 800;
+  color: var(--reader-accent-text, #fff);
+  background: var(--reader-accent, #3b82f6);
+  box-shadow: 0 4px 18px color-mix(in srgb, var(--reader-accent, #3b82f6) 40%, transparent);
   cursor: pointer;
-  transition: transform 0.18s ease, background 0.18s ease;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
 
 .pdf-ai-button:hover {
-  transform: translateY(-2px);
-  background: var(--reader-accent-hover);
+  transform: scale(1.08);
+  box-shadow: 0 6px 24px color-mix(in srgb, var(--reader-accent, #3b82f6) 55%, transparent);
+}
+
+.pdf-ai-button:active {
+  transform: scale(0.96);
 }
 
 .pdf-ai-button svg {
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 20px;
 }
+
+/* "Smart AI" label pill — floats above the button */
+.ai-fab-label {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  white-space: nowrap;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #4285f4 0%, #9b72cb 50%, #ea4335 100%);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  box-shadow: 0 4px 16px rgba(66, 133, 244, 0.45);
+  pointer-events: none;
+  /* small downward arrow */
+}
+
+.ai-fab-label::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: #9b72cb;
+}
+
+/* Label enter/leave transition — spring pop-up from button */
+.ai-label-enter-active {
+  transition: opacity 0.35s ease, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.ai-label-leave-active {
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.ai-label-enter-from {
+  opacity: 0;
+  transform: translateX(-50%) translateY(10px) scale(0.8);
+}
+.ai-label-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(6px) scale(0.9);
+}
+
+
 
 /* ============================================================
    AI PANEL

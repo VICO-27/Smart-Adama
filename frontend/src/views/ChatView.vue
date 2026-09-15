@@ -6274,17 +6274,14 @@ watch(
     #4285f4    /* back to blue */
   );
   animation: ai-ring-spin 3s linear infinite;
-  filter: blur(1px);
-  opacity: 0.9;
-}
 
-/* Mask the inside so only the border glows */
-.ai-fab-ring::after {
-  content: '';
-  position: absolute;
-  inset: 3px;
-  border-radius: 999px;
-  background: var(--reader-surface, #fff);
+  /* Use a CSS mask to punch a hole in the center, so only the border glows */
+  padding: 3px; 
+  -webkit-mask: 
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
 }
 
 @keyframes ai-ring-spin {
@@ -6333,13 +6330,13 @@ watch(
   white-space: nowrap;
   padding: 5px 12px;
   border-radius: 999px;
-  background: linear-gradient(135deg, #4285f4 0%, #9b72cb 50%, #ea4335 100%);
+  background: var(--reader-brand, #395886);
   color: #fff;
   font-size: 0.7rem;
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  box-shadow: 0 4px 16px rgba(66, 133, 244, 0.45);
+  box-shadow: 0 4px 16px rgba(57, 88, 134, 0.45);
   pointer-events: none;
   /* small downward arrow */
 }
@@ -6351,7 +6348,7 @@ watch(
   left: 50%;
   transform: translateX(-50%);
   border: 5px solid transparent;
-  border-top-color: #9b72cb;
+  border-top-color: var(--reader-brand, #395886);
 }
 
 /* Label enter/leave transition — spring pop-up from button */

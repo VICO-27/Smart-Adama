@@ -2519,10 +2519,16 @@ onUnmounted(() => {
     #4285f4, #9b72cb, #ea4335, #fbbc04, #34a853, #4285f4
   );
   animation: ai-ring-spin 3s linear infinite;
-  filter: blur(1px);
-  opacity: 0.85;
   pointer-events: none;
   z-index: -2;
+
+  /* Use a CSS mask to punch a hole in the center, so only the border glows */
+  padding: 3px; 
+  -webkit-mask: 
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
 }
 
 @keyframes ai-ring-spin {
@@ -2539,13 +2545,13 @@ onUnmounted(() => {
   white-space: nowrap;
   padding: 5px 12px;
   border-radius: 999px;
-  background: linear-gradient(135deg, #4285f4 0%, #9b72cb 50%, #ea4335 100%);
+  background: var(--assistant-brand, #395886); /* Cool simple color */
   color: #fff;
   font-size: 0.75rem;
   font-weight: 800;
   letter-spacing: 0.03em;
   text-transform: uppercase;
-  box-shadow: 0 4px 16px rgba(66, 133, 244, 0.45);
+  box-shadow: 0 4px 16px rgba(57, 88, 134, 0.45);
   pointer-events: none;
 }
 
@@ -2556,7 +2562,7 @@ onUnmounted(() => {
   left: 50%;
   transform: translateX(-50%);
   border: 5px solid transparent;
-  border-top-color: #9b72cb;
+  border-top-color: var(--assistant-brand, #395886);
 }
 
 .ai-label-enter-active {

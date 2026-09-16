@@ -71,7 +71,7 @@
           <div class="tour-rail" aria-hidden="true">
             <div
               class="tour-rail__fill"
-              :style="{ width: `${((state.currentStepIndex + 1) / state.steps.length) * 100}%` }"
+              :style="{ width: state.steps.length ? `${((state.currentStepIndex + 1) / state.steps.length) * 100}%` : '0%' }"
             />
           </div>
 
@@ -303,7 +303,6 @@ const gestureStaticStyle = computed(() => {
 // POSITIONING ENGINE
 // ─────────────────────────────────────────────────────────────────
 let autoUpdateCleanup: (() => void) | null = null
-let resizeObserver: ResizeObserver | null = null
 let rafId: number | null = null
 
 function getVisibleTarget(selector: string): Element | null {
@@ -439,18 +438,11 @@ async function measureAndPosition() {
     hole.w = r.width + SPOTLIGHT_PAD * 2
     hole.h = r.height + SPOTLIGHT_PAD * 2
   })
-
-  // ResizeObserver on target
-  resizeObserver?.disconnect()
-  resizeObserver = new ResizeObserver(() => measureAndPosition())
-  resizeObserver.observe(targetEl)
 }
 
 function cleanupPositioning() {
   autoUpdateCleanup?.()
   autoUpdateCleanup = null
-  resizeObserver?.disconnect()
-  resizeObserver = null
   if (rafId !== null) { cancelAnimationFrame(rafId); rafId = null }
 }
 

@@ -1086,7 +1086,7 @@
               {{ dynamicGreeting }}
             </h2>
           </Transition>
-          <form class="ai-composer ai-composer--empty" @submit.prevent="sendMessage">
+          <form class="ai-composer ai-composer--empty" data-tour="ai-composer" @submit.prevent="sendMessage">
             <div class="ai-composer__field">
               <textarea
                 ref="chatInputRef"

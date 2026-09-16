@@ -21,6 +21,14 @@ export const homeTour: TourDefinition = {
       content: 'tour.home.step3.content',
       placement: 'bottom',
       gesture: 'tap',
+      onBeforeShow: async () => {
+        if (window.innerWidth < 768) {
+          const menuBtn = document.querySelector<HTMLButtonElement>('.mobile-menu-button')
+          if (menuBtn && menuBtn.getAttribute('aria-expanded') !== 'true') {
+            menuBtn.click()
+          }
+        }
+      },
     },
     {
       target: '[data-tour="ai-toggle"]',
@@ -28,6 +36,17 @@ export const homeTour: TourDefinition = {
       content: 'tour.home.step4.content',
       placement: 'left',
       gesture: 'tap',
+      onBeforeShow: async () => {
+        if (window.innerWidth < 768) {
+          const menuBtn = document.querySelector<HTMLButtonElement>('.mobile-menu-button')
+          if (menuBtn && menuBtn.getAttribute('aria-expanded') === 'true') {
+            menuBtn.click()
+          }
+        }
+        // If the AI assistant panel is already open, the toggle button is hidden. Close it.
+        const closeBtn = document.querySelector<HTMLButtonElement>('.assistant-panel [aria-label="Close assistant"]')
+        if (closeBtn) closeBtn.click()
+      },
     },
     {
       target: '[data-tour="momentum"]',

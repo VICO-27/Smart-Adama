@@ -84,6 +84,21 @@
             </button>
 
             <button
+              v-if="mode === 'hub'"
+              type="button"
+              class="icon-button"
+              :title="$t('tour.controls.restart')"
+              aria-label="Restart tour"
+              @click="restartTour"
+            >
+              <!-- play / compass icon -->
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M14.5 9.5 10 12l4.5 2.5V9.5Z" stroke-linejoin="round" />
+              </svg>
+            </button>
+
+            <button
               type="button"
               class="icon-button"
               aria-label="Close assistant"
@@ -460,6 +475,8 @@ import { apiBase, warmUpBackend } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 import { useTheme } from '@/composables/useTheme'
 import { useI18n } from 'vue-i18n'
+import { useTour } from '@/composables/useTour'
+import { homeTour } from '@/composables/tourRegistry'
 
 // DOMPurify Hook to add target="_blank" to parsed links
 DOMPurify.addHook('afterSanitizeAttributes', (node) => {
@@ -472,6 +489,14 @@ DOMPurify.addHook('afterSanitizeAttributes', (node) => {
 const auth = useAuthStore()
 const { themePreference, setTheme } = useTheme()
 const { t } = useI18n()
+const { registerTour, resetTour, startTour } = useTour()
+
+const restartTour = () => {
+  resetTour('home')
+  registerTour(homeTour)
+  closeAssistant()
+  setTimeout(() => startTour('home'), 400)
+}
 
 const activeTheme = computed(() => {
   if (themePreference.value === 'system') {

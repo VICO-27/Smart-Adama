@@ -16,7 +16,7 @@ export const homeTour: TourDefinition = {
       placement: 'bottom'
     },
     {
-      target: 'a.app-nav-link[href="/study"]',
+      target: 'a.app-nav-link[href="/study"], .mobile-menu-button',
       title: 'tour.home.step3.title',
       content: 'tour.home.step3.content',
       placement: 'bottom'

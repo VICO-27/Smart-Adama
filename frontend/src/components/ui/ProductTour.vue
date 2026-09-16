@@ -14,15 +14,15 @@
         <div class="tour-card-wrapper" :style="wrapperStyle">
           <div class="tour-card">
             <div class="tour-card__header">
-              <h3 class="tour-card__title">{{ currentStep?.title ? $t(currentStep.title) : '' }}</h3>
-              <button class="tour-card__close" @click="skipTour" :aria-label="$t('tour.controls.skip')">
+              <h3 class="tour-card__title">{{ currentStep?.title ? t(currentStep.title) : '' }}</h3>
+              <button class="tour-card__close" @click="skipTour" :aria-label="t('tour.controls.skip')">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M18 6L6 18M6 6l12 12" stroke-linecap="round" />
                 </svg>
               </button>
             </div>
             
-            <p class="tour-card__content">{{ currentStep?.content ? $t(currentStep.content) : '' }}</p>
+            <p class="tour-card__content">{{ currentStep?.content ? t(currentStep.content) : '' }}</p>
             
             <div class="tour-card__footer">
               <div class="tour-card__progress">
@@ -35,9 +35,9 @@
               </div>
               
               <div class="tour-card__actions">
-                <button v-if="state.currentStepIndex > 0" class="btn-tour-secondary" @click="prevStep">{{ $t('tour.controls.back') }}</button>
+                <button v-if="state.currentStepIndex > 0" class="btn-tour-secondary" @click="prevStep">{{ t('tour.controls.back') }}</button>
                 <button class="btn-tour-primary" @click="nextStep">
-                  {{ isLastStep ? $t('tour.controls.finish') : $t('tour.controls.next') }}
+                  {{ isLastStep ? t('tour.controls.finish') : t('tour.controls.next') }}
                 </button>
               </div>
             </div>
@@ -51,7 +51,9 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useTour } from '@/composables/useTour'
+import { useI18n } from 'vue-i18n'
 
+const { t } = useI18n()
 const { state, nextStep, prevStep, skipTour } = useTour()
 
 const spotlightRect = ref({ top: 0, left: 0, width: 0, height: 0 })
@@ -67,7 +69,18 @@ const updatePosition = () => {
     return // Centered mode needs no target rect
   }
 
-  const targetEl = document.querySelector(currentStep.value.target)
+  const getVisibleTarget = (selector: string) => {
+    const elements = document.querySelectorAll(selector)
+    for (const el of elements) {
+      const rect = el.getBoundingClientRect()
+      if (rect.width > 0 && rect.height > 0) {
+        return el
+      }
+    }
+    return null
+  }
+
+  const targetEl = getVisibleTarget(currentStep.value.target)
   if (targetEl) {
     // Smoothly scroll element into view if mostly off-screen
     const rect = targetEl.getBoundingClientRect()
@@ -90,7 +103,16 @@ const updatePosition = () => {
 
 const measureTarget = () => {
   if (!currentStep.value) return
-  const targetEl = document.querySelector(currentStep.value.target)
+  const elements = document.querySelectorAll(currentStep.value.target)
+  let targetEl = null
+  for (const el of elements) {
+    const rect = el.getBoundingClientRect()
+    if (rect.width > 0 && rect.height > 0) {
+      targetEl = el
+      break
+    }
+  }
+  
   if (targetEl) {
     const rect = targetEl.getBoundingClientRect()
     // Add small padding around the element

@@ -29,15 +29,23 @@ export function useTour() {
   }
 
   const getStorageKey = (id: string) => {
-    const authStore = useAuthStore()
-    const userId = authStore.user?.id || 'guest'
-    return `sa_tour_${id}_completed_${userId}`
+    try {
+      const authStore = useAuthStore()
+      const userId = authStore.user?.id || 'guest'
+      return `sa_tour_${id}_completed_${userId}`
+    } catch (e) {
+      return `sa_tour_${id}_completed_guest`
+    }
   }
 
   const startTour = async (tourId: string) => {
     if (!tours[tourId]) return
-    const isCompleted = localStorage.getItem(getStorageKey(tourId)) === 'true'
-    if (isCompleted) return
+    try {
+      const isCompleted = localStorage.getItem(getStorageKey(tourId)) === 'true'
+      if (isCompleted) return
+    } catch (e) {
+      // Ignore storage errors and just show the tour
+    }
 
     state.currentTourId = tourId
     state.steps = tours[tourId].steps
@@ -74,14 +82,14 @@ export function useTour() {
 
   const skipTour = () => {
     if (state.currentTourId) {
-      localStorage.setItem(getStorageKey(state.currentTourId), 'true')
+      try { localStorage.setItem(getStorageKey(state.currentTourId), 'true') } catch (e) {}
     }
     closeTour()
   }
 
   const finishTour = () => {
     if (state.currentTourId) {
-      localStorage.setItem(getStorageKey(state.currentTourId), 'true')
+      try { localStorage.setItem(getStorageKey(state.currentTourId), 'true') } catch (e) {}
     }
     closeTour()
   }
@@ -94,7 +102,7 @@ export function useTour() {
   }
   
   const resetTour = (tourId: string) => {
-    localStorage.removeItem(getStorageKey(tourId))
+    try { localStorage.removeItem(getStorageKey(tourId)) } catch (e) {}
   }
 
   return {

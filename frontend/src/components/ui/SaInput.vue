@@ -6,6 +6,8 @@ defineProps<{
   placeholder?: string
   disabled?: boolean
   autocomplete?: string
+  id?: string
+  name?: string
 }>()
 
 const model = defineModel<string>()
@@ -15,6 +17,8 @@ const model = defineModel<string>()
   <div class="flex flex-col gap-1.5">
     <label v-if="label" class="text-sm font-medium text-[var(--sa-dark)]">{{ label }}</label>
     <input
+      :id="id"
+      :name="name"
       v-model="model"
       :type="type ?? 'text'"
       :placeholder="placeholder"

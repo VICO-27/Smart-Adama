@@ -48,7 +48,7 @@ async function submit() {
           <p class="text-sm text-[var(--sa-taupe)] dark:text-gray-400 mt-1">If that email exists, a reset link is on its way.</p>
         </div>
         <form v-else @submit.prevent="submit" novalidate class="flex flex-col gap-5">
-          <SaInput v-model="email" label="Email" type="email" placeholder="you@example.com" autocomplete="email" required />
+          <SaInput v-model="email" id="email" name="email" label="Email" type="email" placeholder="you@example.com" autocomplete="email" required />
           <p v-if="error" class="text-sm text-red-600 dark:text-red-400" role="alert">{{ error }}</p>
           <SaButton type="submit" :loading="loading" class="w-full justify-center">Send reset link</SaButton>
         </form>

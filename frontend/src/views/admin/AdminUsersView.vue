@@ -234,15 +234,15 @@ const handleInvite = async () => {
         <div class="space-y-5">
           <div>
             <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Full Name</label>
-            <input v-model="inviteForm.name" type="text" class="w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 py-3 px-4 focus:ring-[#3B82F6] dark:text-white" placeholder="Jane Doe" />
+            <input v-model="inviteForm.name" type="text" id="invite-name" name="name" class="w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 py-3 px-4 focus:ring-[#3B82F6] dark:text-white" placeholder="Jane Doe" />
           </div>
           <div>
             <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Email Address</label>
-            <input v-model="inviteForm.email" type="email" class="w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 py-3 px-4 focus:ring-[#3B82F6] dark:text-white" placeholder="jane@example.com" />
+            <input v-model="inviteForm.email" type="email" id="invite-email" name="email" class="w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 py-3 px-4 focus:ring-[#3B82F6] dark:text-white" placeholder="jane@example.com" />
           </div>
           <div>
             <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Role</label>
-            <select v-model="inviteForm.role" class="w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 py-3 px-4 focus:ring-[#3B82F6] dark:text-white">
+            <select v-model="inviteForm.role" id="invite-role" name="role" class="w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 py-3 px-4 focus:ring-[#3B82F6] dark:text-white">
               <option value="user">User</option>
               <option value="supervisor">Supervisor</option>
               <option value="admin">Admin</option>

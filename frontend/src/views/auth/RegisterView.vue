@@ -64,7 +64,7 @@ function loginWith(provider: 'google' | 'facebook') {
         <form @submit.prevent="submit" novalidate class="flex flex-col gap-5">
           <SaInput
             v-model="email"
-            label="Email"
+            id="email" name="email" label="Email"
             type="email"
             placeholder="you@example.com"
             autocomplete="email"
@@ -73,7 +73,7 @@ function loginWith(provider: 'google' | 'facebook') {
           />
           <SaInput
             v-model="password"
-            label="Password"
+            id="password" name="password" label="Password"
             type="password"
             placeholder="••••••••"
             autocomplete="current-password"

@@ -56,7 +56,7 @@ async function submit() {
           <p class="text-sm font-medium text-[var(--sa-dark)] dark:text-white">Password updated! Redirecting…</p>
         </div>
         <form v-else @submit.prevent="submit" novalidate class="flex flex-col gap-5">
-          <SaInput v-model="password" label="New password" type="password" placeholder="Min. 8 chars with a number" autocomplete="new-password" required />
+          <SaInput v-model="password" id="password" name="password" label="New password" type="password" placeholder="Min. 8 chars with a number" autocomplete="new-password" required />
           <p v-if="error" class="text-sm text-red-600 dark:text-red-400" role="alert">{{ error }}</p>
           <SaButton type="submit" :loading="loading" class="w-full justify-center">Update password</SaButton>
         </form>

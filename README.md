@@ -79,6 +79,8 @@ Strictly decoupled — no server-side rendering, no monolithic coupling. All com
    └────────────────┘  └─────────────────┘  └───────────────────┘
 ```
 
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/317a7a8c-1790-4848-96d4-f547b2bc5c0a" />
+
 **Why it's grounded, not guessing:** every study-AI response is built from a hybrid retrieval pass — **dense semantic search** (Voyage AI embeddings + pgvector HNSW cosine index) fused with **lexical full-text search** (PostgreSQL `tsvector` + GIN) via **Reciprocal Rank Fusion** (`k=60`), with a chapter-relevance boost. The LLM is only ever allowed to answer from what's retrieved.
 
 ```sql

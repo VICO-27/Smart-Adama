@@ -1017,22 +1017,23 @@
           <h2>{{ $t('chapter.no_pdf') }}</h2>
         </div>
 
-        <!-- Floating AI FAB with spinning glow border + Smart AI label -->
-        <div class="ai-fab-wrap" data-tour="study-ai" :class="{ 'ai-fab-wrap--label': aiLabelVisible }">
-          <!-- Spinning conic-gradient glow ring -->
-          <div class="ai-fab-ring" aria-hidden="true"></div>
-          <!-- Animated "Smart AI" label pill -->
-          <Transition name="ai-label">
-            <span v-if="aiLabelVisible" class="ai-fab-label" aria-hidden="true">Smart AI</span>
-          </Transition>
-          <button type="button" class="pdf-ai-button" @click="toggleAiSidebar(true)" aria-label="Open Smart AI Assistant">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M13 10V3L4 14h7v7l9-11h-7Z" stroke-linejoin="round" />
-            </svg>
-          </button>
-        </div>
-
       </div>
+
+      <!-- Floating AI FAB with spinning glow border + Smart AI label -->
+      <div class="ai-fab-wrap" data-tour="study-ai" :class="{ 'ai-fab-wrap--label': aiLabelVisible }">
+        <!-- Spinning conic-gradient glow ring -->
+        <div class="ai-fab-ring" aria-hidden="true"></div>
+        <!-- Animated "Smart AI" label pill -->
+        <Transition name="ai-label">
+          <span v-if="aiLabelVisible" class="ai-fab-label" aria-hidden="true">Smart AI</span>
+        </Transition>
+        <button type="button" class="pdf-ai-button" @click="toggleAiSidebar(true)" aria-label="Open Smart AI Assistant">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M13 10V3L4 14h7v7l9-11h-7Z" stroke-linejoin="round" />
+          </svg>
+        </button>
+      </div>
+
     </main>
 
     <!-- =========================================================

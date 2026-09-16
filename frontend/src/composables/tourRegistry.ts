@@ -120,10 +120,7 @@ export const studyTour: TourDefinition = {
       placement: 'right',
       gesture: 'tap',
       onBeforeShow: async () => {
-        // Ensure the chapters tab is active to show the quiz link
-        const chaptersTab = document.querySelector<HTMLButtonElement>('[data-tour="chapters-tab"]')
-        if (chaptersTab) chaptersTab.click()
-        
+        // 1. Open the sidebar first
         const chaptersRail = document.querySelector<HTMLButtonElement>('[data-tour="chapters"]')
         if (chaptersRail) chaptersRail.click()
         
@@ -131,6 +128,13 @@ export const studyTour: TourDefinition = {
           const mobileToggle = document.querySelector<HTMLButtonElement>('.mobile-sidebar-toggle[title="Open sidebar"]')
           if (mobileToggle) mobileToggle.click()
         }
+
+        // 2. Wait for Vue to render the v-if sidebar
+        await new Promise(r => setTimeout(r, 100))
+
+        // 3. Now click the chapters tab to ensure the quiz link is visible
+        const chaptersTab = document.querySelector<HTMLButtonElement>('[data-tour="chapters-tab"]')
+        if (chaptersTab) chaptersTab.click()
       },
     },
   ],

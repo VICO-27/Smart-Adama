@@ -164,6 +164,7 @@
           <button
             type="button"
             class="tab-btn"
+            data-tour="chapters-tab"
             :class="{ 'is-active': activeSidebarTab === 'chapters' }"
             @click="activeSidebarTab = 'chapters'; if (!isReaderOpen) { isReaderOpen = true; isAiSidebarOpen = false; }"
           >

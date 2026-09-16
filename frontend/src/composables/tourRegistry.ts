@@ -48,14 +48,15 @@ export const studyTour: TourDefinition = {
       placement: 'center',
     },
     {
-      target: '[data-tour="chapters"]',
+      target: '[data-tour="chapters-tab"]',
       title: 'tour.study.step2.title',
       content: 'tour.study.step2.content',
       placement: 'right',
       gesture: 'tap',
       onBeforeShow: async () => {
-        const chaptersBtn = document.querySelector<HTMLButtonElement>('[data-tour="chapters"]')
-        if (chaptersBtn) chaptersBtn.click()
+        // Click the rail button to open the sidebar, revealing the chapters-tab
+        const chaptersRail = document.querySelector<HTMLButtonElement>('[data-tour="chapters"]')
+        if (chaptersRail) chaptersRail.click()
         if (window.innerWidth < 768) {
           const mobileToggle = document.querySelector<HTMLButtonElement>('.mobile-sidebar-toggle[title="Open sidebar"]')
           if (mobileToggle) mobileToggle.click()
@@ -87,6 +88,11 @@ export const studyTour: TourDefinition = {
       title: 'tour.study.step5.title',
       content: 'tour.study.step5.content',
       placement: 'top',
+      onBeforeShow: async () => {
+        // Click the AI fab to open the AI sidebar so the composer is visible
+        const aiToggle = document.querySelector<HTMLButtonElement>('.pdf-ai-button')
+        if (aiToggle) aiToggle.click()
+      }
     },
     {
       target: '[data-tour="quiz"]',
@@ -95,8 +101,13 @@ export const studyTour: TourDefinition = {
       placement: 'right',
       gesture: 'tap',
       onBeforeShow: async () => {
-        const chaptersBtn = document.querySelector<HTMLButtonElement>('[data-tour="chapters"]')
-        if (chaptersBtn) chaptersBtn.click()
+        // Ensure the chapters tab is active to show the quiz link
+        const chaptersTab = document.querySelector<HTMLButtonElement>('[data-tour="chapters-tab"]')
+        if (chaptersTab) chaptersTab.click()
+        
+        const chaptersRail = document.querySelector<HTMLButtonElement>('[data-tour="chapters"]')
+        if (chaptersRail) chaptersRail.click()
+        
         if (window.innerWidth < 768) {
           const mobileToggle = document.querySelector<HTMLButtonElement>('.mobile-sidebar-toggle[title="Open sidebar"]')
           if (mobileToggle) mobileToggle.click()

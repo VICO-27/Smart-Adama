@@ -733,20 +733,7 @@
                 </Transition>
               </div>
             </div>
-            <div class="mobile-header-bottom-row mobile-header-bottom-row--right">
-              <button
-                type="button"
-                class="mobile-sidebar-toggle"
-                aria-label="Open AI assistant"
-                title="Open AI assistant"
-                @click="openAiSidebar"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <path d="m13 17-5-5 5-5" stroke-linecap="round" stroke-linejoin="round" />
-                  <path d="m18 17-5-5 5-5" stroke-linecap="round" stroke-linejoin="round" />
-                </svg>
-              </button>
-            </div>
+
           </div>
         </div>
       </header>
@@ -1021,6 +1008,21 @@
 
       <!-- Hidden button to programmatically open the AI sidebar for the Product Tour -->
       <button id="tour-open-ai-btn" type="button" style="display:none" @click="toggleAiSidebar(true)"></button>
+
+      <!-- Floating AI FAB with spinning glow border + Smart AI label (Mobile Only) -->
+      <div v-if="isMobile" class="ai-fab-wrap" :class="{ 'ai-fab-wrap--label': aiLabelVisible }">
+        <!-- Spinning conic-gradient glow ring -->
+        <div class="ai-fab-ring" aria-hidden="true"></div>
+        <!-- Animated "Smart AI" label pill -->
+        <Transition name="ai-label">
+          <span v-if="aiLabelVisible" class="ai-fab-label" aria-hidden="true">Smart AI</span>
+        </Transition>
+        <button type="button" class="pdf-ai-button" @click="toggleAiSidebar(true)" aria-label="Open Smart AI Assistant">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M13 10V3L4 14h7v7l9-11h-7Z" stroke-linejoin="round" />
+          </svg>
+        </button>
+      </div>
 
     </main>
 
@@ -3531,6 +3533,20 @@ const toggleFeedback = async (
 }
 
 // ── AI FAB label pulse (shows "Smart AI" on load then every 30s) ─────────────
+const aiLabelVisible = ref(false)
+let aiLabelInterval: ReturnType<typeof setInterval> | null = null
+
+function startAiLabelPulse() {
+  // Show immediately
+  aiLabelVisible.value = true
+  setTimeout(() => { aiLabelVisible.value = false }, 3000)
+
+  // Then pulse every 10 seconds
+  aiLabelInterval = setInterval(() => {
+    aiLabelVisible.value = true
+    setTimeout(() => { aiLabelVisible.value = false }, 3000)
+  }, 10000)
+}
 
 const isSubmitting = ref(false)
 
@@ -3584,6 +3600,7 @@ const sendMessage = async () => {
 onMounted(async () => {
   warmUpBackend()
   // Start the "Smart AI" label pulse on the floating AI button
+  setTimeout(startAiLabelPulse, 1200)
   pickDynamicGreeting()
   applyStudyTheme(readerTheme.value)
   window.addEventListener('resize', handleResize)
@@ -3668,6 +3685,10 @@ onUnmounted(() => {
     clearTimeout(overscrollResetTimer)
   }
 
+  if (aiLabelInterval) {
+    clearInterval(aiLabelInterval)
+    aiLabelInterval = null
+  }
 
   document.body.style.cursor = ''
 })
@@ -6223,9 +6244,134 @@ watch(
   font-size: 0.95rem;
   font-weight: 800;
 }
+
+/* ============================================================
+   AI FLOATING ACTION BUTTON (Mobile Only)
 ============================================================ */
 
+.ai-fab-wrap {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
 
+.ai-fab-ring {
+  position: absolute;
+  inset: -4px;
+  border-radius: 999px;
+  overflow: hidden;
+  pointer-events: none;
+  padding: 3px; 
+  -webkit-mask: 
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+
+.ai-fab-ring::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 200%;
+  height: 200%;
+  transform: translate(-50%, -50%);
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    transparent 240deg,
+    #4285f4 360deg
+  );
+  animation: 
+    ai-ring-spin 2.5s linear infinite,
+    ai-color-cycle 10s linear infinite;
+}
+
+@keyframes ai-ring-spin {
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+@keyframes ai-color-cycle {
+  0% { filter: hue-rotate(0deg); }
+  100% { filter: hue-rotate(360deg); }
+}
+
+.pdf-ai-button {
+  position: relative;
+  z-index: 1;
+  width: 48px;
+  height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  color: var(--reader-accent-text, #fff);
+  background: var(--reader-accent, #3b82f6);
+  box-shadow: 0 4px 18px color-mix(in srgb, var(--reader-accent, #3b82f6) 40%, transparent);
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.pdf-ai-button:hover {
+  transform: scale(1.08);
+  box-shadow: 0 6px 24px color-mix(in srgb, var(--reader-accent, #3b82f6) 55%, transparent);
+}
+
+.pdf-ai-button:active {
+  transform: scale(0.96);
+}
+
+.pdf-ai-button svg {
+  width: 20px;
+  height: 20px;
+}
+
+.ai-fab-label {
+  position: absolute;
+  right: calc(100% + 14px);
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  white-space: nowrap;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--reader-brand, #395886);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  box-shadow: 0 4px 16px rgba(57, 88, 134, 0.45);
+  pointer-events: none;
+}
+
+.ai-fab-label::after {
+  content: '';
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 5px solid transparent;
+  border-left-color: var(--reader-brand, #395886);
+}
+
+.ai-label-enter-active {
+  transition: opacity 0.35s ease, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.ai-label-leave-active {
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.ai-label-enter-from,
+.ai-label-leave-to {
+  opacity: 0;
+  transform: translateY(-50%) translateX(10px) scale(0.9);
+}
 
 .ai-messages {
   min-height: 0;

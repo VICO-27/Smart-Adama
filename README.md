@@ -1,4 +1,3 @@
-<img width="1086" height="1448" alt="image" src="https://github.com/user-attachments/assets/8119b835-57a4-4afb-aa53-f33f1e263e53" /><div align="center">
 
 # 🏙️ Smart Adama
 

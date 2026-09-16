@@ -1,6 +1,6 @@
 import { reactive, nextTick, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import { useRouter } from 'vue-router'
+import router from '@/router'
 
 export interface TourStep {
   target: string // CSS selector — prefer [data-tour="..."]
@@ -84,15 +84,16 @@ export function useTour() {
 
     // Watch for route change and teardown
     try {
-      const router = useRouter()
-      const stop = watch(
-        () => router.currentRoute.value.fullPath,
-        () => {
-          closeTour()
-          stop()
-        },
-      )
-      ;(state as any)._routeWatchStop = stop
+      if (router) {
+        const stop = watch(
+          () => router.currentRoute.value.fullPath,
+          () => {
+            closeTour()
+            stop()
+          },
+        )
+        ;(state as any)._routeWatchStop = stop
+      }
     } catch {
       // Not inside a component context — skip route watch
     }

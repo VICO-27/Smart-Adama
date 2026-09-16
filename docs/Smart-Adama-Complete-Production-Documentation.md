@@ -845,12 +845,57 @@ This technical document serves as the authoritative basis for the University Int
 
 | System Domain | Feature Scope | Implementation Status | Verification Evidence |
 | --- | --- | --- | --- |
-| Authentication | Supabase Auth + Sanctum Bridge | VERIFIED / PRODUCTION-READY | Seamless JWT decoding & auto-provisioning verified in PersonalAccessToken.php. |
-| Book Reader | Chapter viewing, progress, section tree | VERIFIED / PRODUCTION-READY | Reading percentages, last-page resumption, and section hierarchies operational. |
-| Study AI Assistant | Chapter-aware hybrid RAG, SSE stream | VERIFIED / PRODUCTION-READY | Hybrid RRF (+0.35 chapter boost), citations, and reasoning filtering verified. |
-| Global AI Assistant | Platform guide, credits, throttling | VERIFIED / PRODUCTION-READY | Verified in GlobalChatController; rate limit enforced via ThrottleChat. |
-| Quiz System | Assessments, server-side grading | VERIFIED / PRODUCTION-READY | QuizGradingService server-side validation and 70% threshold verified. |
-| Gamification | Badges (8) and activity streaks | VERIFIED / PRODUCTION-READY | Criteria evaluation and daily activity streak logic verified in services. |
-| Admin Studio | Manual authoring, ingestion SSE monitor | VERIFIED / PRODUCTION-READY | Hierarchical tree authoring and SSE progress streaming verified. |
-| Deployment | Vercel + Render + Supabase | VERIFIED / PRODUCTION-READY | Dockerfile, entrypoint.sh, and vercel.json verified in repository. |
+| Authentication | Supabase Auth + Sanctum Bridge | IMPLEMENTED / STATICALLY VERIFIED | Seamless JWT decoding & auto-provisioning verified in PersonalAccessToken.php. |
+| Book Reader | Chapter viewing, progress, section tree | IMPLEMENTED / MANUALLY TESTED | Reading percentages, last-page resumption, and section hierarchies operational. |
+| Study AI Assistant | Chapter-aware hybrid RAG, SSE stream | IMPLEMENTED / STATICALLY VERIFIED | Hybrid RRF (+0.35 chapter boost), citations, and reasoning filtering verified. |
+| Global AI Assistant | Platform guide, credits, throttling | IMPLEMENTED / STATICALLY VERIFIED | Verified in GlobalChatController; rate limit enforced via ThrottleChat. |
+| Quiz System | Assessments, server-side grading | IMPLEMENTED / STATICALLY VERIFIED | QuizGradingService server-side validation and 70% threshold verified. |
+| Gamification | Badges (8) and activity streaks | IMPLEMENTED / STATICALLY VERIFIED | Criteria evaluation and daily activity streak logic verified in services. |
+| Admin Studio | Manual authoring, ingestion SSE monitor | IMPLEMENTED / MANUALLY TESTED | Hierarchical tree authoring and SSE progress streaming verified. |
+| Deployment | Vercel + Render + Supabase | IMPLEMENTED / STATICALLY VERIFIED | Dockerfile, entrypoint.sh, and vercel.json verified in repository. |
+| Automated Testing | Pest PHP Unit/Feature Tests | KNOWN LIMITATION | Blocked locally by test-database (smart_adama_testing) ownership permissions. |
 
+
+
+# 42. Internal Engineering Verification & Audit
+
+Following the user-facing manual testing, a deep internal inspection of the Smart Adama backend architecture was conducted, focusing heavily on AI boundaries, internal Auth mechanisms, and database structures. The internal architecture was found to be exceptionally robust, particularly regarding IDOR protections and the Supabase JWT ingestion system.
+
+
+## 42.1 Testing Methods & Status
+
+- **Production / User-Facing (Manual): ** TESTED SUCCESSFULLY by the project team.
+- **Internal Engineering: ** STATICALLY VERIFIED and audited in all areas examined.
+- **Automated Backend Tests: ** Attempted but BLOCKED by local test-database ownership permissions (the configured user 'vico' for smart_adama_testing does not own existing tables, preventing RefreshDatabase from resetting the schema). This is a Low severity issue scoped only to local automated testing. It was not fixed because resolving it requires external PostgreSQL administrative privileges.
+- **Laravel Pint Formatting & Static Checks: ** TESTED SUCCESSFULLY. Discovered minor formatting inconsistencies which were automatically corrected by the Laravel Pint formatter.
+- **Manual Source Tracing: ** STATICALLY VERIFIED. Controllers correctly guard state.
+- **Targeted PostgreSQL / Database Syntax Testing: ** TESTED SUCCESSFULLY. Verified malformed UUID string behavior in PostgreSQL.
+
+## 42.2 Security Verification
+
+While no application is mathematically secure, no vulnerabilities were identified in the areas examined:
+
+- **IDOR / Ownership Checks: ** STATICALLY VERIFIED. Controllers guard state strictly. ChatSessionController, ChatMessageController, and QuizAttemptController explicitly verify ownership ($session->user_id === $request->user()->id).
+- **Admin Boundary Enforcement: ** STATICALLY VERIFIED. The EnsureAdmin middleware strictly checks $user->isAdmin(), explicitly rejecting anonymous tokens and correctly asserting valid roles.
+- **Anonymous JWT Privilege Protection: ** TESTED SUCCESSFULLY. The system prevents anonymous privilege escalation. PersonalAccessToken actively strips admin status if is_anonymous is detected in the JWT payload.
+- **Empty JWT Claim Handling: ** STATICALLY VERIFIED. The token bridge explicitly checks !empty($payload['email']) ? $payload['email'] : null, preventing empty string uniqueness violations in the database.
+- **Quiz Answer Leakage Protection: ** STATICALLY VERIFIED. QuizResource successfully filters out is_correct booleans in non-admin contexts.
+
+## 42.3 Authentication Analysis
+
+The backend architecture supports phone claims natively extracted from the Supabase JWT payload. However, please note that while the backend fully supports phone authentication conceptually, a complete production SMS provider (e.g., Twilio) was not explicitly verified as enabled inside the Supabase cloud dashboard during this audit.
+
+
+## 42.4 Performance / Code Quality
+
+- **N+1 Query Avoidance & Eager Loading: ** STATICALLY VERIFIED. Chat session retrieval correctly utilizes with('messages') and whenLoaded('messages') in API Resources.
+- **Database Indexing: ** STATICALLY VERIFIED. Vector search uses HNSW, and lexical search utilizes GIN tsvector indexes.
+- **Laravel Pint Formatting: ** TESTED SUCCESSFULLY. Codebase normalized to standard PHP formatting rules.
+
+## 42.5 Malformed UUID Bug & Resolution
+
+During targeted PostgreSQL testing, an unhandled edge-case bug was discovered in the Chat API context validation:
+
+- **Problem: ** Malformed context.chapter_id values in the JSON payload could reach the database layer and cause PostgreSQL to throw a SQLSTATE[22P02] (invalid input syntax for type uuid), resulting in a 500 Internal Server Error rather than a graceful validation response.
+- **Resolution: ** Added strict dot-notation UUID validation ('context.chapter_id' => ['nullable', 'uuid']) to SendMessageRequest.php.
+This fix successfully changed the malformed-input behavior from an internal database 500 error to a proper 422 Unprocessable Entity request validation.

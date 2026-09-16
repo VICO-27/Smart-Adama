@@ -50,6 +50,7 @@ Built for students, urban planners, municipal administrators, and citizens of Ad
 - **📊 Admin Diagnostics** — live CPU/memory/Redis/pgvector health, plus a RAG debug console exposing raw semantic vs. lexical scores
 
 ---
+![Uploading image.png…]()
 
 ## 🏗️ System Architecture
 

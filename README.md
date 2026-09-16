@@ -15,7 +15,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-7.0.2-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org)
 [![License](https://img.shields.io/badge/status-production-success?style=flat-square)]()
 
-[Live Demo](#https://smart-adama-sigma.vercel.app/) · [API Docs](#-api-documentation) · [Architecture](#-system-architecture) · [Report Bug](#)
+[Live Demo](#-https://smart-adama-sigma.vercel.app/) · [API Docs](#-api-documentation) · [Architecture](#-system-architecture) · [Report Bug](#)
 
 </div>
 

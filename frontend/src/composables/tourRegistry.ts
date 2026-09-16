@@ -96,21 +96,14 @@ export const studyTour: TourDefinition = {
       },
     },
     {
-      target: '[data-tour="study-ai"]',
-      title: 'tour.study.step4.title',
-      content: 'tour.study.step4.content',
-      placement: 'left',
-      gesture: 'tap',
-    },
-    {
       target: '[data-tour="ai-composer"]',
       title: 'tour.study.step5.title',
       content: 'tour.study.step5.content',
       placement: 'top',
       onBeforeShow: async () => {
-        // Click the AI fab to open the AI sidebar so the composer is visible
-        const aiToggle = document.querySelector<HTMLButtonElement>('.pdf-ai-button')
-        if (aiToggle) aiToggle.click()
+        // Trigger the hidden button to open the AI sidebar so the composer is visible
+        const tourOpenAiBtn = document.getElementById('tour-open-ai-btn')
+        if (tourOpenAiBtn) tourOpenAiBtn.click()
       }
     },
     {

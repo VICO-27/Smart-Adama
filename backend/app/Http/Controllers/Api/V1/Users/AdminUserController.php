@@ -28,14 +28,13 @@ class AdminUserController extends Controller
         $users = $query->orderBy('created_at', 'desc')->paginate(20);
 
         $mappedUsers = $users->map(function ($user) {
-            // Mock a progress stat for now since we don't have a direct field for "overall progress"
-            // We can base it roughly on their level or quiz attempts
             $progress = min(100, max(0, ($user->level * 5) + ($user->quiz_attempts_count * 2)));
 
             return [
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
+                'role' => $user->role,
                 'avatar' => $user->avatar_url ?: "https://ui-avatars.com/api/?name=" . urlencode($user->name) . "&background=F0F3FA&color=395886",
                 'registered' => $user->created_at->format('M j, Y'),
                 'progress' => $progress . '%',
@@ -66,6 +65,7 @@ class AdminUserController extends Controller
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
+                'role' => $user->role,
                 'avatar' => $user->avatar_url ?: "https://ui-avatars.com/api/?name=" . urlencode($user->name) . "&background=F0F3FA&color=395886",
                 'registered' => $user->created_at->format('M j, Y'),
                 'status' => ucfirst($user->status ?? 'Active'),
@@ -89,7 +89,8 @@ class AdminUserController extends Controller
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
-            'password' => bcrypt(str()->random(16)), // random password
+            'role' => $request->role ?? 'user',
+            'password' => bcrypt(str()->random(16)),
             'status' => 'active'
         ]);
 

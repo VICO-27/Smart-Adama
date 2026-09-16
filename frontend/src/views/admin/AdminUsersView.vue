@@ -16,7 +16,7 @@ const lastPage = ref(1)
 const totalUsers = ref(0)
 
 const isInviteModalOpen = ref(false)
-const inviteForm = ref({ name: '', email: '' })
+const inviteForm = ref({ name: '', email: '', role: 'user' })
 const isInviting = ref(false)
 
 // Use a simple debounce for search
@@ -79,7 +79,7 @@ const handleInvite = async () => {
     await api.post('/admin/users/invite', inviteForm.value)
     alert('User invited successfully!')
     isInviteModalOpen.value = false
-    inviteForm.value = { name: '', email: '' }
+    inviteForm.value = { name: '', email: '', role: 'user' }
     loadUsers()
   } catch (err: any) {
     alert(err.response?.data?.message || 'Failed to invite user')
@@ -154,6 +154,9 @@ const handleInvite = async () => {
             <div class="min-w-0">
               <h3 class="font-semibold text-white truncate transition-colors" :title="user.name">{{ user.name }}</h3>
               <p class="text-xs text-blue-50 dark:text-slate-500 truncate mt-0.5" :title="user.email">{{ user.email }}</p>
+              <span v-if="user.role && user.role !== 'user'" class="inline-block mt-1 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest bg-yellow-400 text-yellow-900 rounded-full">
+                {{ user.role }}
+              </span>
             </div>
           </div>
           <span
@@ -236,6 +239,14 @@ const handleInvite = async () => {
           <div>
             <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Email Address</label>
             <input v-model="inviteForm.email" type="email" class="w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 py-3 px-4 focus:ring-[#3B82F6] dark:text-white" placeholder="jane@example.com" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Role</label>
+            <select v-model="inviteForm.role" class="w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 py-3 px-4 focus:ring-[#3B82F6] dark:text-white">
+              <option value="user">User</option>
+              <option value="supervisor">Supervisor</option>
+              <option value="admin">Admin</option>
+            </select>
           </div>
           <button
             @click="handleInvite"

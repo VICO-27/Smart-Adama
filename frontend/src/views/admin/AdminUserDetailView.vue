@@ -107,7 +107,10 @@ const getPlaceholderTitle = (index: number): string => {
               </div>
               <div>
                 <p class="text-[11px] font-bold uppercase tracking-wider text-blue-100 dark:text-slate-500">Platform Role</p>
-                <p class="text-sm font-semibold text-white">Learner (Lvl {{ user.level }})</p>
+                <p class="text-sm font-semibold text-white">
+                  {{ user.role === 'admin' ? 'Administrator' : (user.role === 'supervisor' ? 'Supervisor' : 'Learner') }} 
+                  <span class="opacity-70 text-xs font-normal">(Lvl {{ user.level }})</span>
+                </p>
               </div>
             </div>
             <div class="flex items-center gap-4">

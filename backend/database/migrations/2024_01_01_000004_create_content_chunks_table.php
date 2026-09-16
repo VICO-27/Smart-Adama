@@ -13,7 +13,7 @@ return new class extends Migration
         $embeddingProvider = config('ai.embedding_provider', 'voyage');
         $dimension = match ($embeddingProvider) {
             'openai' => (int) config('ai.openai.dimension', 1536),
-            default  => (int) config('ai.voyage.dimension', 1024),
+            default => (int) config('ai.voyage.dimension', 1024),
         };
 
         Schema::create('content_chunks', function (Blueprint $table) {
@@ -34,10 +34,10 @@ return new class extends Migration
         // HNSW index for fast approximate nearest-neighbour cosine search
         // Using cosine distance operator <=> (vector_cosine_ops)
         DB::statement(
-            "CREATE INDEX content_chunks_embedding_hnsw_idx
+            'CREATE INDEX content_chunks_embedding_hnsw_idx
              ON content_chunks
              USING hnsw (embedding vector_cosine_ops)
-             WITH (m = 16, ef_construction = 64)"
+             WITH (m = 16, ef_construction = 64)'
         );
     }
 

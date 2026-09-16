@@ -19,11 +19,11 @@ class PhoneNormalizer
 
         // Handle Ethiopian numbers
         if (preg_match('/^0(9|7)\d{8}$/', $cleaned)) {
-            return '+251' . substr($cleaned, 1);
+            return '+251'.substr($cleaned, 1);
         }
 
         if (preg_match('/^251(9|7)\d{8}$/', $cleaned)) {
-            return '+' . $cleaned;
+            return '+'.$cleaned;
         }
 
         if (preg_match('/^\+251(9|7)\d{8}$/', $cleaned)) {

@@ -14,16 +14,16 @@ class GroundingDecisionService
     {
         if ($chunks->isEmpty()) {
             return [
-                'isGrounded'      => false,
-                'confidence'      => 'NONE',
+                'isGrounded' => false,
+                'confidence' => 'NONE',
                 'evidenceQuality' => 'Empty retrieval',
                 'selectedSources' => [],
             ];
         }
 
         $semanticThreshold = config('ai.rag.semantic_threshold', 0.65);
-        $lexicalThreshold  = config('ai.rag.lexical_threshold', 0.1);
-        $rrfThreshold      = config('ai.rag.rrf_threshold', 0.01);
+        $lexicalThreshold = config('ai.rag.lexical_threshold', 0.1);
+        $rrfThreshold = config('ai.rag.rrf_threshold', 0.01);
 
         $selectedSources = [];
         $strongCount = 0;
@@ -36,9 +36,10 @@ class GroundingDecisionService
             $isStrongRrf = $chunk['rrf_score'] >= $rrfThreshold;
 
             // If it's an excerpt or short entity lookup, lexical match is highly trusted
-            if ((!empty($understanding['is_excerpt']) || $understanding['is_entity_lookup']) && ($isStrongLexical || $chunk['keyword_score'] > 0)) {
+            if ((! empty($understanding['is_excerpt']) || $understanding['is_entity_lookup']) && ($isStrongLexical || $chunk['keyword_score'] > 0)) {
                 $selectedSources[] = $chunk;
                 $strongCount++;
+
                 continue;
             }
 
@@ -55,7 +56,7 @@ class GroundingDecisionService
         }
 
         // Limit context dynamically based on response mode
-        $maxChunks = match($responseMode) {
+        $maxChunks = match ($responseMode) {
             'SHORT' => 2,
             'NORMAL' => 4,
             'CHAPTER_QUIZ', 'QUIZ' => 5,
@@ -78,8 +79,8 @@ class GroundingDecisionService
         }
 
         return [
-            'isGrounded'      => $isGrounded,
-            'confidence'      => $confidence,
+            'isGrounded' => $isGrounded,
+            'confidence' => $confidence,
             'evidenceQuality' => "Strong: $strongCount, Moderate: $moderateCount, Weak: $weakCount",
             'selectedSources' => collect($selectedSources),
         ];

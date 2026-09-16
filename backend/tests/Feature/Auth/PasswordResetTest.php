@@ -1,8 +1,8 @@
 <?php
 
 use App\Models\User;
-use Illuminate\Support\Facades\Notification;
 use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Support\Facades\Notification;
 
 // ── POST /api/v1/auth/password/forgot ────────────────────────────────────────
 
@@ -41,8 +41,8 @@ it('rejects an invalid reset token', function () {
     User::factory()->create(['email' => 'real@example.com']);
 
     $this->postJson('/api/v1/auth/password/reset', [
-        'token'    => 'bad-token',
-        'email'    => 'real@example.com',
+        'token' => 'bad-token',
+        'email' => 'real@example.com',
         'password' => 'newpass1',
     ])->assertStatus(422);
 });

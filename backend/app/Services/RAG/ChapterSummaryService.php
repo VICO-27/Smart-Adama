@@ -10,8 +10,7 @@ class ChapterSummaryService
     public function __construct(
         private readonly LLMGatewayInterface $llm,
         private readonly PromptBuilderService $promptBuilder
-    ) {
-    }
+    ) {}
 
     /**
      * Executes a map-reduce summarization pipeline over a large collection of chunks.
@@ -34,7 +33,9 @@ class ChapterSummaryService
         $step = max(1, floor($total / 6));
         for ($i = 0; $i < $total; $i += $step) {
             $sampledChunks->push($chunksList[$i]);
-            if ($sampledChunks->count() >= 6) break;
+            if ($sampledChunks->count() >= 6) {
+                break;
+            }
         }
 
         return $sampledChunks;

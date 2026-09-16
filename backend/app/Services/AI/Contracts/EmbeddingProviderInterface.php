@@ -2,6 +2,8 @@
 
 namespace App\Services\AI\Contracts;
 
+use App\Exceptions\AiProviderException;
+
 /**
  * Provider-agnostic embedding contract (Req 4.2, 8.1).
  * Swap Voyage ↔ OpenAI by changing AI_EMBEDDING_PROVIDER in .env.
@@ -11,8 +13,9 @@ interface EmbeddingProviderInterface
     /**
      * Embed a single text string.
      *
-     * @return float[]  Dense vector of floats with length = configured dimension
-     * @throws \App\Exceptions\AiProviderException on permanent failure
+     * @return float[] Dense vector of floats with length = configured dimension
+     *
+     * @throws AiProviderException on permanent failure
      */
     public function embed(string $text, ?string $inputType = null): array;
 
@@ -21,7 +24,8 @@ interface EmbeddingProviderInterface
      *
      * @param  string[]  $texts
      * @return float[][] Array of vectors, indexed the same as $texts
-     * @throws \App\Exceptions\AiProviderException on permanent failure
+     *
+     * @throws AiProviderException on permanent failure
      */
     public function embedBatch(array $texts, ?string $inputType = null): array;
 

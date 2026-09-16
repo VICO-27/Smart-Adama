@@ -2,6 +2,9 @@
 
 namespace App\Services\RAG;
 
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+
 class PromptBuilderService
 {
     private const SYSTEM_PROMPT = <<<'PROMPT'
@@ -54,7 +57,7 @@ PROMPT;
 
     public function buildMessages(
         array $history,
-        \Illuminate\Support\Collection|array $chunks,
+        Collection|array $chunks,
         string $query,
         array $groundingDecision,
         bool $isConversational = false,
@@ -64,25 +67,25 @@ PROMPT;
         $isGrounded = $groundingDecision['isGrounded'] ?? false;
 
         $activeContextNote = '';
-        if (!empty($context)) {
+        if (! empty($context)) {
             $locationParts = [];
-            if (!empty($context['chapter_id'])) {
+            if (! empty($context['chapter_id'])) {
                 try {
-                    $chapter = \Illuminate\Support\Facades\DB::table('chapters')->where('id', $context['chapter_id'])->first();
+                    $chapter = DB::table('chapters')->where('id', $context['chapter_id'])->first();
                     if ($chapter) {
                         $locationParts[] = "Chapter: {$chapter->title}";
                     }
                 } catch (\Throwable) {
                     // Graceful fallback for mocked test environments
                 }
-            } elseif (!empty($context['chapter_title'])) {
+            } elseif (! empty($context['chapter_title'])) {
                 $locationParts[] = "Chapter: {$context['chapter_title']}";
             }
-            if (!empty($context['page'])) {
+            if (! empty($context['page'])) {
                 $locationParts[] = "Page {$context['page']}";
             }
-            if (!empty($locationParts)) {
-                $activeContextNote = "ACTIVE READING CONTEXT:\nUser is currently viewing: " . implode(', ', $locationParts) . "\n(If the user's query refers to 'this chapter', 'this page', or is ambiguous, prioritize this reading location while strictly relying on the verified text evidence below.)\n\n";
+            if (! empty($locationParts)) {
+                $activeContextNote = "ACTIVE READING CONTEXT:\nUser is currently viewing: ".implode(', ', $locationParts)."\n(If the user's query refers to 'this chapter', 'this page', or is ambiguous, prioritize this reading location while strictly relying on the verified text evidence below.)\n\n";
             }
         }
 
@@ -107,28 +110,28 @@ OTHER RULES:
 3. ALWAYS format with rich Markdown.";
         } elseif (! $isGrounded || (is_countable($chunks) ? count($chunks) : 0) === 0) {
             $systemContent = self::NO_CONTEXT_SYSTEM_PROMPT;
-            if (!empty($activeContextNote)) {
-                $systemContent .= "\n\n" . $activeContextNote;
+            if (! empty($activeContextNote)) {
+                $systemContent .= "\n\n".$activeContextNote;
             }
         } else {
-            $contextBlock  = $activeContextNote . $this->buildContextBlock($chunks);
+            $contextBlock = $activeContextNote.$this->buildContextBlock($chunks);
 
-            $modeInstructions = match($responseMode) {
-                'SHORT' => "MODE: SHORT. Provide approximately 1-3 extremely concise paragraphs. Give the direct answer first. No unnecessary repetition.",
-                'DETAILED' => "MODE: DETAILED. Provide a detailed answer including background, key points, examples, and relationships. Use clear section headings.",
-                'DEEP' => "MODE: DEEP. Provide a comprehensive structured educational answer. Use Markdown headings for Overview, Background, Core Concepts, Detailed Explanation, Examples, and Key Takeaways.",
-                'CHAPTER_SUMMARY' => "MODE: CHAPTER_SUMMARY. Provide a structured summary of the chapter. Use Markdown headings: ## Summary, ### Key Points, ### Main Takeaway.",
-                'CHAPTER_QUIZ', 'QUIZ' => "MODE: QUIZ. The user wants a practice quiz based on the text. Generate an engaging, high-quality practice quiz (3 to 5 questions) based strictly on the provided TEXT EVIDENCE.
+            $modeInstructions = match ($responseMode) {
+                'SHORT' => 'MODE: SHORT. Provide approximately 1-3 extremely concise paragraphs. Give the direct answer first. No unnecessary repetition.',
+                'DETAILED' => 'MODE: DETAILED. Provide a detailed answer including background, key points, examples, and relationships. Use clear section headings.',
+                'DEEP' => 'MODE: DEEP. Provide a comprehensive structured educational answer. Use Markdown headings for Overview, Background, Core Concepts, Detailed Explanation, Examples, and Key Takeaways.',
+                'CHAPTER_SUMMARY' => 'MODE: CHAPTER_SUMMARY. Provide a structured summary of the chapter. Use Markdown headings: ## Summary, ### Key Points, ### Main Takeaway.',
+                'CHAPTER_QUIZ', 'QUIZ' => 'MODE: QUIZ. The user wants a practice quiz based on the text. Generate an engaging, high-quality practice quiz (3 to 5 questions) based strictly on the provided TEXT EVIDENCE.
 - Provide clear questions testing understanding of core concepts, definitions, and key initiatives.
 - For each question, provide 4 options: A), B), C), and D).
 - Under each question, provide the correct answer along with a clear, concise explanation and citation (e.g. [Ch. 11, Sec. 11.1]).
 - Use clean Markdown formatting with bold question titles and readable spacing.
-- Conclude by inviting the user to try answering, ask for more questions, or explore another chapter.",
-                'EXCERPT_EXPLANATION' => "MODE: EXCERPT_EXPLANATION. The user is asking to explain a specific excerpt or selected concept from the text. Provide a clear, educational, and thorough explanation of the excerpt based on the text evidence. Break down its core objective, key elements, and how it fits into the broader smart city framework.",
-                'STEP_BY_STEP' => "MODE: STEP_BY_STEP. Explain the process clearly using numbered steps.",
-                'SIMPLE_EXPLANATION' => "MODE: SIMPLE_EXPLANATION. Explain the concept very simply as if to a beginner, avoiding overly dense jargon where possible.",
+- Conclude by inviting the user to try answering, ask for more questions, or explore another chapter.',
+                'EXCERPT_EXPLANATION' => 'MODE: EXCERPT_EXPLANATION. The user is asking to explain a specific excerpt or selected concept from the text. Provide a clear, educational, and thorough explanation of the excerpt based on the text evidence. Break down its core objective, key elements, and how it fits into the broader smart city framework.',
+                'STEP_BY_STEP' => 'MODE: STEP_BY_STEP. Explain the process clearly using numbered steps.',
+                'SIMPLE_EXPLANATION' => 'MODE: SIMPLE_EXPLANATION. Explain the concept very simply as if to a beginner, avoiding overly dense jargon where possible.',
                 'COMPARISON' => "MODE: COMPARISON. Compare the concepts clearly. Use headings for each concept and a 'Key Differences' section.",
-                default => "MODE: NORMAL. Provide a clear answer with enough explanation, typically 3-6 concise sections/paragraphs depending on the question.",
+                default => 'MODE: NORMAL. Provide a clear answer with enough explanation, typically 3-6 concise sections/paragraphs depending on the question.',
             };
 
             $systemContent = str_replace(['{context}', '{mode_instructions}'], [$contextBlock, $modeInstructions], self::SYSTEM_PROMPT);
@@ -152,33 +155,35 @@ OTHER RULES:
         }
 
         $guardrail = "\n\n[SYSTEM REMINDER: You are in {$responseMode} mode. Answer ONLY using the provided text. Match the language of the user's question: if the question is in Afaan Oromoo, respond entirely in Afaan Oromoo; if in Amharic, respond in Amharic; if in English, respond in English. DO NOT invent facts.]";
-        $messages[] = ['role' => 'user', 'content' => $query . (! $isConversational && $isGrounded ? $guardrail : '')];
+        $messages[] = ['role' => 'user', 'content' => $query.(! $isConversational && $isGrounded ? $guardrail : '')];
 
         return $messages;
     }
 
-    private function buildContextBlock(\Illuminate\Support\Collection|array $chunks): string
+    private function buildContextBlock(Collection|array $chunks): string
     {
         $context = [];
         $count = 0;
         foreach ($chunks as $chunk) {
-            if ($count >= 8) break;
+            if ($count >= 8) {
+                break;
+            }
             $pageNum = $chunk['page_number'] ?? 'Unknown';
             $chapterTitle = $chunk['chapter_title'] ?? ($chunk['structural_context']['chapter_title'] ?? '');
             $heading = $chunk['structural_context']['heading'] ?? ($chunk['section_title'] ?? '');
 
             $headerParts = [];
-            if (!empty($chapterTitle)) {
+            if (! empty($chapterTitle)) {
                 $headerParts[] = "Chapter: {$chapterTitle}";
             }
-            if (!empty($heading) && $heading !== $chapterTitle) {
+            if (! empty($heading) && $heading !== $chapterTitle) {
                 $headerParts[] = "Section: {$heading}";
             }
-            if (!empty($pageNum) && $pageNum !== 'Unknown' && (int)$pageNum > 1) {
+            if (! empty($pageNum) && $pageNum !== 'Unknown' && (int) $pageNum > 1) {
                 $headerParts[] = "Page {$pageNum}";
             }
 
-            $header = '[' . implode(' | ', $headerParts) . ']';
+            $header = '['.implode(' | ', $headerParts).']';
 
             // Sanitize chunk text: strip raw HTML and any embedded base64 images
             $text = trim($chunk['chunk_text'] ?? '');

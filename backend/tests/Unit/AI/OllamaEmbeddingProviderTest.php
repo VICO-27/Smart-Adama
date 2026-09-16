@@ -18,19 +18,19 @@ beforeEach(function () {
 it('can fetch embeddings successfully', function () {
     $mockData = [
         'embeddings' => [
-            array_fill(0, 1024, 0.5)
-        ]
+            array_fill(0, 1024, 0.5),
+        ],
     ];
 
     $mock = new MockHandler([
         new Response(200, ['Content-Type' => 'application/json'], json_encode($mockData)),
     ]);
-    
+
     $handlerStack = HandlerStack::create($mock);
     $client = new Client(['handler' => $handlerStack]);
 
-    $provider = new OllamaEmbeddingProvider();
-    $reflection = new \ReflectionClass($provider);
+    $provider = new OllamaEmbeddingProvider;
+    $reflection = new ReflectionClass($provider);
     $property = $reflection->getProperty('client');
     $property->setAccessible(true);
     $property->setValue($provider, $client);
@@ -44,22 +44,22 @@ it('can fetch embeddings successfully', function () {
 it('throws exception if dimension mismatch', function () {
     $mockData = [
         'embeddings' => [
-            array_fill(0, 768, 0.5) // Wrong dimension
-        ]
+            array_fill(0, 768, 0.5), // Wrong dimension
+        ],
     ];
 
     $mock = new MockHandler([
         new Response(200, ['Content-Type' => 'application/json'], json_encode($mockData)),
     ]);
-    
+
     $handlerStack = HandlerStack::create($mock);
     $client = new Client(['handler' => $handlerStack]);
 
-    $provider = new OllamaEmbeddingProvider();
-    $reflection = new \ReflectionClass($provider);
+    $provider = new OllamaEmbeddingProvider;
+    $reflection = new ReflectionClass($provider);
     $property = $reflection->getProperty('client');
     $property->setAccessible(true);
     $property->setValue($provider, $client);
 
-    expect(fn() => $provider->embed('test string'))->toThrow(AiProviderException::class, 'Embedding dimension mismatch. Expected 1024, got 768');
+    expect(fn () => $provider->embed('test string'))->toThrow(AiProviderException::class, 'Embedding dimension mismatch. Expected 1024, got 768');
 });

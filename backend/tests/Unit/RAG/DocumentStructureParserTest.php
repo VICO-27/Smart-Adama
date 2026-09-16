@@ -11,8 +11,8 @@ class DocumentStructureParserTest extends TestCase
 {
     public function test_it_parses_chapters_and_sections_correctly()
     {
-        $parser = new DocumentStructureParser();
-        
+        $parser = new DocumentStructureParser;
+
         $pages = collect([
             new BookPage([
                 'page_number' => 1,
@@ -39,7 +39,7 @@ class DocumentStructureParserTest extends TestCase
         $this->assertCount(2, $chapter1->sections);
         $this->assertEquals('Introduction', $chapter1->sections[0]->title);
         $this->assertEquals('Background', $chapter1->sections[1]->title);
-        
+
         $chapter2 = $structuredDoc->chapters[1];
         $this->assertEquals('Core Features', $chapter2->title);
         $this->assertEquals(2, $chapter2->order);

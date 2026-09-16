@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\User;
+use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
 class ResetAdminPasswordSeeder extends Seeder
@@ -11,7 +11,7 @@ class ResetAdminPasswordSeeder extends Seeder
     public function run(): void
     {
         $user = User::where('email', 'admin@smartadama.com')->first();
-        
+
         if ($user) {
             $user->password = Hash::make('password');
             $user->save();

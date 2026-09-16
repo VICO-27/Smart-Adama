@@ -17,13 +17,13 @@ return new class extends Migration
 
         // Alter the embedding column to strictly enforce 1024 dimensions
         DB::statement('ALTER TABLE content_chunks ALTER COLUMN embedding TYPE vector(1024)');
-        
+
         // Recreate the HNSW index for high-performance cosine similarity search
         DB::statement(
-            "CREATE INDEX content_chunks_embedding_hnsw_idx
+            'CREATE INDEX content_chunks_embedding_hnsw_idx
              ON content_chunks
              USING hnsw (embedding vector_cosine_ops)
-             WITH (m = 16, ef_construction = 64)"
+             WITH (m = 16, ef_construction = 64)'
         );
     }
 
@@ -32,10 +32,10 @@ return new class extends Migration
         DB::statement('DROP INDEX IF EXISTS content_chunks_embedding_hnsw_idx');
         DB::statement('ALTER TABLE content_chunks ALTER COLUMN embedding TYPE vector(512)');
         DB::statement(
-            "CREATE INDEX content_chunks_embedding_hnsw_idx
+            'CREATE INDEX content_chunks_embedding_hnsw_idx
              ON content_chunks
              USING hnsw (embedding vector_cosine_ops)
-             WITH (m = 16, ef_construction = 64)"
+             WITH (m = 16, ef_construction = 64)'
         );
     }
 };

@@ -1,8 +1,8 @@
 <?php
 
-use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\GlobalChatController;
 use App\Http\Controllers\Api\SearchController;
+use App\Http\Controllers\Api\V1\Admin\AdminNotificationController;
 use App\Http\Controllers\Api\V1\Auth\LoginController;
 use App\Http\Controllers\Api\V1\Auth\LogoutController;
 use App\Http\Controllers\Api\V1\Auth\MeController;
@@ -11,17 +11,22 @@ use App\Http\Controllers\Api\V1\Auth\PinRecoveryController;
 use App\Http\Controllers\Api\V1\Auth\RegisterController;
 use App\Http\Controllers\Api\V1\Auth\SocialAuthController;
 use App\Http\Controllers\Api\V1\Books\AdminBookController;
+use App\Http\Controllers\Api\V1\Books\AdminBookIngestionController;
 use App\Http\Controllers\Api\V1\Books\AdminChapterController;
 use App\Http\Controllers\Api\V1\Books\AdminSectionController;
-use App\Http\Controllers\Api\V1\Books\AdminBookIngestionController;
 use App\Http\Controllers\Api\V1\Books\BookController;
 use App\Http\Controllers\Api\V1\Books\ChapterController;
 use App\Http\Controllers\Api\V1\Chat\ChatMessageController;
 use App\Http\Controllers\Api\V1\Chat\ChatMessageFeedbackController;
 use App\Http\Controllers\Api\V1\Chat\ChatSessionController;
 use App\Http\Controllers\Api\V1\Dashboard\AdminAnalyticsController;
+use App\Http\Controllers\Api\V1\Dashboard\AdminSettingsController;
+use App\Http\Controllers\Api\V1\Dashboard\AdminSystemController;
 use App\Http\Controllers\Api\V1\Dashboard\DashboardController;
+use App\Http\Controllers\Api\V1\Dashboard\IngestionJobController;
+use App\Http\Controllers\Api\V1\Dashboard\ManualAuthoringController;
 use App\Http\Controllers\Api\V1\Gamification\BadgeController;
+use App\Http\Controllers\Api\V1\Gamification\GameController;
 use App\Http\Controllers\Api\V1\Gamification\StreakController;
 use App\Http\Controllers\Api\V1\Health\HealthController;
 use App\Http\Controllers\Api\V1\Progress\ProgressController;
@@ -29,13 +34,14 @@ use App\Http\Controllers\Api\V1\Quizzes\AdminQuizController;
 use App\Http\Controllers\Api\V1\Quizzes\AdminQuizQuestionController;
 use App\Http\Controllers\Api\V1\Quizzes\QuizAttemptController;
 use App\Http\Controllers\Api\V1\Quizzes\QuizController;
+use App\Http\Controllers\Api\V1\RAG\DebugRetrievalController;
+use App\Http\Controllers\Api\V1\RAG\DocumentManagementController;
+use App\Http\Controllers\Api\V1\Users\AdminUserController;
 use App\Http\Controllers\Api\V1\Users\UserController;
+use App\Models\Book;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\V1\Gamification\GameController;
 
 Route::middleware('auth:sanctum')->get('/v1/ai-search', [SearchController::class, 'search']);
-
-
 
 Route::get('/health', HealthController::class);
 
@@ -56,7 +62,7 @@ Route::prefix('auth')->group(function () {
 });
 
 Route::get('/latest-book-id', function () {
-    return \App\Models\Book::orderBy('created_at', 'desc')->first()->id;
+    return Book::orderBy('created_at', 'desc')->first()->id;
 });
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -167,48 +173,48 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'admin'])->group(function ()
     Route::post('/books/{book}/verify', [AdminBookIngestionController::class, 'verifyBook']);
 
     // System
-    Route::get('/system/health', \App\Http\Controllers\Api\V1\Dashboard\AdminSystemController::class);
-    Route::get('/rag/debug-search', [\App\Http\Controllers\Api\V1\RAG\DebugRetrievalController::class, 'search']);
+    Route::get('/system/health', AdminSystemController::class);
+    Route::get('/rag/debug-search', [DebugRetrievalController::class, 'search']);
 
     // Manual Content Authoring
-    Route::post('/manual/books', [\App\Http\Controllers\Api\V1\Dashboard\ManualAuthoringController::class, 'createBook']);
-    Route::get('/manual/books/{book}/tree', [\App\Http\Controllers\Api\V1\Dashboard\ManualAuthoringController::class, 'getTree']);
-    Route::post('/manual/books/{book}/chapters', [\App\Http\Controllers\Api\V1\Dashboard\ManualAuthoringController::class, 'createChapter']);
-    Route::put('/manual/chapters/{chapter}', [\App\Http\Controllers\Api\V1\Dashboard\ManualAuthoringController::class, 'updateChapter']);
-    Route::delete('/manual/chapters/{chapter}', [\App\Http\Controllers\Api\V1\Dashboard\ManualAuthoringController::class, 'deleteChapter']);
-    Route::post('/manual/chapters/{chapter}/sections', [\App\Http\Controllers\Api\V1\Dashboard\ManualAuthoringController::class, 'createSection']);
-    Route::put('/manual/sections/{section}', [\App\Http\Controllers\Api\V1\Dashboard\ManualAuthoringController::class, 'updateSection']);
-    Route::delete('/manual/sections/{section}', [\App\Http\Controllers\Api\V1\Dashboard\ManualAuthoringController::class, 'deleteSection']);
-    Route::post('/manual/books/{book}/pages', [\App\Http\Controllers\Api\V1\Dashboard\ManualAuthoringController::class, 'createPage']);
-    Route::put('/manual/pages/{page}', [\App\Http\Controllers\Api\V1\Dashboard\ManualAuthoringController::class, 'updatePage']);
-    Route::delete('/manual/pages/{page}', [\App\Http\Controllers\Api\V1\Dashboard\ManualAuthoringController::class, 'deletePage']);
+    Route::post('/manual/books', [ManualAuthoringController::class, 'createBook']);
+    Route::get('/manual/books/{book}/tree', [ManualAuthoringController::class, 'getTree']);
+    Route::post('/manual/books/{book}/chapters', [ManualAuthoringController::class, 'createChapter']);
+    Route::put('/manual/chapters/{chapter}', [ManualAuthoringController::class, 'updateChapter']);
+    Route::delete('/manual/chapters/{chapter}', [ManualAuthoringController::class, 'deleteChapter']);
+    Route::post('/manual/chapters/{chapter}/sections', [ManualAuthoringController::class, 'createSection']);
+    Route::put('/manual/sections/{section}', [ManualAuthoringController::class, 'updateSection']);
+    Route::delete('/manual/sections/{section}', [ManualAuthoringController::class, 'deleteSection']);
+    Route::post('/manual/books/{book}/pages', [ManualAuthoringController::class, 'createPage']);
+    Route::put('/manual/pages/{page}', [ManualAuthoringController::class, 'updatePage']);
+    Route::delete('/manual/pages/{page}', [ManualAuthoringController::class, 'deletePage']);
 
     // Ingestion Jobs (SSE & Control)
-    Route::post('/ingestion-jobs/start', [\App\Http\Controllers\Api\V1\Dashboard\IngestionJobController::class, 'start']);
-    Route::get('/ingestion-jobs/active', [\App\Http\Controllers\Api\V1\Dashboard\IngestionJobController::class, 'getActiveJobs']);
-    Route::get('/ingestion-jobs/{job}/logs', [\App\Http\Controllers\Api\V1\Dashboard\IngestionJobController::class, 'getLogs']);
-    Route::get('/ingestion-jobs/stream', [\App\Http\Controllers\Api\V1\Dashboard\IngestionJobController::class, 'streamProgress']);
-    Route::post('/ingestion-jobs/{job}/pause', [\App\Http\Controllers\Api\V1\Dashboard\IngestionJobController::class, 'pause']);
-    Route::post('/ingestion-jobs/{job}/resume', [\App\Http\Controllers\Api\V1\Dashboard\IngestionJobController::class, 'resume']);
-    Route::post('/ingestion-jobs/{job}/cancel', [\App\Http\Controllers\Api\V1\Dashboard\IngestionJobController::class, 'cancel']);
-    Route::post('/ingestion-jobs/{job}/retry', [\App\Http\Controllers\Api\V1\Dashboard\IngestionJobController::class, 'retry']);
+    Route::post('/ingestion-jobs/start', [IngestionJobController::class, 'start']);
+    Route::get('/ingestion-jobs/active', [IngestionJobController::class, 'getActiveJobs']);
+    Route::get('/ingestion-jobs/{job}/logs', [IngestionJobController::class, 'getLogs']);
+    Route::get('/ingestion-jobs/stream', [IngestionJobController::class, 'streamProgress']);
+    Route::post('/ingestion-jobs/{job}/pause', [IngestionJobController::class, 'pause']);
+    Route::post('/ingestion-jobs/{job}/resume', [IngestionJobController::class, 'resume']);
+    Route::post('/ingestion-jobs/{job}/cancel', [IngestionJobController::class, 'cancel']);
+    Route::post('/ingestion-jobs/{job}/retry', [IngestionJobController::class, 'retry']);
 
     // Notifications
-    Route::get('/notifications', [\App\Http\Controllers\Api\V1\Admin\AdminNotificationController::class, 'index']);
-    Route::post('/notifications/mark-all-read', [\App\Http\Controllers\Api\V1\Admin\AdminNotificationController::class, 'markAllAsRead']);
-    Route::post('/notifications/{id}/mark-read', [\App\Http\Controllers\Api\V1\Admin\AdminNotificationController::class, 'markAsRead']);
-    Route::post('/notifications/seed', [\App\Http\Controllers\Api\V1\Admin\AdminNotificationController::class, 'seedMock']);
+    Route::get('/notifications', [AdminNotificationController::class, 'index']);
+    Route::post('/notifications/mark-all-read', [AdminNotificationController::class, 'markAllAsRead']);
+    Route::post('/notifications/{id}/mark-read', [AdminNotificationController::class, 'markAsRead']);
+    Route::post('/notifications/seed', [AdminNotificationController::class, 'seedMock']);
 
     // Users
-    Route::get('/users', [\App\Http\Controllers\Api\V1\Users\AdminUserController::class, 'index']);
-    Route::post('/users/invite', [\App\Http\Controllers\Api\V1\Users\AdminUserController::class, 'invite']);
-    Route::get('/users/{user}', [\App\Http\Controllers\Api\V1\Users\AdminUserController::class, 'show']);
+    Route::get('/users', [AdminUserController::class, 'index']);
+    Route::post('/users/invite', [AdminUserController::class, 'invite']);
+    Route::get('/users/{user}', [AdminUserController::class, 'show']);
 
     // Settings
-    Route::get('/settings', [\App\Http\Controllers\Api\V1\Dashboard\AdminSettingsController::class, 'index']);
-    Route::put('/settings', [\App\Http\Controllers\Api\V1\Dashboard\AdminSettingsController::class, 'update']);
+    Route::get('/settings', [AdminSettingsController::class, 'index']);
+    Route::put('/settings', [AdminSettingsController::class, 'update']);
 
     // RAG Document Management
-    Route::get('/rag/documents', [\App\Http\Controllers\Api\V1\RAG\DocumentManagementController::class, 'index']);
-    Route::get('/rag/documents/{id}/progress', [\App\Http\Controllers\Api\V1\RAG\DocumentManagementController::class, 'progress']);
+    Route::get('/rag/documents', [DocumentManagementController::class, 'index']);
+    Route::get('/rag/documents/{id}/progress', [DocumentManagementController::class, 'progress']);
 });

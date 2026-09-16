@@ -13,10 +13,10 @@ class ContentChunkFactory extends Factory
     public function definition(): array
     {
         return [
-            'section_id'       => Section::factory(),
-            'chunk_text'       => fake()->paragraphs(3, true),
-            'chunk_index'      => 0,
-            'token_count'      => fake()->numberBetween(400, 800),
+            'section_id' => Section::factory(),
+            'chunk_text' => fake()->paragraphs(3, true),
+            'chunk_index' => 0,
+            'token_count' => fake()->numberBetween(400, 800),
             'embedding_status' => 'ready',
         ];
     }

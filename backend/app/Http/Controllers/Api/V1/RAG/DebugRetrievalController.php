@@ -4,15 +4,14 @@ namespace App\Http\Controllers\Api\V1\RAG;
 
 use App\Http\Controllers\Controller;
 use App\Services\RAG\RetrievalService;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class DebugRetrievalController extends Controller
 {
     public function __construct(
         private readonly RetrievalService $retrievalService
-    ) {
-    }
+    ) {}
 
     public function search(Request $request): JsonResponse
     {

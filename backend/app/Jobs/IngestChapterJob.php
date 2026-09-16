@@ -3,7 +3,6 @@
 namespace App\Jobs;
 
 use App\Models\Chapter;
-use App\Services\RAG\IngestionService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -29,12 +28,11 @@ class IngestChapterJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries   = 3;
+    public int $tries = 3;
+
     public int $timeout = 120;
 
-    public function __construct(public readonly string $chapterId)
-    {
-    }
+    public function __construct(public readonly string $chapterId) {}
 
     public function handle(): void
     {
@@ -42,6 +40,7 @@ class IngestChapterJob implements ShouldQueue
 
         if (! $chapter) {
             Log::warning('IngestChapterJob: chapter not found', ['id' => $this->chapterId]);
+
             return;
         }
 
@@ -51,6 +50,7 @@ class IngestChapterJob implements ShouldQueue
 
         if ($sections->isEmpty()) {
             $chapter->update(['ingestion_status' => 'ready']);
+
             return;
         }
 
@@ -59,7 +59,7 @@ class IngestChapterJob implements ShouldQueue
         }
 
         Log::info('IngestChapterJob: dispatched section jobs', [
-            'chapter_id'    => $this->chapterId,
+            'chapter_id' => $this->chapterId,
             'section_count' => $sections->count(),
         ]);
     }
@@ -71,7 +71,7 @@ class IngestChapterJob implements ShouldQueue
 
         Log::error('IngestChapterJob failed permanently', [
             'chapter_id' => $this->chapterId,
-            'error'      => $e->getMessage(),
+            'error' => $e->getMessage(),
         ]);
     }
 }

@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api\V1\Quizzes;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Quizzes\StoreQuizQuestionRequest;
-use App\Http\Resources\QuizResource;
 use App\Models\Quiz;
 use App\Models\QuizQuestion;
 use Illuminate\Http\JsonResponse;
@@ -24,16 +23,16 @@ class AdminQuizQuestionController extends Controller
     {
         $question = $quiz->questions()->create([
             'question_text' => $request->question_text,
-            'type'          => $request->type,
-            'explanation'   => $request->explanation,
-            'order'         => $request->input('order', $quiz->questions()->max('order') + 1),
+            'type' => $request->type,
+            'explanation' => $request->explanation,
+            'order' => $request->input('order', $quiz->questions()->max('order') + 1),
         ]);
 
         foreach ($request->options as $index => $optionData) {
             $question->options()->create([
                 'option_text' => $optionData['option_text'],
-                'is_correct'  => (bool) $optionData['is_correct'],
-                'order'       => $optionData['order'] ?? $index,
+                'is_correct' => (bool) $optionData['is_correct'],
+                'order' => $optionData['order'] ?? $index,
             ]);
         }
 
@@ -41,16 +40,16 @@ class AdminQuizQuestionController extends Controller
 
         return response()->json([
             'question' => [
-                'id'            => $question->id,
+                'id' => $question->id,
                 'question_text' => $question->question_text,
-                'type'          => $question->type,
-                'explanation'   => $question->explanation,
-                'order'         => $question->order,
-                'options'       => $question->options->map(fn ($o) => [
-                    'id'          => $o->id,
+                'type' => $question->type,
+                'explanation' => $question->explanation,
+                'order' => $question->order,
+                'options' => $question->options->map(fn ($o) => [
+                    'id' => $o->id,
                     'option_text' => $o->option_text,
-                    'is_correct'  => $o->is_correct,
-                    'order'       => $o->order,
+                    'is_correct' => $o->is_correct,
+                    'order' => $o->order,
                 ]),
             ],
         ], 201);
@@ -69,9 +68,9 @@ class AdminQuizQuestionController extends Controller
 
         $question->update([
             'question_text' => $request->question_text,
-            'type'          => $request->type,
-            'explanation'   => $request->explanation,
-            'order'         => $request->input('order', $question->order),
+            'type' => $request->type,
+            'explanation' => $request->explanation,
+            'order' => $request->input('order', $question->order),
         ]);
 
         // Replace options atomically (delete old, insert new)
@@ -80,8 +79,8 @@ class AdminQuizQuestionController extends Controller
         foreach ($request->options as $index => $optionData) {
             $question->options()->create([
                 'option_text' => $optionData['option_text'],
-                'is_correct'  => (bool) $optionData['is_correct'],
-                'order'       => $optionData['order'] ?? $index,
+                'is_correct' => (bool) $optionData['is_correct'],
+                'order' => $optionData['order'] ?? $index,
             ]);
         }
 
@@ -89,16 +88,16 @@ class AdminQuizQuestionController extends Controller
 
         return response()->json([
             'question' => [
-                'id'            => $question->id,
+                'id' => $question->id,
                 'question_text' => $question->question_text,
-                'type'          => $question->type,
-                'explanation'   => $question->explanation,
-                'order'         => $question->order,
-                'options'       => $question->options->map(fn ($o) => [
-                    'id'          => $o->id,
+                'type' => $question->type,
+                'explanation' => $question->explanation,
+                'order' => $question->order,
+                'options' => $question->options->map(fn ($o) => [
+                    'id' => $o->id,
                     'option_text' => $o->option_text,
-                    'is_correct'  => $o->is_correct,
-                    'order'       => $o->order,
+                    'is_correct' => $o->is_correct,
+                    'order' => $o->order,
                 ]),
             ],
         ]);

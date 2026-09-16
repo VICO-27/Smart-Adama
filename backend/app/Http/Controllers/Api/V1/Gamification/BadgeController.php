@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1\Gamification;
 
 use App\Http\Controllers\Controller;
 use App\Models\Badge;
+use App\Models\Chapter;
 use App\Models\UserBadge;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -24,19 +25,19 @@ class BadgeController extends Controller
         $user = $request->user();
 
         // Load all badges and the user's earned set in two queries
-        $allBadges   = Badge::all();
+        $allBadges = Badge::all();
         $earnedByBadgeId = UserBadge::where('user_id', $user->id)
             ->get()
             ->keyBy('badge_id');
 
         // Pre-compute stats needed for progress hints (Req 11.4)
         $completedChapters = $user->progress()->where('is_completed', true)->count();
-        $passedQuizCount   = $user->quizAttempts()
+        $passedQuizCount = $user->quizAttempts()
             ->where('passed', true)
             ->whereNotNull('submitted_at')
             ->count();
-        $currentStreak     = $user->streak?->current_streak ?? 0;
-        $totalChapters     = \App\Models\Chapter::count();
+        $currentStreak = $user->streak?->current_streak ?? 0;
+        $totalChapters = Chapter::count();
 
         $badges = $allBadges->map(function (Badge $badge) use (
             $earnedByBadgeId,
@@ -45,18 +46,18 @@ class BadgeController extends Controller
             $currentStreak,
             $totalChapters,
         ) {
-            $earned    = $earnedByBadgeId->has($badge->id);
+            $earned = $earnedByBadgeId->has($badge->id);
             $userBadge = $earnedByBadgeId->get($badge->id);
 
             return [
-                'id'          => $badge->id,
-                'code'        => $badge->code,
-                'name'        => $badge->name,
+                'id' => $badge->id,
+                'code' => $badge->code,
+                'name' => $badge->name,
                 'description' => $badge->description,
-                'icon'        => $badge->icon,
-                'earned'      => $earned,
-                'awarded_at'  => $earned ? $userBadge->awarded_at : null,
-                'progress'    => $earned
+                'icon' => $badge->icon,
+                'earned' => $earned,
+                'awarded_at' => $earned ? $userBadge->awarded_at : null,
+                'progress' => $earned
                     ? null
                     : $this->buildProgress($badge, $completedChapters, $passedQuizCount, $currentStreak, $totalChapters),
             ];
@@ -78,17 +79,17 @@ class BadgeController extends Controller
         int $currentStreak,
         int $totalChapters,
     ): ?array {
-        $criteria  = $badge->criteria;
-        $type      = $criteria['type'] ?? null;
+        $criteria = $badge->criteria;
+        $type = $criteria['type'] ?? null;
         $threshold = (int) ($criteria['threshold'] ?? 0);
 
         return match ($type) {
-            'chapter_count'     => ['current' => $completedChapters, 'required' => $threshold],
+            'chapter_count' => ['current' => $completedChapters, 'required' => $threshold],
             'quiz_passed_count' => ['current' => $passedQuizCount,   'required' => $threshold],
-            'streak_days'       => ['current' => $currentStreak,     'required' => $threshold],
-            'book_complete'     => ['current' => $completedChapters, 'required' => $totalChapters],
-            'perfect_score'     => null, // binary — either you have it or you don't
-            default             => null,
+            'streak_days' => ['current' => $currentStreak,     'required' => $threshold],
+            'book_complete' => ['current' => $completedChapters, 'required' => $totalChapters],
+            'perfect_score' => null, // binary — either you have it or you don't
+            default => null,
         };
     }
 }

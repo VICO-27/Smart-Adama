@@ -69,7 +69,7 @@ it('learner can mark a chapter as read', function () {
         ->assertJsonPath('message', 'Chapter marked as read.');
 
     $this->assertDatabaseHas('user_progress', [
-        'user_id'    => $learner->id,
+        'user_id' => $learner->id,
         'chapter_id' => $chapter->id,
     ]);
 });

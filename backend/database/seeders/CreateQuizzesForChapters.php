@@ -2,32 +2,32 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
+use App\Models\Chapter;
 use App\Models\Quiz;
 use App\Models\QuizQuestion;
-use App\Models\Chapter;
+use Illuminate\Database\Seeder;
 
 class CreateQuizzesForChapters extends Seeder
 {
     public function run(): void
     {
         $chapters = Chapter::where('ingestion_status', 'ready')->get();
-        
+
         $this->command->info("Found {$chapters->count()} ready chapters");
 
         foreach ($chapters as $chapter) {
             // Check if quiz exists for this chapter
             $quiz = Quiz::where('chapter_id', $chapter->id)->first();
-            
-            if (!$quiz) {
+
+            if (! $quiz) {
                 // Create new quiz
                 $quiz = Quiz::create([
                     'chapter_id' => $chapter->id,
-                    'title' => 'Chapter ' . $chapter->order . ': ' . $chapter->title,
+                    'title' => 'Chapter '.$chapter->order.': '.$chapter->title,
                     'passing_score_pct' => 70,
                     'status' => 'published',
                 ]);
-                
+
                 $this->createQuestions($quiz, $chapter);
                 $this->command->info("   -> Created quiz: {$quiz->title}");
             } else {
@@ -35,14 +35,14 @@ class CreateQuizzesForChapters extends Seeder
             }
         }
 
-        $this->command->info('Done! Created/verified ' . Quiz::count() . ' quizzes');
+        $this->command->info('Done! Created/verified '.Quiz::count().' quizzes');
     }
 
     private function createQuestions(Quiz $quiz, $chapter): void
     {
         $questions = [
             [
-                'question_text' => 'What is the primary purpose of the chapter "' . $chapter->title . '"?',
+                'question_text' => 'What is the primary purpose of the chapter "'.$chapter->title.'"?',
                 'type' => 'single',
                 'order' => 1,
                 'options' => [

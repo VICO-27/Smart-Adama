@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Api\V1\Dashboard;
 
 use App\Http\Controllers\Controller;
 use App\Models\AdminSetting;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class AdminSettingsController extends Controller
 {
@@ -14,7 +14,7 @@ class AdminSettingsController extends Controller
         $settings = AdminSetting::all()->pluck('value', 'key');
 
         return response()->json([
-            'settings' => $settings
+            'settings' => $settings,
         ]);
     }
 
@@ -22,7 +22,7 @@ class AdminSettingsController extends Controller
     {
         $validated = $request->validate([
             'settings' => 'required|array',
-            'settings.*' => 'nullable|string'
+            'settings.*' => 'nullable|string',
         ]);
 
         foreach ($validated['settings'] as $key => $value) {
@@ -34,7 +34,7 @@ class AdminSettingsController extends Controller
 
         return response()->json([
             'message' => 'Settings updated successfully.',
-            'settings' => AdminSetting::all()->pluck('value', 'key')
+            'settings' => AdminSetting::all()->pluck('value', 'key'),
         ]);
     }
 }

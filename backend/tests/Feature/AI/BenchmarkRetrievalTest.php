@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\AI;
 
-use App\Models\ContentChunk;
+use App\Models\Book;
 use App\Services\AI\Contracts\EmbeddingProviderInterface;
 use App\Services\RAG\RetrievalService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -17,7 +17,7 @@ class BenchmarkRetrievalTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        
+
         // Ensure tsvector column exists for testing since it's added via raw SQL migration
         DB::statement("
             ALTER TABLE content_chunks 
@@ -41,19 +41,19 @@ class BenchmarkRetrievalTest extends TestCase
         $results = $service->search('mayor', 'mayor');
 
         $this->assertNotEmpty($results);
-        
+
         $topChunk = $results->first();
-        
+
         // Assert it retrieved the chunk with the word 'mayor'
         $this->assertStringContainsString('mayor', strtolower($topChunk['chunk_text']));
-        
+
         // Assert page number metadata is intact
         $this->assertNotNull($topChunk['page_number']);
         $this->assertEquals(10, $topChunk['page_number']);
 
         // Assert RRF score is calculated
         $this->assertGreaterThan(0, $topChunk['rrf_score']);
-        
+
         // Because of the exact keyword match, keyword score should be > 0 and rank should be high (low number)
         $this->assertGreaterThan(0, $topChunk['keyword_score']);
     }
@@ -72,7 +72,7 @@ class BenchmarkRetrievalTest extends TestCase
 
         $this->assertNotEmpty($results);
         $topChunk = $results->first();
-        
+
         // Assert structural context is preserved
         $this->assertIsArray($topChunk['structural_context']);
         $this->assertEquals('City Governance', $topChunk['structural_context']['heading']);
@@ -93,19 +93,19 @@ class BenchmarkRetrievalTest extends TestCase
 
         $this->assertNotEmpty($results);
         $topChunk = $results->first();
-        
+
         $this->assertStringContainsString('economic development and urban planning', $topChunk['chunk_text']);
         $this->assertEquals(22, $topChunk['page_number']);
     }
 
     private function createTestChunks()
     {
-        // Note: For pgvector to work in tests, the DB must support it. 
+        // Note: For pgvector to work in tests, the DB must support it.
         // Assuming PostgreSQL is the testing DB and pgvector is enabled.
-        
-        $dummyVector = '[' . implode(',', array_fill(0, 1024, 0.1)) . ']';
-        
-        $book = \App\Models\Book::factory()->published()->create();
+
+        $dummyVector = '['.implode(',', array_fill(0, 1024, 0.1)).']';
+
+        $book = Book::factory()->published()->create();
         $bookId = $book->id;
 
         // Insert via raw SQL to handle vector casting

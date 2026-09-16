@@ -6,9 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Quizzes\StoreQuizRequest;
 use App\Http\Resources\QuizResource;
 use App\Models\Chapter;
-use App\Models\Quiz;
 use App\Models\Question;
-use App\Models\QuestionOption;
+use App\Models\Quiz;
 use App\Services\AI\Contracts\LLMGatewayInterface;
 use Illuminate\Http\JsonResponse;
 
@@ -31,9 +30,9 @@ class AdminQuizController extends Controller
         }
 
         $quiz = $chapter->quiz()->create([
-            'title'            => $request->title,
+            'title' => $request->title,
             'passing_score_pct' => $request->input('passing_score_pct', 70),
-            'status'           => 'draft',
+            'status' => 'draft',
         ]);
 
         return response()->json([
@@ -63,7 +62,7 @@ class AdminQuizController extends Controller
         foreach ($quiz->questions as $question) {
             if ($question->options->count() < 2) {
                 return response()->json([
-                    'message'     => "Question \"{$question->question_text}\" must have at least 2 options.",
+                    'message' => "Question \"{$question->question_text}\" must have at least 2 options.",
                     'question_id' => $question->id,
                 ], 422);
             }
@@ -72,7 +71,7 @@ class AdminQuizController extends Controller
 
             if (! $hasCorrect) {
                 return response()->json([
-                    'message'     => "Question \"{$question->question_text}\" must have at least one correct option.",
+                    'message' => "Question \"{$question->question_text}\" must have at least one correct option.",
                     'question_id' => $question->id,
                 ], 422);
             }
@@ -81,7 +80,7 @@ class AdminQuizController extends Controller
 
             if ($hasEmpty) {
                 return response()->json([
-                    'message'     => "Question \"{$question->question_text}\" has an option with empty text.",
+                    'message' => "Question \"{$question->question_text}\" has an option with empty text.",
                     'question_id' => $question->id,
                 ], 422);
             }
@@ -114,30 +113,32 @@ class AdminQuizController extends Controller
 Return ONLY a valid JSON array. Each object must have 'question_text', 'explanation', and 'options'. 
 'options' must be an array of exactly 4 strings. 
 The first option in the array MUST be the correct answer (I will shuffle them later).
-Text: " . substr($content, 0, 8000);
+Text: ".substr($content, 0, 8000);
 
         try {
             $response = $llm->chat([['role' => 'user', 'content' => $prompt]], ['temperature' => 0.3]);
-            
+
             // Try to extract JSON from markdown if LLM wrapped it
             if (preg_match('/```json(.*?)```/is', $response, $matches)) {
                 $response = trim($matches[1]);
             }
-            
+
             $questionsData = json_decode($response, true);
-            
-            if (!$questionsData || !is_array($questionsData)) {
+
+            if (! $questionsData || ! is_array($questionsData)) {
                 return response()->json(['message' => 'Failed to parse AI response into questions.', 'raw' => $response], 500);
             }
 
             $quiz = $chapter->quiz()->create([
-                'title'            => $chapter->title . ' - Auto Assessment',
+                'title' => $chapter->title.' - Auto Assessment',
                 'passing_score_pct' => 70,
-                'status'           => 'draft',
+                'status' => 'draft',
             ]);
 
             foreach (array_slice($questionsData, 0, 10) as $qData) {
-                if (!isset($qData['question_text']) || !isset($qData['options']) || !is_array($qData['options'])) continue;
+                if (! isset($qData['question_text']) || ! isset($qData['options']) || ! is_array($qData['options'])) {
+                    continue;
+                }
 
                 $question = $quiz->questions()->create([
                     'question_text' => $qData['question_text'],
@@ -147,7 +148,7 @@ Text: " . substr($content, 0, 8000);
                 foreach ($qData['options'] as $idx => $optText) {
                     $question->options()->create([
                         'option_text' => $optText,
-                        'is_correct' => ($idx === 0) // First is correct as prompted
+                        'is_correct' => ($idx === 0), // First is correct as prompted
                     ]);
                 }
             }
@@ -157,7 +158,7 @@ Text: " . substr($content, 0, 8000);
             ], 201);
 
         } catch (\Throwable $e) {
-            return response()->json(['message' => 'AI Generation failed: ' . $e->getMessage()], 500);
+            return response()->json(['message' => 'AI Generation failed: '.$e->getMessage()], 500);
         }
     }
 }

@@ -20,9 +20,7 @@ class AnonymizeUserJob implements ShouldQueue
 
     public int $tries = 3;
 
-    public function __construct(private readonly string $userId)
-    {
-    }
+    public function __construct(private readonly string $userId) {}
 
     public function handle(): void
     {
@@ -33,8 +31,8 @@ class AnonymizeUserJob implements ShouldQueue
         }
 
         $user->forceFill([
-            'name'       => 'Deleted User',
-            'email'      => "deleted_{$user->id}@anonymized.invalid",
+            'name' => 'Deleted User',
+            'email' => "deleted_{$user->id}@anonymized.invalid",
             'avatar_url' => null,
         ])->saveQuietly();
 

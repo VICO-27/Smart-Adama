@@ -20,8 +20,7 @@ class QuizAttemptController extends Controller
     public function __construct(
         private readonly QuizGradingService $gradingService,
         private readonly ProgressService $progressService,
-    ) {
-    }
+    ) {}
 
     /**
      * GET /users/me/quiz-attempts
@@ -37,18 +36,18 @@ class QuizAttemptController extends Controller
 
         return response()->json([
             'attempts' => $attempts->map(fn ($a) => [
-                'id'           => $a->id,
-                'quiz_id'      => $a->quiz_id,
-                'quiz_title'   => $a->quiz->title ?? null,
-                'score_pct'    => $a->score_pct,
-                'passed'       => $a->passed,
-                'started_at'   => $a->started_at,
+                'id' => $a->id,
+                'quiz_id' => $a->quiz_id,
+                'quiz_title' => $a->quiz->title ?? null,
+                'score_pct' => $a->score_pct,
+                'passed' => $a->passed,
+                'started_at' => $a->started_at,
                 'submitted_at' => $a->submitted_at,
             ]),
             'meta' => [
                 'current_page' => $attempts->currentPage(),
-                'last_page'    => $attempts->lastPage(),
-                'total'        => $attempts->total(),
+                'last_page' => $attempts->lastPage(),
+                'total' => $attempts->total(),
             ],
         ]);
     }
@@ -65,13 +64,13 @@ class QuizAttemptController extends Controller
         }
 
         $progress = $request->user()->progress()->where('chapter_id', $quiz->chapter_id)->first();
-        if (!$progress || $progress->status !== 'COMPLETED') {
+        if (! $progress || $progress->status !== 'COMPLETED') {
             return response()->json(['message' => 'You must complete the chapter to access this quiz.'], 403);
         }
 
         $attempt = QuizAttempt::create([
-            'user_id'    => $request->user()->id,
-            'quiz_id'    => $quiz->id,
+            'user_id' => $request->user()->id,
+            'quiz_id' => $quiz->id,
             'started_at' => now(),
         ]);
 
@@ -80,19 +79,19 @@ class QuizAttemptController extends Controller
 
         return response()->json([
             'attempt_id' => $attempt->id,
-            'quiz'       => [
-                'id'                => $quiz->id,
-                'title'             => $quiz->title,
+            'quiz' => [
+                'id' => $quiz->id,
+                'title' => $quiz->title,
                 'passing_score_pct' => $quiz->passing_score_pct,
-                'questions'         => $quiz->questions->map(fn ($q) => [
-                    'id'            => $q->id,
+                'questions' => $quiz->questions->map(fn ($q) => [
+                    'id' => $q->id,
                     'question_text' => $q->question_text,
-                    'type'          => $q->type,
-                    'order'         => $q->order,
-                    'options'       => $q->options->map(fn ($o) => [
-                        'id'          => $o->id,
+                    'type' => $q->type,
+                    'order' => $q->order,
+                    'options' => $q->options->map(fn ($o) => [
+                        'id' => $o->id,
                         'option_text' => $o->option_text,
-                        'order'       => $o->order,
+                        'order' => $o->order,
                         // is_correct intentionally omitted (Req 9.1)
                     ]),
                 ]),
@@ -140,14 +139,14 @@ class QuizAttemptController extends Controller
 
         return response()->json([
             'attempt' => [
-                'id'              => $attempt->id,
-                'quiz_id'         => $quiz->id,
-                'score_pct'       => $result['score_pct'],
-                'passed'          => $result['passed'],
+                'id' => $attempt->id,
+                'quiz_id' => $quiz->id,
+                'score_pct' => $result['score_pct'],
+                'passed' => $result['passed'],
                 'total_questions' => $result['total_questions'],
-                'correct_count'   => $result['correct_count'],
-                'submitted_at'    => $attempt->fresh()->submitted_at,
-                'per_question'    => $result['per_question'],
+                'correct_count' => $result['correct_count'],
+                'submitted_at' => $attempt->fresh()->submitted_at,
+                'per_question' => $result['per_question'],
             ],
             // Req 11.2 — flag newly triggered badge evaluation so the frontend
             // can poll or animate once the job resolves

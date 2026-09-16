@@ -15,11 +15,11 @@ class StructuredSection
 
     public function appendContent(string $text, int $pageNumber): void
     {
-        if (!isset($this->pageContents[$pageNumber])) {
+        if (! isset($this->pageContents[$pageNumber])) {
             $this->pageContents[$pageNumber] = '';
         }
-        $this->pageContents[$pageNumber] .= (empty($this->pageContents[$pageNumber]) ? '' : "\n") . $text;
-        
+        $this->pageContents[$pageNumber] .= (empty($this->pageContents[$pageNumber]) ? '' : "\n").$text;
+
         if ($pageNumber > $this->endPage) {
             $this->endPage = $pageNumber;
         }

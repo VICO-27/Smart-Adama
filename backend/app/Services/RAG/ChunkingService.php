@@ -15,7 +15,8 @@ namespace App\Services\RAG;
  */
 class ChunkingService
 {
-    private int   $targetTokens;
+    private int $targetTokens;
+
     private float $overlapRatio;
 
     // Rough words-to-tokens multiplier (accounts for punctuation, subwords)
@@ -46,21 +47,21 @@ class ChunkingService
         }
 
         // Split into sentences as the smallest unit we will not break
-        $sentences   = $this->splitSentences($text);
+        $sentences = $this->splitSentences($text);
         $targetWords = (int) ($this->targetTokens * self::WORDS_PER_TOKEN);
         $overlapWords = (int) ($targetWords * $this->overlapRatio);
 
-        $chunks       = [];
-        $chunkIndex   = 0;
-        $window       = [];   // current sliding window of sentences
-        $windowWords  = 0;
+        $chunks = [];
+        $chunkIndex = 0;
+        $window = [];   // current sliding window of sentences
+        $windowWords = 0;
 
         foreach ($sentences as $sentence) {
             $sentenceWords = str_word_count($sentence);
 
             // If a single sentence is itself larger than the target, word-split it
             if ($sentenceWords > $targetWords) {
-                $words    = preg_split('/\s+/', $sentence, -1, PREG_SPLIT_NO_EMPTY);
+                $words = preg_split('/\s+/', $sentence, -1, PREG_SPLIT_NO_EMPTY);
                 $subChunk = [];
                 $subWords = 0;
                 foreach ($words as $word) {
@@ -78,9 +79,10 @@ class ChunkingService
                     $subWords++;
                 }
                 if (! empty($subChunk)) {
-                    $window[]     = implode(' ', $subChunk);
+                    $window[] = implode(' ', $subChunk);
                     $windowWords += $subWords;
                 }
+
                 continue;
             }
 
@@ -96,7 +98,7 @@ class ChunkingService
                 [$window, $windowWords] = $this->buildOverlapTail($window, $overlapWords);
             }
 
-            $window[]     = $sentence;
+            $window[] = $sentence;
             $windowWords += $sentenceWords;
         }
 
@@ -146,11 +148,11 @@ class ChunkingService
      * Takes sentences from the end until we hit the overlap word target.
      *
      * @param  string[]  $sentences
-     * @return array{string[], int}  [sentences_tail, total_words]
+     * @return array{string[], int} [sentences_tail, total_words]
      */
     private function buildOverlapTail(array $sentences, int $overlapWords): array
     {
-        $tail      = [];
+        $tail = [];
         $tailWords = 0;
 
         foreach (array_reverse($sentences) as $sentence) {
@@ -172,14 +174,14 @@ class ChunkingService
      */
     private function buildChunk(string $text, int $index, ?string $sectionId): array
     {
-        $words      = str_word_count($text);
+        $words = str_word_count($text);
         $tokenCount = (int) ceil($words / self::WORDS_PER_TOKEN);
 
         return [
-            'chunk_text'  => $text,
+            'chunk_text' => $text,
             'chunk_index' => $index,
             'token_count' => $tokenCount,
-            'section_id'  => $sectionId,
+            'section_id' => $sectionId,
         ];
     }
 }

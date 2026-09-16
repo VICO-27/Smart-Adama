@@ -12,9 +12,7 @@ use Illuminate\Http\Request;
  */
 class StreakController extends Controller
 {
-    public function __construct(private readonly StreakService $streakService)
-    {
-    }
+    public function __construct(private readonly StreakService $streakService) {}
 
     /**
      * GET /users/me/streak
@@ -26,8 +24,8 @@ class StreakController extends Controller
 
         return response()->json([
             'streak' => [
-                'current_streak'     => $streak->current_streak,
-                'longest_streak'     => $streak->longest_streak,
+                'current_streak' => $streak->current_streak,
+                'longest_streak' => $streak->longest_streak,
                 'last_activity_date' => $streak->last_activity_date?->toDateString(),
             ],
         ]);

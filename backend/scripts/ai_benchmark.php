@@ -1,12 +1,14 @@
 <?php
+
 require __DIR__.'/vendor/autoload.php';
 $app = require_once __DIR__.'/bootstrap/app.php';
-$kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
+$kernel = $app->make(Kernel::class);
 $kernel->bootstrap();
 
-use App\Services\Chat\ChatOrchestrator;
 use App\Models\ChatSession;
-use Illuminate\Support\Facades\DB;
+use App\Models\User;
+use App\Services\Chat\ChatOrchestrator;
+use Illuminate\Contracts\Console\Kernel;
 
 $orchestrator = app(ChatOrchestrator::class);
 
@@ -30,9 +32,9 @@ $testQueries = [
     ['q' => 'Smart Adama jechuun maal jechuudha?', 'type' => 'Multilingual'],
 ];
 
-$user = \App\Models\User::first();
-if (!$user) {
-    $user = \App\Models\User::factory()->create();
+$user = User::first();
+if (! $user) {
+    $user = User::factory()->create();
 }
 $session = ChatSession::create(['title' => 'Benchmark Session', 'user_id' => $user->id]);
 $results = [];
@@ -48,10 +50,10 @@ foreach ($testQueries as $index => $test) {
         $latency = microtime(true) - $startTime;
         $status = 'PASS';
         $answerSnippet = substr(strip_tags($result['message']->content), 0, 100);
-    } catch (\Exception $e) {
+    } catch (Exception $e) {
         $latency = microtime(true) - $startTime;
         $status = 'FAIL';
-        $answerSnippet = 'ERROR: ' . $e->getMessage();
+        $answerSnippet = 'ERROR: '.$e->getMessage();
     }
 
     $results[] = [
@@ -65,7 +67,7 @@ foreach ($testQueries as $index => $test) {
 
 echo "\n--- RESULTS ---\n";
 foreach ($results as $res) {
-    echo str_pad($res['Type'], 20) . " | " . str_pad($res['Latency'].'s', 6) . " | {$res['Status']} | {$res['Snippet']}\n";
+    echo str_pad($res['Type'], 20).' | '.str_pad($res['Latency'].'s', 6)." | {$res['Status']} | {$res['Snippet']}\n";
 }
 
 $session->delete();

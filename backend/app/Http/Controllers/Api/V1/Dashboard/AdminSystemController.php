@@ -6,14 +6,15 @@ use App\Http\Controllers\Controller;
 use App\Models\Book;
 use App\Models\Chapter;
 use App\Models\ContentChunk;
+use App\Models\QuizAttempt;
 use App\Models\Section;
+use App\Models\User;
 use App\Services\AI\Contracts\EmbeddingProviderInterface;
 use App\Services\AI\Contracts\LLMGatewayInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
-use Illuminate\Support\Facades\Log;
 
 class AdminSystemController extends Controller
 {
@@ -24,10 +25,25 @@ class AdminSystemController extends Controller
         $checks = [];
 
         // Core Infrastructure
-        try { DB::select('SELECT 1'); $checks['database'] = 'ok'; } catch (\Throwable $e) { $checks['database'] = 'fail'; }
-        try { Cache::put('_health', true, 5); $checks['redis'] = 'ok'; } catch (\Throwable $e) { $checks['redis'] = 'fail'; }
-        try { Queue::size(); $checks['queue'] = 'ok'; } catch (\Throwable $e) { $checks['queue'] = 'fail'; }
-        
+        try {
+            DB::select('SELECT 1');
+            $checks['database'] = 'ok';
+        } catch (\Throwable $e) {
+            $checks['database'] = 'fail';
+        }
+        try {
+            Cache::put('_health', true, 5);
+            $checks['redis'] = 'ok';
+        } catch (\Throwable $e) {
+            $checks['redis'] = 'fail';
+        }
+        try {
+            Queue::size();
+            $checks['queue'] = 'ok';
+        } catch (\Throwable $e) {
+            $checks['queue'] = 'fail';
+        }
+
         // AI Services
         try {
             $llmResponse = $llm->chat([['role' => 'user', 'content' => 'ping']], ['max_tokens' => 5]);
@@ -55,24 +71,24 @@ class AdminSystemController extends Controller
 
         // Stats
         $stats = [
-            'books'    => Book::count(),
+            'books' => Book::count(),
             'chapters' => Chapter::count(),
             'sections' => Section::count(),
-            'chunks'   => ContentChunk::count(),
-            'users'    => \App\Models\User::count(),
-            'quizAttempts' => \App\Models\QuizAttempt::count(),
-            'ready_chunks'  => ContentChunk::where('embedding_status', 'ready')->count(),
+            'chunks' => ContentChunk::count(),
+            'users' => User::count(),
+            'quizAttempts' => QuizAttempt::count(),
+            'ready_chunks' => ContentChunk::where('embedding_status', 'ready')->count(),
             'failed_chunks' => ContentChunk::where('embedding_status', 'failed')->count(),
         ];
 
         return response()->json([
             'checks' => $checks,
-            'stats'  => $stats,
+            'stats' => $stats,
             'providers' => [
                 'llm' => config('ai.llm_provider'),
                 'embedding' => config('ai.embedding_provider'),
             ],
-            'timestamp' => now()->toISOString()
+            'timestamp' => now()->toISOString(),
         ]);
     }
 }

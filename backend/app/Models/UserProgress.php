@@ -27,12 +27,12 @@ class UserProgress extends Model
     protected function casts(): array
     {
         return [
-            'is_completed'       => 'boolean',
-            'reading_progress'   => 'integer',
+            'is_completed' => 'boolean',
+            'reading_progress' => 'integer',
             'best_quiz_score_pct' => 'float',
-            'started_at'         => 'datetime',
-            'completed_at'       => 'datetime',
-            'last_read_at'       => 'datetime',
+            'started_at' => 'datetime',
+            'completed_at' => 'datetime',
+            'last_read_at' => 'datetime',
         ];
     }
 

@@ -6,11 +6,11 @@ use App\Services\AI\Contracts\LLMGatewayInterface;
  * Tests that use a faked LLMGatewayInterface binding — no live API calls in CI.
  * The real ClaudeLLMGateway is tested via integration tests when ANTHROPIC_API_KEY is set.
  */
-
 it('faked LLM gateway yields tokens and accumulates a full response', function () {
     // Bind a fake gateway in the container
-    $fake = new class implements LLMGatewayInterface {
-        public function streamChat(array $messages, array $options = []): \Generator
+    $fake = new class implements LLMGatewayInterface
+    {
+        public function streamChat(array $messages, array $options = []): Generator
         {
             foreach (['Hello', ' ', 'world', '!'] as $token) {
                 yield $token;
@@ -23,6 +23,7 @@ it('faked LLM gateway yields tokens and accumulates a full response', function (
             foreach ($this->streamChat($messages) as $token) {
                 $full .= $token;
             }
+
             return $full;
         }
     };
@@ -30,14 +31,15 @@ it('faked LLM gateway yields tokens and accumulates a full response', function (
     app()->instance(LLMGatewayInterface::class, $fake);
 
     $gateway = app(LLMGatewayInterface::class);
-    $result  = $gateway->chat([['role' => 'user', 'content' => 'Hi']]);
+    $result = $gateway->chat([['role' => 'user', 'content' => 'Hi']]);
 
     expect($result)->toBe('Hello world!');
 });
 
 it('faked LLM gateway can be used as a generator in a streaming loop', function () {
-    $fake = new class implements LLMGatewayInterface {
-        public function streamChat(array $messages, array $options = []): \Generator
+    $fake = new class implements LLMGatewayInterface
+    {
+        public function streamChat(array $messages, array $options = []): Generator
         {
             yield 'Smart ';
             yield 'Adama ';
@@ -53,7 +55,7 @@ it('faked LLM gateway can be used as a generator in a streaming loop', function 
     app()->instance(LLMGatewayInterface::class, $fake);
 
     $gateway = app(LLMGatewayInterface::class);
-    $tokens  = [];
+    $tokens = [];
 
     foreach ($gateway->streamChat([['role' => 'user', 'content' => 'Tell me']]) as $token) {
         $tokens[] = $token;

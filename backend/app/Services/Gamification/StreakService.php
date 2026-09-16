@@ -27,14 +27,14 @@ class StreakService
         $streak = UserStreak::firstOrCreate(
             ['user_id' => $user->id],
             [
-                'current_streak'     => 0,
-                'longest_streak'     => 0,
+                'current_streak' => 0,
+                'longest_streak' => 0,
                 'last_activity_date' => null,
             ]
         );
 
         $today = Carbon::today()->toDateString();
-        $last  = $streak->last_activity_date?->toDateString();
+        $last = $streak->last_activity_date?->toDateString();
 
         // Same day — already recorded, nothing to change
         if ($last === $today) {
@@ -54,13 +54,13 @@ class StreakService
         $newLongest = max($newCurrent, $streak->longest_streak);
 
         $streak->update([
-            'current_streak'     => $newCurrent,
-            'longest_streak'     => $newLongest,
+            'current_streak' => $newCurrent,
+            'longest_streak' => $newLongest,
             'last_activity_date' => $today,
         ]);
 
         Log::info('StreakService: activity recorded', [
-            'user_id'        => $user->id,
+            'user_id' => $user->id,
             'current_streak' => $newCurrent,
             'longest_streak' => $newLongest,
         ]);
@@ -76,8 +76,8 @@ class StreakService
         return UserStreak::firstOrCreate(
             ['user_id' => $user->id],
             [
-                'current_streak'     => 0,
-                'longest_streak'     => 0,
+                'current_streak' => 0,
+                'longest_streak' => 0,
                 'last_activity_date' => null,
             ]
         );

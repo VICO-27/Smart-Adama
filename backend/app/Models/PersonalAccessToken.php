@@ -32,8 +32,8 @@ class PersonalAccessToken extends SanctumPersonalAccessToken
                 // Normalise empty strings to null — anonymous Supabase JWTs carry
                 // email="" and phone="" which would violate the UNIQUE constraints
                 // on users.email / users.phone_number for a second anonymous sign-in.
-                $email = !empty($payload['email']) ? $payload['email'] : null;
-                $phone = !empty($payload['phone']) ? $payload['phone'] : null;
+                $email = ! empty($payload['email']) ? $payload['email'] : null;
+                $phone = ! empty($payload['phone']) ? $payload['phone'] : null;
                 $sub = $payload['sub'] ?? null;
                 $isAnonymous = ! empty($payload['is_anonymous'])
                     || (($payload['app_metadata']['provider'] ?? null) === 'anonymous');

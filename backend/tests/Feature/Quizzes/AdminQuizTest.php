@@ -16,9 +16,9 @@ function validQuestionPayload(array $overrides = []): array
 {
     return array_merge([
         'question_text' => 'What is the main theme of Smart Adama?',
-        'type'          => 'single',
-        'explanation'   => 'Discussed in chapter 1.',
-        'options'       => [
+        'type' => 'single',
+        'explanation' => 'Discussed in chapter 1.',
+        'options' => [
             ['option_text' => 'Correct answer', 'is_correct' => true,  'order' => 0],
             ['option_text' => 'Wrong answer',   'is_correct' => false, 'order' => 1],
         ],
@@ -28,12 +28,12 @@ function validQuestionPayload(array $overrides = []): array
 // ── POST /api/v1/admin/chapters/{chapter}/quizzes ─────────────────────────────
 
 it('admin can create a quiz for a chapter', function () {
-    $admin   = User::factory()->admin()->create();
+    $admin = User::factory()->admin()->create();
     $chapter = Chapter::factory()->create();
 
     $this->actingAs($admin)
         ->postJson("/api/v1/admin/chapters/{$chapter->id}/quizzes", [
-            'title'            => 'Chapter 1 Quiz',
+            'title' => 'Chapter 1 Quiz',
             'passing_score_pct' => 75,
         ])
         ->assertStatus(201)
@@ -42,14 +42,14 @@ it('admin can create a quiz for a chapter', function () {
         ->assertJsonPath('quiz.status', 'draft');
 
     $this->assertDatabaseHas('quizzes', [
-        'chapter_id'       => $chapter->id,
-        'title'            => 'Chapter 1 Quiz',
+        'chapter_id' => $chapter->id,
+        'title' => 'Chapter 1 Quiz',
         'passing_score_pct' => 75,
     ]);
 });
 
 it('admin cannot create a second quiz for the same chapter', function () {
-    $admin   = User::factory()->admin()->create();
+    $admin = User::factory()->admin()->create();
     $chapter = Chapter::factory()->create();
     Quiz::factory()->create(['chapter_id' => $chapter->id]);
 
@@ -62,7 +62,7 @@ it('admin cannot create a second quiz for the same chapter', function () {
 });
 
 it('quiz defaults to 70% passing score when not provided', function () {
-    $admin   = User::factory()->admin()->create();
+    $admin = User::factory()->admin()->create();
     $chapter = Chapter::factory()->create();
 
     $this->actingAs($admin)
@@ -96,7 +96,7 @@ it('returns 401 when unauthenticated', function () {
 
 it('admin can add a question with options to a quiz', function () {
     $admin = User::factory()->admin()->create();
-    $quiz  = Quiz::factory()->create();
+    $quiz = Quiz::factory()->create();
 
     $this->actingAs($admin)
         ->postJson("/api/v1/admin/quizzes/{$quiz->id}/questions", validQuestionPayload())
@@ -106,14 +106,14 @@ it('admin can add a question with options to a quiz', function () {
         ->assertJsonStructure(['question' => ['id', 'options']]);
 
     $this->assertDatabaseHas('quiz_questions', [
-        'quiz_id'       => $quiz->id,
+        'quiz_id' => $quiz->id,
         'question_text' => 'What is the main theme of Smart Adama?',
     ]);
 });
 
 it('returns 422 when no correct option is provided', function () {
     $admin = User::factory()->admin()->create();
-    $quiz  = Quiz::factory()->create();
+    $quiz = Quiz::factory()->create();
 
     $payload = validQuestionPayload([
         'options' => [
@@ -134,7 +134,7 @@ it('returns 422 when no correct option is provided', function () {
 
 it('returns 422 when fewer than 2 options are provided', function () {
     $admin = User::factory()->admin()->create();
-    $quiz  = Quiz::factory()->create();
+    $quiz = Quiz::factory()->create();
 
     $payload = validQuestionPayload([
         'options' => [
@@ -154,8 +154,8 @@ it('returns 422 when fewer than 2 options are provided', function () {
 // ── PATCH /api/v1/admin/quizzes/{quiz}/questions/{question} ───────────────────
 
 it('admin can update a question on a quiz', function () {
-    $admin    = User::factory()->admin()->create();
-    $quiz     = Quiz::factory()->create();
+    $admin = User::factory()->admin()->create();
+    $quiz = Quiz::factory()->create();
     $question = QuizQuestion::factory()->create(['quiz_id' => $quiz->id]);
     QuizOption::factory()->correct()->create(['quiz_question_id' => $question->id]);
     QuizOption::factory()->create(['quiz_question_id' => $question->id]);
@@ -168,16 +168,16 @@ it('admin can update a question on a quiz', function () {
         ->assertJsonPath('question.question_text', 'Updated question text');
 
     $this->assertDatabaseHas('quiz_questions', [
-        'id'            => $question->id,
+        'id' => $question->id,
         'question_text' => 'Updated question text',
     ]);
 });
 
 it('returns 404 when updating a question that does not belong to the quiz', function () {
-    $admin      = User::factory()->admin()->create();
-    $quiz       = Quiz::factory()->create();
-    $otherQuiz  = Quiz::factory()->create();
-    $question   = QuizQuestion::factory()->create(['quiz_id' => $otherQuiz->id]);
+    $admin = User::factory()->admin()->create();
+    $quiz = Quiz::factory()->create();
+    $otherQuiz = Quiz::factory()->create();
+    $question = QuizQuestion::factory()->create(['quiz_id' => $otherQuiz->id]);
 
     $this->actingAs($admin)
         ->patchJson("/api/v1/admin/quizzes/{$quiz->id}/questions/{$question->id}", validQuestionPayload())
@@ -187,8 +187,8 @@ it('returns 404 when updating a question that does not belong to the quiz', func
 // ── DELETE /api/v1/admin/quizzes/{quiz}/questions/{question} ──────────────────
 
 it('admin can delete a question from a quiz', function () {
-    $admin    = User::factory()->admin()->create();
-    $quiz     = Quiz::factory()->create();
+    $admin = User::factory()->admin()->create();
+    $quiz = Quiz::factory()->create();
     $question = QuizQuestion::factory()->create(['quiz_id' => $quiz->id]);
 
     $this->actingAs($admin)
@@ -201,8 +201,8 @@ it('admin can delete a question from a quiz', function () {
 // ── POST /api/v1/admin/quizzes/{quiz}/publish ─────────────────────────────────
 
 it('admin can publish a valid quiz', function () {
-    $admin    = User::factory()->admin()->create();
-    $quiz     = Quiz::factory()->create(['status' => 'draft']);
+    $admin = User::factory()->admin()->create();
+    $quiz = Quiz::factory()->create(['status' => 'draft']);
     $question = QuizQuestion::factory()->create(['quiz_id' => $quiz->id]);
     QuizOption::factory()->correct()->create(['quiz_question_id' => $question->id]);
     QuizOption::factory()->create(['quiz_question_id' => $question->id]);
@@ -217,7 +217,7 @@ it('admin can publish a valid quiz', function () {
 
 it('cannot publish a quiz with no questions', function () {
     $admin = User::factory()->admin()->create();
-    $quiz  = Quiz::factory()->create(['status' => 'draft']);
+    $quiz = Quiz::factory()->create(['status' => 'draft']);
 
     $this->actingAs($admin)
         ->postJson("/api/v1/admin/quizzes/{$quiz->id}/publish")
@@ -226,8 +226,8 @@ it('cannot publish a quiz with no questions', function () {
 });
 
 it('cannot publish a quiz when a question has fewer than 2 options', function () {
-    $admin    = User::factory()->admin()->create();
-    $quiz     = Quiz::factory()->create(['status' => 'draft']);
+    $admin = User::factory()->admin()->create();
+    $quiz = Quiz::factory()->create(['status' => 'draft']);
     $question = QuizQuestion::factory()->create(['quiz_id' => $quiz->id]);
     QuizOption::factory()->correct()->create(['quiz_question_id' => $question->id]);
     // Only 1 option — should fail
@@ -238,8 +238,8 @@ it('cannot publish a quiz when a question has fewer than 2 options', function ()
 });
 
 it('cannot publish a quiz when a question has no correct option', function () {
-    $admin    = User::factory()->admin()->create();
-    $quiz     = Quiz::factory()->create(['status' => 'draft']);
+    $admin = User::factory()->admin()->create();
+    $quiz = Quiz::factory()->create(['status' => 'draft']);
     $question = QuizQuestion::factory()->create(['quiz_id' => $quiz->id]);
     QuizOption::factory()->count(2)->create(['quiz_question_id' => $question->id, 'is_correct' => false]);
 
@@ -249,8 +249,8 @@ it('cannot publish a quiz when a question has no correct option', function () {
 });
 
 it('cannot publish an already-published quiz', function () {
-    $admin    = User::factory()->admin()->create();
-    $quiz     = Quiz::factory()->published()->create();
+    $admin = User::factory()->admin()->create();
+    $quiz = Quiz::factory()->published()->create();
     $question = QuizQuestion::factory()->create(['quiz_id' => $quiz->id]);
     QuizOption::factory()->correct()->create(['quiz_question_id' => $question->id]);
     QuizOption::factory()->create(['quiz_question_id' => $question->id]);
@@ -264,19 +264,19 @@ it('cannot publish an already-published quiz', function () {
 // ── Historical attempts preserved when questions are edited (Req 8.4) ─────────
 
 it('editing a question on a quiz with existing attempts does not alter the attempt', function () {
-    $admin    = User::factory()->admin()->create();
-    $learner  = User::factory()->create();
-    $quiz     = Quiz::factory()->published()->create();
+    $admin = User::factory()->admin()->create();
+    $learner = User::factory()->create();
+    $quiz = Quiz::factory()->published()->create();
     $question = QuizQuestion::factory()->create(['quiz_id' => $quiz->id]);
     QuizOption::factory()->correct()->create(['quiz_question_id' => $question->id]);
     QuizOption::factory()->create(['quiz_question_id' => $question->id]);
 
     // Simulate an existing attempt
     $attempt = QuizAttempt::factory()->create([
-        'user_id'      => $learner->id,
-        'quiz_id'      => $quiz->id,
-        'score_pct'    => 100,
-        'passed'       => true,
+        'user_id' => $learner->id,
+        'quiz_id' => $quiz->id,
+        'score_pct' => 100,
+        'passed' => true,
         'submitted_at' => now(),
     ]);
 
@@ -289,8 +289,8 @@ it('editing a question on a quiz with existing attempts does not alter the attem
 
     // Attempt still exists and is unaffected
     $this->assertDatabaseHas('quiz_attempts', [
-        'id'        => $attempt->id,
+        'id' => $attempt->id,
         'score_pct' => 100,
-        'passed'    => true,
+        'passed' => true,
     ]);
 });

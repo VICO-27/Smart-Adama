@@ -2,16 +2,17 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
 use App\Models\Chapter;
 use App\Models\Quiz;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class GenerateQuizzes extends Command
 {
     protected $signature = 'book:generate-quizzes {--force : Override existing quizzes}';
+
     protected $description = 'Automatically generates 5 multiple-choice questions for each chapter using AI.';
 
     public function handle()
@@ -20,8 +21,9 @@ class GenerateQuizzes extends Command
 
         // CHANGED: Now pulling your Groq key from the .env file
         $apiKey = env('GROQ_API_KEY');
-        if (!$apiKey) {
+        if (! $apiKey) {
             $this->error('Error: Please add GROQ_API_KEY to your backend/.env file!');
+
             return;
         }
 
@@ -30,8 +32,9 @@ class GenerateQuizzes extends Command
         foreach ($chapters as $chapter) {
             $this->info("Processing: {$chapter->title}");
 
-            if ($chapter->quiz()->exists() && !$this->option('force')) {
+            if ($chapter->quiz()->exists() && ! $this->option('force')) {
                 $this->warn("Quiz already exists for {$chapter->title}. Skipping. (Use --force to override)");
+
                 continue;
             }
 
@@ -43,6 +46,7 @@ class GenerateQuizzes extends Command
 
             if (empty(trim($content))) {
                 $this->error("No content found for {$chapter->title}. Skipping.");
+
                 continue;
             }
 
@@ -76,17 +80,18 @@ TEXT;
                 $this->line("Requesting Groq AI generation for {$chapter->title}...");
 
                 // CHANGED: Hitting Groq's API directly
-                $response = Http::withToken($apiKey)->timeout(60)->post("https://api.groq.com/openai/v1/chat/completions", [
+                $response = Http::withToken($apiKey)->timeout(60)->post('https://api.groq.com/openai/v1/chat/completions', [
                     'model' => 'mixtral-8x7b-32768',
                     'messages' => [
-                        ['role' => 'user', 'content' => $prompt]
+                        ['role' => 'user', 'content' => $prompt],
                     ],
                     'response_format' => ['type' => 'json_object'],
-                    'temperature' => 0.2
+                    'temperature' => 0.2,
                 ]);
 
-                if (!$response->successful()) {
-                    $this->error("API Request Failed: " . $response->body());
+                if (! $response->successful()) {
+                    $this->error('API Request Failed: '.$response->body());
+
                     continue;
                 }
 
@@ -96,9 +101,10 @@ TEXT;
                 $parsed = json_decode($jsonStr, true);
                 $questionsData = $parsed['questions'] ?? null;
 
-                if (json_last_error() !== JSON_ERROR_NONE || !is_array($questionsData)) {
+                if (json_last_error() !== JSON_ERROR_NONE || ! is_array($questionsData)) {
                     $this->error("Failed to parse JSON for {$chapter->title}.");
-                    Log::error("JSON Parse Error", ['raw_response' => $jsonStr]);
+                    Log::error('JSON Parse Error', ['raw_response' => $jsonStr]);
+
                     continue;
                 }
 
@@ -137,11 +143,11 @@ TEXT;
                 $this->info("✅ Successfully generated and saved quiz for {$chapter->title}!");
 
                 // 5-second buffer to prevent rate limiting!
-                $this->line("Waiting 5 seconds for API rate limits...");
+                $this->line('Waiting 5 seconds for API rate limits...');
                 sleep(5);
 
             } catch (\Exception $e) {
-                $this->error("Error generating quiz for {$chapter->title}: " . $e->getMessage());
+                $this->error("Error generating quiz for {$chapter->title}: ".$e->getMessage());
             }
         }
 

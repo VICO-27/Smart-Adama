@@ -14,9 +14,9 @@ class QuizOptionFactory extends Factory
     {
         return [
             'quiz_question_id' => QuizQuestion::factory(),
-            'option_text'      => fake()->sentence(4),
-            'is_correct'       => false,
-            'order'            => fake()->numberBetween(1, 4),
+            'option_text' => fake()->sentence(4),
+            'is_correct' => false,
+            'order' => fake()->numberBetween(1, 4),
         ];
     }
 

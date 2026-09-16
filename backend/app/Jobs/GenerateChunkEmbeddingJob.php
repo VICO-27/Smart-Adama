@@ -2,7 +2,7 @@
 
 namespace App\Jobs;
 
-use App\Exceptions\AiProviderException;
+use App\Models\Book;
 use App\Models\Chapter;
 use App\Models\ContentChunk;
 use App\Models\Section;
@@ -25,14 +25,14 @@ class GenerateChunkEmbeddingJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries   = 3;
+    public int $tries = 3;
+
     public int $timeout = 900;  // 15 minutes for free tier rate limits
 
     public function __construct(
         public readonly string $sectionId,
         public readonly string $chapterId,
-    ) {
-    }
+    ) {}
 
     /**
      * Exponential backoff: 30s, 60s, 120s between retries.
@@ -50,6 +50,7 @@ class GenerateChunkEmbeddingJob implements ShouldQueue
             Log::warning('GenerateChunkEmbeddingJob: section not found', [
                 'section_id' => $this->sectionId,
             ]);
+
             return;
         }
 
@@ -73,7 +74,7 @@ class GenerateChunkEmbeddingJob implements ShouldQueue
         Log::error('GenerateChunkEmbeddingJob failed permanently', [
             'section_id' => $this->sectionId,
             'chapter_id' => $this->chapterId,
-            'error'      => $e->getMessage(),
+            'error' => $e->getMessage(),
         ]);
     }
 
@@ -84,7 +85,7 @@ class GenerateChunkEmbeddingJob implements ShouldQueue
      */
     private function maybeMarkChapterReady(): void
     {
-        $chapter  = Chapter::with('sections.contentChunks')->find($this->chapterId);
+        $chapter = Chapter::with('sections.contentChunks')->find($this->chapterId);
 
         if (! $chapter) {
             return;
@@ -101,7 +102,7 @@ class GenerateChunkEmbeddingJob implements ShouldQueue
         if ($allReady) {
             $chapter->update([
                 'ingestion_status' => 'ready',
-                'ingested_at'      => now(),
+                'ingested_at' => now(),
             ]);
 
             Log::info('Chapter fully ingested and ready', [
@@ -114,7 +115,7 @@ class GenerateChunkEmbeddingJob implements ShouldQueue
 
     private function maybeMarkBookReady(string $bookId): void
     {
-        $book = \App\Models\Book::with('chapters')->find($bookId);
+        $book = Book::with('chapters')->find($bookId);
         if (! $book) {
             return;
         }

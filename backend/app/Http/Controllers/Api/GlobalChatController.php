@@ -4,10 +4,11 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Services\AI\Contracts\LLMGatewayInterface;
-use App\Services\AI\GroqLLMGateway;
+use App\Services\AI\ReasoningFilter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 /**
  * GlobalChatController - Platform-specific AI assistant (Req 1.1, 1.4).
@@ -25,13 +26,12 @@ class GlobalChatController extends Controller
 {
     public function __construct(
         private readonly LLMGatewayInterface $llm,
-    ) {
-    }
+    ) {}
 
     public function handle(Request $request): JsonResponse
     {
         $startTime = microtime(true);
-        $requestId = $request->header('X-Request-ID') ?? (string) \Illuminate\Support\Str::uuid();
+        $requestId = $request->header('X-Request-ID') ?? (string) Str::uuid();
 
         Log::info("[AI_TIMING] request_id={$requestId} stage=request_start system=global_chat", [
             'route' => $request->input('route', 'Unknown'),
@@ -40,7 +40,7 @@ class GlobalChatController extends Controller
         $request->validate([
             'message' => 'required|string',
             'route' => 'nullable|string',
-            'history' => 'nullable|array'
+            'history' => 'nullable|array',
         ]);
 
         $userMessage = $request->input('message');
@@ -91,6 +91,7 @@ class GlobalChatController extends Controller
                     'user_message' => $userMessage,
                     'raw_reply' => $reply,
                 ]);
+
                 return response()->json([
                     'reply' => 'I could not generate a response. Please try rephrasing your question.',
                 ], 200);
@@ -109,19 +110,19 @@ class GlobalChatController extends Controller
                 Log::error("[QUOTA_EXHAUSTED] GlobalChatController: LLM quota exhausted after {$elapsedMs}ms", [
                     'request_id' => $requestId,
                     'elapsed_ms' => $elapsedMs,
-                    'error'      => $msg,
+                    'error' => $msg,
                 ]);
             } elseif ($isTimeout) {
                 Log::error("[PROVIDER_TIMEOUT] GlobalChatController: LLM timed out after {$elapsedMs}ms", [
                     'request_id' => $requestId,
                     'elapsed_ms' => $elapsedMs,
-                    'error'      => $msg,
+                    'error' => $msg,
                 ]);
             } else {
                 Log::error("GlobalChatController: LLM error after {$elapsedMs}ms", [
                     'request_id' => $requestId,
                     'elapsed_ms' => $elapsedMs,
-                    'error'      => $msg,
+                    'error' => $msg,
                 ]);
             }
 
@@ -140,7 +141,7 @@ class GlobalChatController extends Controller
      */
     public function stripInternalReasoning(string $text): string
     {
-        return \App\Services\AI\ReasoningFilter::strip($text);
+        return ReasoningFilter::strip($text);
     }
 
     /**

@@ -13,11 +13,11 @@ class BadgeFactory extends Factory
     public function definition(): array
     {
         return [
-            'code'        => Str::slug(fake()->unique()->words(2, true)),
-            'name'        => fake()->words(2, true),
+            'code' => Str::slug(fake()->unique()->words(2, true)),
+            'name' => fake()->words(2, true),
             'description' => fake()->sentence(),
-            'icon'        => '🏅',
-            'criteria'    => ['type' => 'chapter_count', 'threshold' => 1],
+            'icon' => '🏅',
+            'criteria' => ['type' => 'chapter_count', 'threshold' => 1],
         ];
     }
 }

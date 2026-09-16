@@ -3,13 +3,12 @@
 namespace App\Http\Controllers\Api\V1\Dashboard;
 
 use App\Http\Controllers\Controller;
-use App\Models\IngestionJob;
-use App\Models\Book;
 use App\Jobs\ProcessManualIngestionJob;
-use Illuminate\Http\Request;
+use App\Models\Book;
+use App\Models\IngestionJob;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
-use Illuminate\Support\Facades\Log;
 
 class IngestionJobController extends Controller
 {
@@ -43,6 +42,7 @@ class IngestionJobController extends Controller
     public function getActiveJobs(Request $request): JsonResponse
     {
         $activeJobs = IngestionJob::whereIn('status', ['pending', 'processing'])->get();
+
         return response()->json(['jobs' => $activeJobs]);
     }
 
@@ -100,12 +100,14 @@ class IngestionJobController extends Controller
     public function pause(IngestionJob $job): JsonResponse
     {
         $job->update(['status' => 'paused']);
+
         return response()->json(['job' => $job]);
     }
 
     public function resume(IngestionJob $job): JsonResponse
     {
         $job->update(['status' => 'pending']);
+
         // Here we would re-dispatch or signal the worker to pick it up
         // ProcessManualIngestionJob::dispatch($job->id, 'resume');
         return response()->json(['job' => $job]);
@@ -114,12 +116,14 @@ class IngestionJobController extends Controller
     public function cancel(IngestionJob $job): JsonResponse
     {
         $job->update(['status' => 'cancelled']);
+
         return response()->json(['job' => $job]);
     }
 
     public function retry(IngestionJob $job): JsonResponse
     {
         $job->update(['status' => 'pending']);
+
         // Determine mode based on book contents or a saved config
         // ProcessManualIngestionJob::dispatch($job->id, 'resume');
         return response()->json(['job' => $job]);

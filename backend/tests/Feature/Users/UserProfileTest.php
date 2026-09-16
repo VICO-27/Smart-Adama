@@ -93,7 +93,7 @@ it('rejects non-image files as avatar', function () {
 // ── DELETE /api/v1/users/me ──────────────────────────────────────────────────
 
 it('soft-deletes the account and revokes all tokens', function () {
-    $user  = User::factory()->create();
+    $user = User::factory()->create();
     $token = $user->createToken('api')->plainTextToken;
 
     $this->withToken($token)
@@ -105,7 +105,7 @@ it('soft-deletes the account and revokes all tokens', function () {
 
     // Token row is gone from the database — it was revoked
     $this->assertDatabaseMissing('personal_access_tokens', [
-        'tokenable_id'   => $user->id,
+        'tokenable_id' => $user->id,
         'tokenable_type' => get_class($user),
     ]);
 });

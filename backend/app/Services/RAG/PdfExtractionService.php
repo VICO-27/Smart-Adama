@@ -2,11 +2,11 @@
 
 namespace App\Services\RAG;
 
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Process;
 use App\Models\Book;
 use App\Models\BookPage;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Process;
+use Illuminate\Support\Facades\Storage;
 
 class PdfExtractionService
 {
@@ -21,42 +21,42 @@ class PdfExtractionService
     public function extractAndStore(Book $book): array
     {
         $absolutePath = Storage::disk('local')->path($book->source_file_path);
-        
-        if (!file_exists($absolutePath)) {
+
+        if (! file_exists($absolutePath)) {
             throw new \Exception("PDF file not found at path: {$absolutePath}");
         }
 
         try {
             $book->logProgress('Extracting text via safe process pdftotext...', 'info');
-            
+
             // Execute pdftotext safely using Laravel Process
             $result = Process::timeout(300)->run([
                 'pdftotext',
                 '-layout',
                 $absolutePath,
-                '-'
+                '-',
             ]);
-            
-            if (!$result->successful()) {
-                throw new \Exception("pdftotext failed: " . $result->errorOutput());
+
+            if (! $result->successful()) {
+                throw new \Exception('pdftotext failed: '.$result->errorOutput());
             }
 
             $text = $result->output();
-            
+
             if (empty(trim($text))) {
-                throw new \Exception("pdftotext returned empty output. Ensure poppler-utils is installed and PDF is valid.");
+                throw new \Exception('pdftotext returned empty output. Ensure poppler-utils is installed and PDF is valid.');
             }
 
             // pdftotext uses \x0C (form feed) as a page separator
             $rawPages = explode("\x0C", $text);
-            
+
             // pdftotext often adds a trailing \x0C at the very end of the file, resulting in an empty last page
             if (trim(end($rawPages)) === '') {
                 array_pop($rawPages);
             }
-            
-            $book->logProgress('PDF parsed via pdftotext. Extracted ' . count($rawPages) . ' raw pages.', 'info');
-            
+
+            $book->logProgress('PDF parsed via pdftotext. Extracted '.count($rawPages).' raw pages.', 'info');
+
             $pageTexts = [];
             foreach ($rawPages as $index => $page) {
                 $pageTexts[$index + 1] = $page;
@@ -83,7 +83,7 @@ class PdfExtractionService
                 $cleanedTextIndex = $pageNumber - 1;
                 $cleanedText = $cleanedPagesText[$cleanedTextIndex] ?? '';
                 $normalizedText = $this->normalizer->normalize($cleanedText);
-                
+
                 $charCount = strlen($normalizedText);
                 $totalCleanedChars += $charCount;
 
@@ -92,7 +92,7 @@ class PdfExtractionService
                 if ($charCount < 50 && strlen(trim($rawText)) > 200) {
                     $isSuspicious = true;
                 }
-                
+
                 if ($isSuspicious) {
                     $suspiciousPages++;
                 }
@@ -118,7 +118,8 @@ class PdfExtractionService
             ];
 
         } catch (\Exception $e) {
-            Log::error("PdfExtractionService: Failed to parse PDF", ['error' => $e->getMessage()]);
+            Log::error('PdfExtractionService: Failed to parse PDF', ['error' => $e->getMessage()]);
+
             return ['status' => 'failed', 'error' => $e->getMessage()];
         }
     }

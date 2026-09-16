@@ -4,9 +4,7 @@ namespace App\Http\Controllers\Api\V1\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use Illuminate\Http\Request;
 use Laravel\Socialite\Facades\Socialite;
-use Illuminate\Support\Str;
 
 class SocialAuthController extends Controller
 {
@@ -19,18 +17,18 @@ class SocialAuthController extends Controller
     {
         // Temporarily removing the try/catch so we can see the exact Laravel error screen
         $socialUser = Socialite::driver($provider)->stateless()->user();
-        
+
         $user = User::where('provider', $provider)
             ->where('provider_id', $socialUser->getId())
             ->first();
 
-        if (!$user) {
+        if (! $user) {
             // If email is provided, try linking to existing email
             if ($email = $socialUser->getEmail()) {
                 $user = User::where('email', $email)->first();
             }
-            
-            if (!$user) {
+
+            if (! $user) {
                 $user = User::create([
                     'name' => $socialUser->getName() ?? 'User',
                     'email' => $socialUser->getEmail(),
@@ -42,7 +40,7 @@ class SocialAuthController extends Controller
             }
         }
 
-        if (!$user->provider) {
+        if (! $user->provider) {
             $user->update([
                 'provider' => $provider,
                 'provider_id' => $socialUser->getId(),
@@ -57,6 +55,7 @@ class SocialAuthController extends Controller
 
         // To this explicitly:
         $frontendUrl = 'http://localhost:5173';
+
         return redirect()->to("{$frontendUrl}/auth/callback?token={$token}");
     }
 }

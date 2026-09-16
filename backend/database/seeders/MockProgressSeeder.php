@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
+use App\Models\Badge;
 use App\Models\Book;
-use App\Models\Chapter;
 use App\Models\Quiz;
 use App\Models\QuizAttempt;
 use App\Models\User;
@@ -21,8 +21,9 @@ class MockProgressSeeder extends Seeder
         // Get the latest user (the one they are currently testing with)
         $user = User::latest()->first();
 
-        if (!$user) {
+        if (! $user) {
             $this->command->error('No users found. Please register an account first.');
+
             return;
         }
 
@@ -30,7 +31,7 @@ class MockProgressSeeder extends Seeder
 
         // Ensure there is a canonical book
         $book = Book::canonical();
-        if (!$book) {
+        if (! $book) {
             $book = Book::firstOrCreate(
                 ['status' => 'published'],
                 ['title' => 'Smart Adama: Official Handbook', 'is_canonical' => true]
@@ -44,7 +45,7 @@ class MockProgressSeeder extends Seeder
                     ['order' => $i],
                     [
                         'title' => "Chapter $i",
-                        'ingestion_status' => 'ready'
+                        'ingestion_status' => 'ready',
                     ]
                 );
             }
@@ -60,7 +61,7 @@ class MockProgressSeeder extends Seeder
                 [
                     'is_completed' => true,
                     'best_quiz_score_pct' => rand(70, 100),
-                    'last_read_at' => Carbon::now()->subDays(rand(0, 5))
+                    'last_read_at' => Carbon::now()->subDays(rand(0, 5)),
                 ]
             );
         }
@@ -88,7 +89,7 @@ class MockProgressSeeder extends Seeder
             [
                 'current_streak' => 12,
                 'longest_streak' => 24,
-                'last_activity_date' => Carbon::today()
+                'last_activity_date' => Carbon::today(),
             ]
         );
 
@@ -100,7 +101,7 @@ class MockProgressSeeder extends Seeder
         ];
 
         foreach ($badges as $badgeData) {
-            $badge = \App\Models\Badge::firstOrCreate(
+            $badge = Badge::firstOrCreate(
                 ['code' => $badgeData['code']],
                 $badgeData
             );
@@ -114,6 +115,6 @@ class MockProgressSeeder extends Seeder
         // Clear dashboard cache to ensure the frontend gets the fresh data immediately
         Cache::forget("dashboard:{$user->id}");
 
-        $this->command->info("Mock progress seeded successfully!");
+        $this->command->info('Mock progress seeded successfully!');
     }
 }

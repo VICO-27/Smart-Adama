@@ -10,14 +10,14 @@ class SectionResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id'           => $this->id,
-            'chapter_id'   => $this->chapter_id,
-            'parent_id'    => $this->parent_id,
+            'id' => $this->id,
+            'chapter_id' => $this->chapter_id,
+            'parent_id' => $this->parent_id,
             'section_number' => $this->section_number,
-            'title'        => $this->title,
-            'order'        => $this->order,
-            'raw_text'     => $this->raw_text,
-            'created_at'   => $this->created_at?->toISOString(),
+            'title' => $this->title,
+            'order' => $this->order,
+            'raw_text' => $this->raw_text,
+            'created_at' => $this->created_at?->toISOString(),
         ];
     }
 }

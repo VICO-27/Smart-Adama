@@ -26,14 +26,15 @@ class LoginController extends Controller
         // Try normalizing as phone number, or keep as is for email
         $normalizedPhone = PhoneNormalizer::normalize($identifier);
 
-        $throttleKey = 'login:' . strtolower($identifier) . '|' . $request->ip();
+        $throttleKey = 'login:'.strtolower($identifier).'|'.$request->ip();
 
         // Req 1.4 — throttle after 5 failed attempts
         if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
             $seconds = RateLimiter::availableIn($throttleKey);
+
             return response()->json([
                 'error' => [
-                    'code'    => 'TOO_MANY_REQUESTS',
+                    'code' => 'TOO_MANY_REQUESTS',
                     'message' => "Too many login attempts. Please try again in {$seconds} seconds.",
                 ],
             ], 429)->withHeaders(['Retry-After' => $seconds]);
@@ -48,7 +49,7 @@ class LoginController extends Controller
         if (! $user || ! Hash::check($credential, $user->password)) {
             RateLimiter::hit($throttleKey, 60 * 10); // 10 minute window
 
-            $field = $request->has('email') && !$request->has('identifier') ? 'email' : 'identifier';
+            $field = $request->has('email') && ! $request->has('identifier') ? 'email' : 'identifier';
 
             throw ValidationException::withMessages([
                 $field => ['The provided credentials are incorrect.'],
@@ -60,7 +61,7 @@ class LoginController extends Controller
         $token = $user->createToken('api-token')->plainTextToken;
 
         return response()->json([
-            'user'  => new UserResource($user),
+            'user' => new UserResource($user),
             'token' => $token,
         ]);
     }

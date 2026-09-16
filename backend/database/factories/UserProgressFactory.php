@@ -14,21 +14,21 @@ class UserProgressFactory extends Factory
     public function definition(): array
     {
         return [
-            'user_id'            => User::factory(),
-            'chapter_id'         => Chapter::factory(),
-            'is_completed'       => false,
+            'user_id' => User::factory(),
+            'chapter_id' => Chapter::factory(),
+            'is_completed' => false,
             'best_quiz_score_pct' => null,
-            'completed_at'       => null,
-            'last_read_at'       => now(),
+            'completed_at' => null,
+            'last_read_at' => now(),
         ];
     }
 
     public function completed(float $score = 100.0): static
     {
         return $this->state([
-            'is_completed'       => true,
+            'is_completed' => true,
             'best_quiz_score_pct' => $score,
-            'completed_at'       => now(),
+            'completed_at' => now(),
         ]);
     }
 }

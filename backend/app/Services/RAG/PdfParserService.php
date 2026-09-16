@@ -2,15 +2,13 @@
 
 namespace App\Services\RAG;
 
-use Smalot\PdfParser\Parser;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Smalot\PdfParser\Parser;
 
 class PdfParserService
 {
-    public function __construct(private readonly Parser $parser)
-    {
-    }
+    public function __construct(private readonly Parser $parser) {}
 
     /**
      * Parses a PDF file from storage and returns normalized raw text.
@@ -19,19 +17,20 @@ class PdfParserService
     {
         // Make sure it's stored on local disk
         $absolutePath = Storage::disk('local')->path($filePath);
-        
-        if (!file_exists($absolutePath)) {
-            Log::error("PdfParserService: File not found", ['path' => $absolutePath]);
+
+        if (! file_exists($absolutePath)) {
+            Log::error('PdfParserService: File not found', ['path' => $absolutePath]);
             throw new \Exception("PDF file not found at path: {$absolutePath}");
         }
 
         try {
             $pdf = $this->parser->parseFile($absolutePath);
             $rawText = $pdf->getText();
+
             return $this->normalizeText($rawText);
         } catch (\Exception $e) {
-            Log::error("PdfParserService: Failed to parse PDF", ['error' => $e->getMessage()]);
-            throw new \Exception("Failed to parse PDF: " . $e->getMessage());
+            Log::error('PdfParserService: Failed to parse PDF', ['error' => $e->getMessage()]);
+            throw new \Exception('Failed to parse PDF: '.$e->getMessage());
         }
     }
 
@@ -63,7 +62,7 @@ class PdfParserService
     public function extractChapters(string $text): array
     {
         $chapters = [];
-        
+
         // Regex matches lines starting with "Chapter N" and captures everything until the next one.
         // Using `m` (multiline) and `s` (dot matches newline) modifiers.
         preg_match_all('/^\s*Chapter\s+(\d+)\b(.*?)(?=^\s*Chapter\s+\d+\b|\z)/ims', $text, $matches, PREG_SET_ORDER);
@@ -71,11 +70,11 @@ class PdfParserService
         foreach ($matches as $match) {
             $chapterNumber = (int) $match[1];
             $chapterContent = trim($match[0]); // Includes "Chapter X" heading and the text
-            
+
             // Keep all chapters found in the document
             $chapters[$chapterNumber] = $chapterContent;
         }
-        
+
         return $chapters;
     }
 }

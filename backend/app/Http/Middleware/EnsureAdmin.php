@@ -20,14 +20,14 @@ class EnsureAdmin
         if (! $user || ! $user->isAdmin()) {
             Log::warning('Admin route access denied', [
                 'user_id' => $user?->id,
-                'ip'      => $request->ip(),
-                'route'   => $request->path(),
-                'method'  => $request->method(),
+                'ip' => $request->ip(),
+                'route' => $request->path(),
+                'method' => $request->method(),
             ]);
 
             return response()->json([
                 'error' => [
-                    'code'    => 'FORBIDDEN',
+                    'code' => 'FORBIDDEN',
                     'message' => 'You do not have permission to access this resource.',
                 ],
             ], Response::HTTP_FORBIDDEN);

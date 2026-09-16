@@ -91,7 +91,7 @@ it('validates chapter content successfully', function () {
     $book = Book::factory()->create();
     $chapter = Chapter::factory()->create(['book_id' => $book->id, 'order' => 1, 'title' => 'Introduction']);
 
-    $content = "1.1 Section One\n" . str_repeat('Valid chapter content. ', 50);
+    $content = "1.1 Section One\n".str_repeat('Valid chapter content. ', 50);
 
     $response = $this->actingAs($admin)
         ->postJson("/api/v1/admin/chapters/{$chapter->id}/validate", [
@@ -139,7 +139,7 @@ it('rejects content with front matter markers', function () {
     $book = Book::factory()->create();
     $chapter = Chapter::factory()->create(['book_id' => $book->id, 'order' => 1]);
 
-    $content = "Contents\n" . str_repeat('Some content here. ', 50);
+    $content = "Contents\n".str_repeat('Some content here. ', 50);
 
     $response = $this->actingAs($admin)
         ->postJson("/api/v1/admin/chapters/{$chapter->id}/validate", [
@@ -157,7 +157,7 @@ it('rejects content with System Context', function () {
     $book = Book::factory()->create();
     $chapter = Chapter::factory()->create(['book_id' => $book->id, 'order' => 1]);
 
-    $content = "System Context: Smart Adama Platform\n" . str_repeat('Some content. ', 50);
+    $content = "System Context: Smart Adama Platform\n".str_repeat('Some content. ', 50);
 
     $response = $this->actingAs($admin)
         ->postJson("/api/v1/admin/chapters/{$chapter->id}/validate", [
@@ -246,7 +246,7 @@ it('verification detects incomplete state with zero chunks', function () {
     $admin = User::factory()->admin()->create();
     $book = Book::factory()->create();
     Chapter::factory()->count(11)->sequence(
-        ...array_map(fn($i) => ['order' => $i, 'ingestion_status' => 'ready'], range(1, 11))
+        ...array_map(fn ($i) => ['order' => $i, 'ingestion_status' => 'ready'], range(1, 11))
     )->create(['book_id' => $book->id]);
 
     $response = $this->actingAs($admin)
@@ -266,7 +266,7 @@ it('verification detects invalid chapters', function () {
 
     // Create canonical chapters 1-11
     Chapter::factory()->count(11)->sequence(
-        ...array_map(fn($i) => ['order' => $i], range(1, 11))
+        ...array_map(fn ($i) => ['order' => $i], range(1, 11))
     )->create(['book_id' => $book->id]);
 
     // Add invalid chapter 0

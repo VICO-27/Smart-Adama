@@ -6,7 +6,6 @@ use App\Models\Book;
 use App\Models\Chapter;
 use App\Models\ContentChunk;
 use App\Models\Section;
-use App\Models\User;
 use App\Services\AI\Contracts\EmbeddingProviderInterface;
 use Illuminate\Support\Facades\Queue;
 
@@ -19,12 +18,22 @@ beforeEach(function () {
 
     // Bind fake embedder for all ingestion tests — no live API calls
     $this->app->bind(EmbeddingProviderInterface::class, function () {
-        return new class implements EmbeddingProviderInterface {
-            public function embed(string $text, ?string $inputType = null): array { return array_fill(0, 1024, 0.1); }
-            public function embedBatch(array $texts, ?string $inputType = null): array {
+        return new class implements EmbeddingProviderInterface
+        {
+            public function embed(string $text, ?string $inputType = null): array
+            {
+                return array_fill(0, 1024, 0.1);
+            }
+
+            public function embedBatch(array $texts, ?string $inputType = null): array
+            {
                 return array_map(fn () => array_fill(0, 1024, 0.1), $texts);
             }
-            public function getDimension(): int { return 1024; }
+
+            public function getDimension(): int
+            {
+                return 1024;
+            }
         };
     });
 });
@@ -35,12 +44,12 @@ it('IngestChapterJob dispatches GenerateChunkEmbeddingJob for each section', fun
     // Only fake the inner job so IngestChapterJob itself runs synchronously
     Queue::fake([GenerateChunkEmbeddingJob::class]);
 
-    $book    = Book::factory()->create();
+    $book = Book::factory()->create();
     $chapter = Chapter::factory()->create(['book_id' => $book->id]);
 
     Section::factory()->count(3)->create([
         'chapter_id' => $chapter->id,
-        'raw_text'   => 'Smart Adama content for section.',
+        'raw_text' => 'Smart Adama content for section.',
     ]);
 
     IngestChapterJob::dispatchSync($chapter->id);
@@ -52,7 +61,7 @@ it('IngestChapterJob dispatches GenerateChunkEmbeddingJob for each section', fun
 it('IngestChapterJob sets chapter to ready when no sections have text', function () {
     Queue::fake([GenerateChunkEmbeddingJob::class]);
 
-    $book    = Book::factory()->create();
+    $book = Book::factory()->create();
     $chapter = Chapter::factory()->create(['book_id' => $book->id]);
     Section::factory()->create(['chapter_id' => $chapter->id, 'raw_text' => null]);
 
@@ -65,12 +74,12 @@ it('IngestChapterJob sets chapter to ready when no sections have text', function
 // ── Full pipeline with faked embedder (contract test, Req 9.3) ───────────────
 
 it('full ingestion pipeline stores chunks and marks chapter ready', function () {
-    $book    = Book::factory()->create();
+    $book = Book::factory()->create();
     $chapter = Chapter::factory()->create(['book_id' => $book->id]);
 
     $section = Section::factory()->create([
         'chapter_id' => $chapter->id,
-        'raw_text'   => implode('. ', array_fill(0, 20,
+        'raw_text' => implode('. ', array_fill(0, 20,
             'Smart Adama teaches citizens to engage with civic responsibility'
         )),
     ]);
@@ -91,11 +100,11 @@ it('full ingestion pipeline stores chunks and marks chapter ready', function () 
 });
 
 it('re-ingestion deletes old chunks before inserting new ones (Req 4.5)', function () {
-    $book    = Book::factory()->create();
+    $book = Book::factory()->create();
     $chapter = Chapter::factory()->create(['book_id' => $book->id]);
     $section = Section::factory()->create([
         'chapter_id' => $chapter->id,
-        'raw_text'   => 'Initial content about Smart Adama.',
+        'raw_text' => 'Initial content about Smart Adama.',
     ]);
 
     // First ingestion

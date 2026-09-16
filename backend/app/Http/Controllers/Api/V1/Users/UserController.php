@@ -49,7 +49,7 @@ class UserController extends Controller
             ], 403);
         }
 
-        if (!Hash::check($request->current_password, $user->password)) {
+        if (! Hash::check($request->current_password, $user->password)) {
             throw ValidationException::withMessages([
                 'current_password' => ['The provided password does not match our records.'],
             ]);
@@ -81,7 +81,7 @@ class UserController extends Controller
         }
 
         $path = $request->file('avatar')->store("avatars/{$user->id}", 'public');
-        $url  = Storage::url($path);
+        $url = Storage::url($path);
 
         $user->update(['avatar_url' => $url]);
 

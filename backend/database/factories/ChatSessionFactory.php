@@ -13,8 +13,8 @@ class ChatSessionFactory extends Factory
     public function definition(): array
     {
         return [
-            'user_id'          => User::factory(),
-            'title'            => 'New Chat',
+            'user_id' => User::factory(),
+            'title' => 'New Chat',
             'last_activity_at' => now(),
         ];
     }

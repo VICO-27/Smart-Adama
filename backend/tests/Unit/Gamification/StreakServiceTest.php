@@ -8,8 +8,8 @@ use Illuminate\Support\Carbon;
 // ── First activity ever ───────────────────────────────────────────────────────
 
 it('creates a streak record with current_streak=1 on first activity', function () {
-    $service = new StreakService();
-    $user    = User::factory()->create();
+    $service = new StreakService;
+    $user = User::factory()->create();
 
     $streak = $service->recordActivity($user);
 
@@ -21,8 +21,8 @@ it('creates a streak record with current_streak=1 on first activity', function (
 // ── Same-day idempotency ──────────────────────────────────────────────────────
 
 it('does not increment streak when called twice on the same day', function () {
-    $service = new StreakService();
-    $user    = User::factory()->create();
+    $service = new StreakService;
+    $user = User::factory()->create();
 
     $service->recordActivity($user);
     $streak = $service->recordActivity($user); // second call same day
@@ -33,14 +33,14 @@ it('does not increment streak when called twice on the same day', function () {
 // ── Consecutive day extends streak ───────────────────────────────────────────
 
 it('increments streak when activity is on the day after last activity', function () {
-    $service = new StreakService();
-    $user    = User::factory()->create();
+    $service = new StreakService;
+    $user = User::factory()->create();
 
     // Seed a streak record as of yesterday
     UserStreak::create([
-        'user_id'            => $user->id,
-        'current_streak'     => 2,
-        'longest_streak'     => 2,
+        'user_id' => $user->id,
+        'current_streak' => 2,
+        'longest_streak' => 2,
         'last_activity_date' => Carbon::yesterday()->toDateString(),
     ]);
 
@@ -53,13 +53,13 @@ it('increments streak when activity is on the day after last activity', function
 // ── Gap resets streak ─────────────────────────────────────────────────────────
 
 it('resets current_streak to 1 when a day is missed', function () {
-    $service = new StreakService();
-    $user    = User::factory()->create();
+    $service = new StreakService;
+    $user = User::factory()->create();
 
     UserStreak::create([
-        'user_id'            => $user->id,
-        'current_streak'     => 5,
-        'longest_streak'     => 5,
+        'user_id' => $user->id,
+        'current_streak' => 5,
+        'longest_streak' => 5,
         'last_activity_date' => Carbon::today()->subDays(2)->toDateString(),
     ]);
 
@@ -69,13 +69,13 @@ it('resets current_streak to 1 when a day is missed', function () {
 });
 
 it('preserves longest_streak when current is reset after a gap', function () {
-    $service = new StreakService();
-    $user    = User::factory()->create();
+    $service = new StreakService;
+    $user = User::factory()->create();
 
     UserStreak::create([
-        'user_id'            => $user->id,
-        'current_streak'     => 10,
-        'longest_streak'     => 10,
+        'user_id' => $user->id,
+        'current_streak' => 10,
+        'longest_streak' => 10,
         'last_activity_date' => Carbon::today()->subDays(3)->toDateString(),
     ]);
 
@@ -88,13 +88,13 @@ it('preserves longest_streak when current is reset after a gap', function () {
 // ── longest_streak updated correctly ─────────────────────────────────────────
 
 it('updates longest_streak when current_streak surpasses it', function () {
-    $service = new StreakService();
-    $user    = User::factory()->create();
+    $service = new StreakService;
+    $user = User::factory()->create();
 
     UserStreak::create([
-        'user_id'            => $user->id,
-        'current_streak'     => 6,
-        'longest_streak'     => 6,
+        'user_id' => $user->id,
+        'current_streak' => 6,
+        'longest_streak' => 6,
         'last_activity_date' => Carbon::yesterday()->toDateString(),
     ]);
 
@@ -105,14 +105,14 @@ it('updates longest_streak when current_streak surpasses it', function () {
 });
 
 it('does not decrease longest_streak when current is below it', function () {
-    $service = new StreakService();
-    $user    = User::factory()->create();
+    $service = new StreakService;
+    $user = User::factory()->create();
 
     // Previous best was 15; current is 4; after gap, reset to 1
     UserStreak::create([
-        'user_id'            => $user->id,
-        'current_streak'     => 4,
-        'longest_streak'     => 15,
+        'user_id' => $user->id,
+        'current_streak' => 4,
+        'longest_streak' => 15,
         'last_activity_date' => Carbon::today()->subDays(5)->toDateString(),
     ]);
 
@@ -125,8 +125,8 @@ it('does not decrease longest_streak when current is below it', function () {
 // ── getStreak returns zeroed record for new user ──────────────────────────────
 
 it('getStreak creates a zero record for a user with no prior activity', function () {
-    $service = new StreakService();
-    $user    = User::factory()->create();
+    $service = new StreakService;
+    $user = User::factory()->create();
 
     $streak = $service->getStreak($user);
 
@@ -136,13 +136,13 @@ it('getStreak creates a zero record for a user with no prior activity', function
 });
 
 it('getStreak returns existing record without modifying it', function () {
-    $service = new StreakService();
-    $user    = User::factory()->create();
+    $service = new StreakService;
+    $user = User::factory()->create();
 
     UserStreak::create([
-        'user_id'            => $user->id,
-        'current_streak'     => 7,
-        'longest_streak'     => 12,
+        'user_id' => $user->id,
+        'current_streak' => 7,
+        'longest_streak' => 12,
         'last_activity_date' => Carbon::yesterday()->toDateString(),
     ]);
 

@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Notifications\DatabaseNotification;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Support\Str;
 
 class AdminNotificationController extends Controller
@@ -19,8 +19,8 @@ class AdminNotificationController extends Controller
         // Admin notifications are often global, but in Laravel they are attached to a notifiable model.
         // We will assume the authenticated admin user is the notifiable.
         $user = $request->user();
-        
-        if (!$user) {
+
+        if (! $user) {
             return response()->json(['notifications' => []]);
         }
 
@@ -29,7 +29,7 @@ class AdminNotificationController extends Controller
 
         return response()->json([
             'notifications' => $notifications,
-            'unread_count' => $unreadCount
+            'unread_count' => $unreadCount,
         ]);
     }
 
@@ -39,13 +39,13 @@ class AdminNotificationController extends Controller
     public function markAsRead(Request $request, string $id): JsonResponse
     {
         $user = $request->user();
-        
-        if (!$user) {
+
+        if (! $user) {
             return response()->json(['success' => false], 401);
         }
 
         $notification = $user->notifications()->where('id', $id)->first();
-        
+
         if ($notification) {
             $notification->markAsRead();
         }
@@ -59,7 +59,7 @@ class AdminNotificationController extends Controller
     public function markAllAsRead(Request $request): JsonResponse
     {
         $user = $request->user();
-        
+
         if ($user) {
             $user->unreadNotifications->markAsRead();
         }
@@ -73,8 +73,8 @@ class AdminNotificationController extends Controller
     public function seedMock(Request $request): JsonResponse
     {
         $user = $request->user();
-        
-        if (!$user) {
+
+        if (! $user) {
             return response()->json(['success' => false], 401);
         }
 
@@ -93,7 +93,7 @@ class AdminNotificationController extends Controller
                     'message' => 'The semantic chunking and embedding for "Smart Adama Guide" completed in 10.3s.',
                     'category' => 'RAG Pipeline',
                     'icon' => 'check-circle',
-                    'color' => 'green'
+                    'color' => 'green',
                 ]),
                 'read_at' => null,
                 'created_at' => now()->subMinutes(5),
@@ -109,7 +109,7 @@ class AdminNotificationController extends Controller
                     'message' => 'A new user (vico@smartadama.com) just joined the platform.',
                     'category' => 'Users',
                     'icon' => 'user-plus',
-                    'color' => 'blue'
+                    'color' => 'blue',
                 ]),
                 'read_at' => null,
                 'created_at' => now()->subHours(2),
@@ -125,7 +125,7 @@ class AdminNotificationController extends Controller
                     'message' => 'High latency detected in the Supabase PostgreSQL connection pool.',
                     'category' => 'System',
                     'icon' => 'alert-triangle',
-                    'color' => 'red'
+                    'color' => 'red',
                 ]),
                 'read_at' => null,
                 'created_at' => now()->subDays(1),
@@ -141,7 +141,7 @@ class AdminNotificationController extends Controller
                     'message' => 'Smart Adama Core v2.1.4 is ready for deployment.',
                     'category' => 'System',
                     'icon' => 'info',
-                    'color' => 'gray'
+                    'color' => 'gray',
                 ]),
                 'read_at' => now()->subDays(2),
                 'created_at' => now()->subDays(3),

@@ -10,7 +10,9 @@ namespace App\Services\RAG;
 class DocumentChunkingService
 {
     private int $targetTokens;
+
     private float $overlapRatio;
+
     private const CHARS_PER_TOKEN = 4; // Approx 4 chars = 1 token for Qwen/general LLMs
 
     public function __construct()
@@ -21,9 +23,9 @@ class DocumentChunkingService
 
     /**
      * Chunk text semantically.
-     * 
-     * @param string $text The text to chunk
-     * @param array $metadata Extra metadata to attach to the chunk (e.g. book_id, page_number, structural_context)
+     *
+     * @param  string  $text  The text to chunk
+     * @param  array  $metadata  Extra metadata to attach to the chunk (e.g. book_id, page_number, structural_context)
      * @return array Array of chunk data
      */
     public function chunk(string $text, array $metadata): array
@@ -39,42 +41,45 @@ class DocumentChunkingService
         $paragraphs = preg_split('/\n{2,}/', $text, -1, PREG_SPLIT_NO_EMPTY);
         $chunks = [];
         $currentChunk = '';
-        
+
         $chunkIndex = 0;
 
         foreach ($paragraphs as $paragraph) {
             $paragraph = trim($paragraph);
-            if (empty($paragraph)) continue;
+            if (empty($paragraph)) {
+                continue;
+            }
 
             $paraLength = strlen($paragraph);
 
             // If a single paragraph is too large, split it by sentences
             if ($paraLength > $targetChars) {
                 $sentences = $this->splitSentences($paragraph);
-                
+
                 foreach ($sentences as $sentence) {
                     $sentLength = strlen($sentence);
-                    
-                    if (strlen($currentChunk) + $sentLength > $targetChars && !empty($currentChunk)) {
+
+                    if (strlen($currentChunk) + $sentLength > $targetChars && ! empty($currentChunk)) {
                         $chunks[] = $this->buildChunk($currentChunk, $chunkIndex++, $metadata);
                         $currentChunk = $this->getOverlapTail($currentChunk, $overlapChars);
                     }
-                    
-                    $currentChunk .= (empty($currentChunk) ? '' : ' ') . $sentence;
+
+                    $currentChunk .= (empty($currentChunk) ? '' : ' ').$sentence;
                 }
+
                 continue;
             }
 
             // Normal paragraph merging
-            if (strlen($currentChunk) + $paraLength + 2 > $targetChars && !empty($currentChunk)) {
+            if (strlen($currentChunk) + $paraLength + 2 > $targetChars && ! empty($currentChunk)) {
                 $chunks[] = $this->buildChunk($currentChunk, $chunkIndex++, $metadata);
                 $currentChunk = $this->getOverlapTail($currentChunk, $overlapChars);
             }
-            
-            $currentChunk .= (empty($currentChunk) ? '' : "\n\n") . $paragraph;
+
+            $currentChunk .= (empty($currentChunk) ? '' : "\n\n").$paragraph;
         }
 
-        if (!empty(trim($currentChunk))) {
+        if (! empty(trim($currentChunk))) {
             $chunks[] = $this->buildChunk($currentChunk, $chunkIndex++, $metadata);
         }
 
@@ -105,7 +110,7 @@ class DocumentChunkingService
         // Try to find a sentence boundary within the tail
         $tail = substr($text, -$overlapChars);
         $boundary = preg_match('/[.!?]\s+([A-Z\p{Lu}].*)$/u', $tail, $matches, PREG_OFFSET_CAPTURE);
-        
+
         if ($boundary && isset($matches[1])) {
             // Return from the start of the next sentence
             return $matches[1][0];
@@ -121,7 +126,7 @@ class DocumentChunkingService
         $tokenCount = (int) ceil(strlen($text) / self::CHARS_PER_TOKEN);
 
         return array_merge([
-            'chunk_text'  => $text,
+            'chunk_text' => $text,
             'chunk_index' => $index,
             'token_count' => $tokenCount,
         ], $metadata);

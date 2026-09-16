@@ -3,7 +3,7 @@
 use App\Services\RAG\PromptBuilderService;
 
 beforeEach(function () {
-    $this->builder = new PromptBuilderService();
+    $this->builder = new PromptBuilderService;
 });
 
 // ── PromptBuilderService ─────────────────────────────────────────────────────
@@ -15,7 +15,7 @@ it('includes a system message as the first element', function () {
 });
 
 it('appends the user query as the last message', function () {
-    $query    = 'What does Smart Adama say about leadership?';
+    $query = 'What does Smart Adama say about leadership?';
     $messages = $this->builder->buildMessages([], [], $query, ['isGrounded' => false], false);
 
     $last = end($messages);
@@ -31,8 +31,8 @@ it('uses the no-context system prompt when grounded=false', function () {
 
 it('uses the full system prompt with context when grounded=true', function () {
     $chunks = [[
-        'chunk_text'         => 'Smart Adama is a visionary framework.',
-        'page_number'        => 42,
+        'chunk_text' => 'Smart Adama is a visionary framework.',
+        'page_number' => 42,
         'structural_context' => ['heading' => 'Introduction'],
     ]];
 

@@ -1,16 +1,13 @@
 <?php
 
+use App\Exceptions\Handler;
 use App\Http\Middleware\EnsureAdmin;
 use App\Http\Middleware\ForceJsonResponse;
-use Illuminate\Auth\AuthenticationException;
+use App\Http\Middleware\ThrottleChat;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
-use Illuminate\Validation\ValidationException;
-use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -25,8 +22,8 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Register named middleware aliases
         $middleware->alias([
-            'admin'        => EnsureAdmin::class,
-            'throttle.chat' => \App\Http\Middleware\ThrottleChat::class,
+            'admin' => EnsureAdmin::class,
+            'throttle.chat' => ThrottleChat::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
@@ -36,6 +33,6 @@ return Application::configure(basePath: dirname(__DIR__))
                 return null;
             }
 
-            return \App\Exceptions\Handler::renderApiException($e, $request);
+            return Handler::renderApiException($e, $request);
         });
     })->create();

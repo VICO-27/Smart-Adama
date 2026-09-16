@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -16,11 +17,11 @@ return new class extends Migration
         });
 
         // Set existing records to COMPLETED if they were completed, else IN_PROGRESS
-        \Illuminate\Support\Facades\DB::table('user_progress')
+        DB::table('user_progress')
             ->where('is_completed', true)
             ->update(['status' => 'COMPLETED', 'reading_progress' => 100]);
 
-        \Illuminate\Support\Facades\DB::table('user_progress')
+        DB::table('user_progress')
             ->where('is_completed', false)
             ->update(['status' => 'IN_PROGRESS']);
 

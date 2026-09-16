@@ -1,24 +1,30 @@
 <?php
 
+use App\Jobs\EvaluateBadgesJob;
 use App\Models\Badge;
 use App\Models\Chapter;
+use App\Models\Quiz;
 use App\Models\QuizAttempt;
+use App\Models\QuizOption;
+use App\Models\QuizQuestion;
 use App\Models\User;
 use App\Models\UserBadge;
 use App\Models\UserProgress;
 use App\Models\UserStreak;
+use App\Services\Gamification\BadgeEvaluationService;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Queue;
 
 // ── GET /api/v1/users/me/badges ───────────────────────────────────────────────
 
 it('returns all badges with earned status for authenticated user', function () {
-    $user       = User::factory()->create();
-    $earnedBadge  = Badge::factory()->create(['criteria' => ['type' => 'chapter_count', 'threshold' => 1]]);
-    $lockedBadge  = Badge::factory()->create(['criteria' => ['type' => 'chapter_count', 'threshold' => 10]]);
+    $user = User::factory()->create();
+    $earnedBadge = Badge::factory()->create(['criteria' => ['type' => 'chapter_count', 'threshold' => 1]]);
+    $lockedBadge = Badge::factory()->create(['criteria' => ['type' => 'chapter_count', 'threshold' => 10]]);
 
     UserBadge::create([
-        'user_id'    => $user->id,
-        'badge_id'   => $earnedBadge->id,
+        'user_id' => $user->id,
+        'badge_id' => $earnedBadge->id,
         'awarded_at' => now(),
     ]);
 
@@ -40,16 +46,15 @@ it('returns all badges with earned status for authenticated user', function () {
 });
 
 it('returns progress hints for unearned chapter_count badges', function () {
-    $user  = User::factory()->create();
+    $user = User::factory()->create();
     $badge = Badge::factory()->create(['criteria' => ['type' => 'chapter_count', 'threshold' => 5]]);
 
     // User has completed 2 chapters
-    Chapter::factory()->count(2)->create()->each(fn ($ch) =>
-        UserProgress::factory()->create([
-            'user_id'      => $user->id,
-            'chapter_id'   => $ch->id,
-            'is_completed' => true,
-        ])
+    Chapter::factory()->count(2)->create()->each(fn ($ch) => UserProgress::factory()->create([
+        'user_id' => $user->id,
+        'chapter_id' => $ch->id,
+        'is_completed' => true,
+    ])
     );
 
     $response = $this->actingAs($user)->getJson('/api/v1/users/me/badges')->assertOk();
@@ -69,9 +74,9 @@ it('returns streak data for authenticated user', function () {
     $user = User::factory()->create();
 
     UserStreak::create([
-        'user_id'            => $user->id,
-        'current_streak'     => 5,
-        'longest_streak'     => 12,
+        'user_id' => $user->id,
+        'current_streak' => 5,
+        'longest_streak' => 12,
         'last_activity_date' => Carbon::today()->toDateString(),
     ]);
 
@@ -101,15 +106,15 @@ it('returns 401 for unauthenticated streak request', function () {
 // ── GET /api/v1/users/me/progress ─────────────────────────────────────────────
 
 it('returns progress summary for authenticated user', function () {
-    $user     = User::factory()->create();
+    $user = User::factory()->create();
     $chapters = Chapter::factory()->count(4)->create();
 
     // Complete 2 of the 4 chapters
     foreach ($chapters->take(2) as $ch) {
         UserProgress::factory()->create([
-            'user_id'            => $user->id,
-            'chapter_id'         => $ch->id,
-            'is_completed'       => true,
+            'user_id' => $user->id,
+            'chapter_id' => $ch->id,
+            'is_completed' => true,
             'best_quiz_score_pct' => 80,
         ]);
     }
@@ -145,20 +150,20 @@ it('returns 401 for unauthenticated progress request', function () {
 // ── EvaluateBadgesJob integration (dispatched from QuizAttemptController) ─────
 
 it('badge is awarded after passing a quiz via the full HTTP submit flow', function () {
-    \Illuminate\Support\Facades\Queue::fake();
+    Queue::fake();
 
-    $user    = User::factory()->create();
+    $user = User::factory()->create();
     $chapter = Chapter::factory()->create();
-    $badge   = Badge::factory()->create(['criteria' => ['type' => 'chapter_count', 'threshold' => 1]]);
+    $badge = Badge::factory()->create(['criteria' => ['type' => 'chapter_count', 'threshold' => 1]]);
 
-    $quiz     = \App\Models\Quiz::factory()->published()->create(['chapter_id' => $chapter->id, 'passing_score_pct' => 70]);
-    $question = \App\Models\QuizQuestion::factory()->create(['quiz_id' => $quiz->id, 'type' => 'single']);
-    $correct  = \App\Models\QuizOption::factory()->correct()->create(['quiz_question_id' => $question->id]);
-    \App\Models\QuizOption::factory()->create(['quiz_question_id' => $question->id, 'is_correct' => false]);
+    $quiz = Quiz::factory()->published()->create(['chapter_id' => $chapter->id, 'passing_score_pct' => 70]);
+    $question = QuizQuestion::factory()->create(['quiz_id' => $quiz->id, 'type' => 'single']);
+    $correct = QuizOption::factory()->correct()->create(['quiz_question_id' => $question->id]);
+    QuizOption::factory()->create(['quiz_question_id' => $question->id, 'is_correct' => false]);
 
-    $attempt = \App\Models\QuizAttempt::factory()->create([
-        'user_id'    => $user->id,
-        'quiz_id'    => $quiz->id,
+    $attempt = QuizAttempt::factory()->create([
+        'user_id' => $user->id,
+        'quiz_id' => $quiz->id,
         'started_at' => now(),
     ]);
 
@@ -172,10 +177,10 @@ it('badge is awarded after passing a quiz via the full HTTP submit flow', functi
         ->assertJsonPath('badge_evaluation_triggered', true);
 
     // Job was queued
-    \Illuminate\Support\Facades\Queue::assertPushed(\App\Jobs\EvaluateBadgesJob::class);
+    Queue::assertPushed(EvaluateBadgesJob::class);
 
     // Now run the job synchronously to verify the badge is awarded
-    $service = new \App\Services\Gamification\BadgeEvaluationService();
+    $service = new BadgeEvaluationService;
     $awarded = $service->evaluate($user);
 
     expect($awarded->pluck('id'))->toContain($badge->id);
@@ -185,12 +190,12 @@ it('badge is awarded after passing a quiz via the full HTTP submit flow', functi
 // ── Req 11.2 — newly_earned flag in badge list ────────────────────────────────
 
 it('badge awarded_at is present immediately after being earned', function () {
-    $user  = User::factory()->create();
+    $user = User::factory()->create();
     $badge = Badge::factory()->create(['criteria' => ['type' => 'chapter_count', 'threshold' => 1]]);
 
     UserBadge::create([
-        'user_id'    => $user->id,
-        'badge_id'   => $badge->id,
+        'user_id' => $user->id,
+        'badge_id' => $badge->id,
         'awarded_at' => now(),
     ]);
 

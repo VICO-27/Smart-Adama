@@ -4,11 +4,11 @@ namespace App\Http\Controllers\Api\V1\Dashboard;
 
 use App\Http\Controllers\Controller;
 use App\Models\Book;
+use App\Models\BookPage;
 use App\Models\Chapter;
 use App\Models\Section;
-use App\Models\BookPage;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class ManualAuthoringController extends Controller
 {
@@ -32,7 +32,7 @@ class ManualAuthoringController extends Controller
 
     public function getTree(Book $book): JsonResponse
     {
-        $chapters = $book->chapters()->with(['sections' => function($q) {
+        $chapters = $book->chapters()->with(['sections' => function ($q) {
             $q->whereNull('parent_id')->with('descendants'); // recursive load for structured mode
         }])->orderBy('order')->get();
 
@@ -71,12 +71,14 @@ class ManualAuthoringController extends Controller
         ]);
 
         $chapter->update($validated);
+
         return response()->json(['chapter' => $chapter]);
     }
 
     public function deleteChapter(Chapter $chapter): JsonResponse
     {
         $chapter->delete();
+
         return response()->json(['message' => 'Deleted successfully']);
     }
 
@@ -91,12 +93,12 @@ class ManualAuthoringController extends Controller
         ]);
 
         $parentId = $validated['parent_id'] ?? null;
-        $sectionNumber = $chapter->order . '.' . $validated['order'];
+        $sectionNumber = $chapter->order.'.'.$validated['order'];
         // Ensure uniqueness if a subsection is added
         if ($parentId) {
             $parent = Section::find($parentId);
             if ($parent) {
-                $sectionNumber = $parent->section_number . '.' . $validated['order'];
+                $sectionNumber = $parent->section_number.'.'.$validated['order'];
             }
         }
 
@@ -124,12 +126,14 @@ class ManualAuthoringController extends Controller
         }
 
         $section->update($validated);
+
         return response()->json(['section' => $section]);
     }
 
     public function deleteSection(Section $section): JsonResponse
     {
         $section->delete();
+
         return response()->json(['message' => 'Deleted successfully']);
     }
 
@@ -164,12 +168,14 @@ class ManualAuthoringController extends Controller
         }
 
         $page->update($validated);
+
         return response()->json(['page' => $page]);
     }
 
     public function deletePage(BookPage $page): JsonResponse
     {
         $page->delete();
+
         return response()->json(['message' => 'Deleted successfully']);
     }
 }

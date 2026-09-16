@@ -2,9 +2,8 @@
 
 namespace App\Services\AI;
 
-use App\Services\AI\Contracts\EmbeddingProviderInterface;
 use App\Models\AdminSetting;
-use App\Exceptions\AiProviderException;
+use App\Services\AI\Contracts\EmbeddingProviderInterface;
 use Illuminate\Support\Facades\Log;
 
 class EmbeddingProviderManager implements EmbeddingProviderInterface
@@ -30,6 +29,7 @@ class EmbeddingProviderManager implements EmbeddingProviderInterface
         $envDefault = config('ai.embedding_provider', 'voyage');
         try {
             $setting = AdminSetting::where('key', 'ai_embedding_provider')->first();
+
             return $setting ? $setting->value : $envDefault;
         } catch (\Throwable) {
             return $envDefault;
@@ -39,10 +39,12 @@ class EmbeddingProviderManager implements EmbeddingProviderInterface
     private function resolveProvider(): EmbeddingProviderInterface
     {
         $active = $this->getActiveProvider();
-        if (!isset($this->providers[$active])) {
-            Log::warning("Configured embedding provider not found, falling back to voyage", ['provider' => $active]);
+        if (! isset($this->providers[$active])) {
+            Log::warning('Configured embedding provider not found, falling back to voyage', ['provider' => $active]);
+
             return $this->providers['voyage'];
         }
+
         return $this->providers[$active];
     }
 
@@ -50,10 +52,12 @@ class EmbeddingProviderManager implements EmbeddingProviderInterface
     {
         try {
             $provider = $this->resolveProvider();
+
             return $provider->embed($text, $inputType);
         } catch (\Throwable $e) {
             if ($this->getActiveProvider() !== 'voyage') {
-                Log::warning("Active embedding provider failed, falling back to voyage", ['error' => $e->getMessage()]);
+                Log::warning('Active embedding provider failed, falling back to voyage', ['error' => $e->getMessage()]);
+
                 return $this->providers['voyage']->embed($text, $inputType);
             }
             throw $e;
@@ -64,10 +68,12 @@ class EmbeddingProviderManager implements EmbeddingProviderInterface
     {
         try {
             $provider = $this->resolveProvider();
+
             return $provider->embedBatch($texts, $inputType);
         } catch (\Throwable $e) {
             if ($this->getActiveProvider() !== 'voyage') {
-                Log::warning("Active embedding provider batch failed, falling back to voyage", ['error' => $e->getMessage()]);
+                Log::warning('Active embedding provider batch failed, falling back to voyage', ['error' => $e->getMessage()]);
+
                 return $this->providers['voyage']->embedBatch($texts, $inputType);
             }
             throw $e;
@@ -77,6 +83,7 @@ class EmbeddingProviderManager implements EmbeddingProviderInterface
     public function getDimension(): int
     {
         $provider = $this->resolveProvider();
+
         return $provider->getDimension();
     }
 }

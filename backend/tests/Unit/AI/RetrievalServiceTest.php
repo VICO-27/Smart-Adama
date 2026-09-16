@@ -2,11 +2,12 @@
 
 namespace Tests\Unit\AI;
 
+use App\Exceptions\RAGRetrievalException;
 use App\Services\AI\Contracts\EmbeddingProviderInterface;
 use App\Services\RAG\RetrievalService;
 use Illuminate\Support\Facades\DB;
-use Tests\TestCase;
 use Mockery;
+use Tests\TestCase;
 
 class RetrievalServiceTest extends TestCase
 {
@@ -17,7 +18,7 @@ class RetrievalServiceTest extends TestCase
 
         DB::shouldReceive('select')->andThrow(new \Exception('DB Error'));
 
-        $this->expectException(\App\Exceptions\RAGRetrievalException::class);
+        $this->expectException(RAGRetrievalException::class);
 
         $service = new RetrievalService($embedder);
         $service->search('test query', 'test query');
@@ -28,7 +29,7 @@ class RetrievalServiceTest extends TestCase
         $embedder = Mockery::mock(EmbeddingProviderInterface::class);
         $embedder->shouldReceive('embed')->with('test query', 'query')->andReturn(array_fill(0, 1024, 0.1));
 
-        $mockRow = (object)[
+        $mockRow = (object) [
             'id' => 'uuid-123',
             'chunk_text' => 'This is a test chunk',
             'rrf_score' => 0.033,
@@ -69,6 +70,7 @@ class RetrievalServiceTest extends TestCase
             // Verify semantic bindings: [vectorStr, vectorStr, provider, model, dimension]
             $providerMatches = ($bindings[2] === 'voyage');
             $dimMatches = ($bindings[4] === 1024);
+
             return $hasIsolation && $providerMatches && $dimMatches;
         })->andReturn([]);
 

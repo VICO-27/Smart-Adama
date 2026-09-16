@@ -2,11 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Models\AdminSetting;
 use App\Models\Book;
 use App\Models\ContentChunk;
+use App\Services\RAG\RetrievalService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Tests\TestCase;
-use App\Services\AI\VoyageEmbeddingProvider;
 
 class RagMigrationTest extends TestCase
 {
@@ -14,7 +16,7 @@ class RagMigrationTest extends TestCase
     {
         // Skip actual API calls, we just mock the db state
         $book = Book::where('status', 'published')->first();
-        if (!$book) {
+        if (! $book) {
             $this->markTestSkipped('No published book to test against.');
         }
 
@@ -29,12 +31,12 @@ class RagMigrationTest extends TestCase
         DB::table('content_chunk_embeddings')->where('chunk_id', $chunk->id)->delete();
 
         // Simulate migration
-        $vectorStr = '[' . implode(',', array_fill(0, 1024, 0.1)) . ']';
+        $vectorStr = '['.implode(',', array_fill(0, 1024, 0.1)).']';
 
-        DB::statement("
+        DB::statement('
             INSERT INTO content_chunk_embeddings (id, chunk_id, provider, model, dimension, embedding, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?::vector, ?, ?)
-        ", [\Illuminate\Support\Str::uuid(), $chunk->id, 'voyage', 'voyage-4', 1024, $vectorStr, now(), now()]);
+        ', [Str::uuid(), $chunk->id, 'voyage', 'voyage-4', 1024, $vectorStr, now(), now()]);
 
         // 1. Verify duplicates aren't created (idempotency)
         $this->artisan('rag:migrate-voyage', ['--limit' => 1])->assertSuccessful();
@@ -42,13 +44,13 @@ class RagMigrationTest extends TestCase
         $this->assertEquals(1, $count, 'Duplicate Voyage rows should not be created.');
 
         // 2. No cross-provider retrieval
-        $retrieval = app(\App\Services\RAG\RetrievalService::class);
+        $retrieval = app(RetrievalService::class);
 
-        \App\Models\AdminSetting::updateOrCreate(['key' => 'ai_embedding_provider'], ['value' => 'voyage']);
+        AdminSetting::updateOrCreate(['key' => 'ai_embedding_provider'], ['value' => 'voyage']);
         $voyageResults = $retrieval->search('test', 'test');
         // Voyage results shouldn't crash and should use voyage provider
 
-        \App\Models\AdminSetting::updateOrCreate(['key' => 'ai_embedding_provider'], ['value' => 'ollama']);
+        AdminSetting::updateOrCreate(['key' => 'ai_embedding_provider'], ['value' => 'ollama']);
         $ollamaResults = $retrieval->search('test', 'test');
         // Ollama results shouldn't crash and should use ollama provider
 

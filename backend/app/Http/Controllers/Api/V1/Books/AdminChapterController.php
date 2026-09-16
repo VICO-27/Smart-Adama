@@ -26,8 +26,8 @@ class AdminChapterController extends Controller
             ?? ($book->chapters()->max('order') ?? 0) + 1;
 
         $chapter = $book->chapters()->create([
-            'title'            => $request->title,
-            'order'            => $order,
+            'title' => $request->title,
+            'order' => $order,
             'ingestion_status' => 'draft',
         ]);
 
@@ -66,7 +66,7 @@ class AdminChapterController extends Controller
         if ($chapter->sections()->whereNotNull('raw_text')->count() === 0) {
             return response()->json([
                 'error' => [
-                    'code'    => 'NO_CONTENT',
+                    'code' => 'NO_CONTENT',
                     'message' => 'Chapter must have at least one section with content before publishing.',
                 ],
             ], 422);
@@ -78,7 +78,7 @@ class AdminChapterController extends Controller
         IngestChapterJob::dispatch($chapter->id);
 
         return response()->json([
-            'message'          => 'Ingestion queued successfully.',
+            'message' => 'Ingestion queued successfully.',
             'ingestion_status' => 'queued',
         ]);
     }

@@ -3,26 +3,23 @@
 namespace Database\Seeders;
 
 use App\Models\Book;
-use App\Models\Chapter;
 use App\Models\Quiz;
 use App\Models\QuizAttempt;
 use App\Models\User;
-use App\Models\UserBadge;
 use App\Models\UserProgress;
 use App\Models\UserStreak;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Str;
 
 class FakeUsersSeeder extends Seeder
 {
     public function run(): void
     {
-        $this->command->info("Creating fake users with progress...");
+        $this->command->info('Creating fake users with progress...');
 
         // Ensure there is a canonical book
         $book = Book::canonical();
-        if (!$book) {
+        if (! $book) {
             $book = Book::firstOrCreate(
                 ['status' => 'published'],
                 ['title' => 'Smart Adama: Official Handbook', 'is_canonical' => true]
@@ -36,7 +33,7 @@ class FakeUsersSeeder extends Seeder
                     ['order' => $i],
                     [
                         'title' => "Chapter $i",
-                        'ingestion_status' => 'ready'
+                        'ingestion_status' => 'ready',
                     ]
                 );
             }
@@ -47,7 +44,7 @@ class FakeUsersSeeder extends Seeder
 
         for ($i = 0; $i < 15; $i++) {
             $user = User::factory()->create([
-                'status' => $statuses[array_rand($statuses)]
+                'status' => $statuses[array_rand($statuses)],
             ]);
 
             // Give them some random progress
@@ -59,7 +56,7 @@ class FakeUsersSeeder extends Seeder
                         [
                             'is_completed' => true,
                             'best_quiz_score_pct' => rand(60, 100),
-                            'last_read_at' => Carbon::now()->subDays(rand(0, 30))
+                            'last_read_at' => Carbon::now()->subDays(rand(0, 30)),
                         ]
                     );
 
@@ -86,12 +83,12 @@ class FakeUsersSeeder extends Seeder
                     [
                         'current_streak' => rand(1, 30),
                         'longest_streak' => rand(5, 50),
-                        'last_activity_date' => Carbon::today()->subDays(rand(0, 2))
+                        'last_activity_date' => Carbon::today()->subDays(rand(0, 2)),
                     ]
                 );
             }
         }
 
-        $this->command->info("Created 15 fake users with realistic progress!");
+        $this->command->info('Created 15 fake users with realistic progress!');
     }
 }

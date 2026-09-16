@@ -2,15 +2,13 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
-use App\Models\User;
-use App\Models\Quiz;
-use App\Models\QuizAttempt;
-use App\Models\ChatSession;
-use App\Models\ChatMessage;
 use App\Models\Chapter;
-use Illuminate\Support\Facades\DB;
+use App\Models\Quiz;
+use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class DashboardActivitySeeder extends Seeder
 {
@@ -52,13 +50,13 @@ class DashboardActivitySeeder extends Seeder
             $growthMultiplier = 1 + ($i / 15); // slowly doubles over 30 days
             $wave = sin($i / 3) * 0.5 + 1; // 0.5 to 1.5
 
-            $dayQuizzes = (int)($baseQuizzes * $growthMultiplier * $wave * mt_rand(80, 120) / 100);
-            $dayQueries = (int)($baseQueries * $growthMultiplier * ($wave + 0.5) * mt_rand(80, 120) / 100);
+            $dayQuizzes = (int) ($baseQuizzes * $growthMultiplier * $wave * mt_rand(80, 120) / 100);
+            $dayQueries = (int) ($baseQueries * $growthMultiplier * ($wave + 0.5) * mt_rand(80, 120) / 100);
 
             for ($q = 0; $q < $dayQuizzes; $q++) {
                 $createdAt = $date->clone()->addMinutes(mt_rand(0, 1400));
                 $quizAttempts[] = [
-                    'id' => \Illuminate\Support\Str::uuid(),
+                    'id' => Str::uuid(),
                     'user_id' => $users[array_rand($users)],
                     'quiz_id' => $quizzes[array_rand($quizzes)],
                     'score_pct' => mt_rand(40, 100),
@@ -72,7 +70,7 @@ class DashboardActivitySeeder extends Seeder
 
             for ($c = 0; $c < $dayQueries; $c++) {
                 $createdAt = $date->clone()->addMinutes(mt_rand(0, 1400));
-                $sessionId = \Illuminate\Support\Str::uuid();
+                $sessionId = Str::uuid();
 
                 $chatSessions[] = [
                     'id' => $sessionId,
@@ -83,7 +81,7 @@ class DashboardActivitySeeder extends Seeder
                 ];
 
                 $chatMessages[] = [
-                    'id' => \Illuminate\Support\Str::uuid(),
+                    'id' => Str::uuid(),
                     'chat_session_id' => $sessionId,
                     'role' => 'user',
                     'content' => 'Sample seeded query',
@@ -91,7 +89,7 @@ class DashboardActivitySeeder extends Seeder
                     'updated_at' => $createdAt,
                 ];
                 $chatMessages[] = [
-                    'id' => \Illuminate\Support\Str::uuid(),
+                    'id' => Str::uuid(),
                     'chat_session_id' => $sessionId,
                     'role' => 'assistant',
                     'content' => 'Sample seeded response',

@@ -3,10 +3,7 @@
 namespace App\Http\Controllers\Api\V1\Dashboard;
 
 use App\Http\Controllers\Controller;
-use App\Models\Book;
-use App\Models\Chapter;
-use App\Models\QuizAttempt;
-use App\Models\UserProgress;
+use App\Services\Progress\ProgressService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -19,31 +16,31 @@ class DashboardController extends Controller
 {
     public function show(Request $request): JsonResponse
     {
-        $user     = $request->user();
+        $user = $request->user();
         $cacheKey = "dashboard:{$user->id}";
 
         $data = Cache::remember($cacheKey, 60, function () use ($user) {
-            $progressService = app(\App\Services\Progress\ProgressService::class);
+            $progressService = app(ProgressService::class);
             $summary = $progressService->getSummary($user);
 
-            $streak        = $user->streak;
+            $streak = $user->streak;
             $currentStreak = $streak?->current_streak ?? 0;
 
-            $chatCount  = $user->chatSessions()->count();
+            $chatCount = $user->chatSessions()->count();
             $badgeCount = $user->badges()->count();
 
             return [
-                'completion_pct'     => $summary['overallPercentage'],
-                'total_chapters'     => $summary['totalChapters'],
+                'completion_pct' => $summary['overallPercentage'],
+                'total_chapters' => $summary['totalChapters'],
                 'completed_chapters' => $summary['completedChapters'],
-                'quizzes_passed'     => $summary['quizzesCompleted'],
+                'quizzes_passed' => $summary['quizzesCompleted'],
                 'average_quiz_score' => $summary['averageQuizScore'],
-                'current_streak'     => $currentStreak,
+                'current_streak' => $currentStreak,
                 'total_chat_sessions' => $chatCount,
                 'earned_badge_count' => $badgeCount,
-                'current_chapter'    => $summary['currentChapter'],
-                'current_position'   => $summary['currentPosition'],
-                'chapter_progress'   => $summary['chapterProgress'],
+                'current_chapter' => $summary['currentChapter'],
+                'current_position' => $summary['currentPosition'],
+                'chapter_progress' => $summary['chapterProgress'],
             ];
         });
 

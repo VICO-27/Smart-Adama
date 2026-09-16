@@ -12,26 +12,26 @@ use Illuminate\Support\Facades\Cache;
 // ── GET /api/v1/dashboard ─────────────────────────────────────────────────────
 
 it('returns a full dashboard payload for authenticated user', function () {
-    $user     = User::factory()->create();
+    $user = User::factory()->create();
     $chapters = Chapter::factory()->count(4)->create();
 
     UserProgress::factory()->create([
-        'user_id'    => $user->id,
+        'user_id' => $user->id,
         'chapter_id' => $chapters[0]->id,
         'is_completed' => true,
     ]);
 
     QuizAttempt::factory()->create([
-        'user_id'      => $user->id,
-        'passed'       => true,
-        'score_pct'    => 80,
+        'user_id' => $user->id,
+        'passed' => true,
+        'score_pct' => 80,
         'submitted_at' => now(),
     ]);
 
     UserStreak::create([
-        'user_id'            => $user->id,
-        'current_streak'     => 3,
-        'longest_streak'     => 3,
+        'user_id' => $user->id,
+        'current_streak' => 3,
+        'longest_streak' => 3,
         'last_activity_date' => now()->toDateString(),
     ]);
 
@@ -81,14 +81,14 @@ it('dashboard response is served from cache on second call', function () {
     Cache::shouldReceive('remember')
         ->once()
         ->andReturn([
-            'completion_pct'      => 0,
-            'total_chapters'      => 0,
-            'completed_chapters'  => 0,
-            'quizzes_passed'      => 0,
-            'average_quiz_score'  => null,
-            'current_streak'      => 0,
+            'completion_pct' => 0,
+            'total_chapters' => 0,
+            'completed_chapters' => 0,
+            'quizzes_passed' => 0,
+            'average_quiz_score' => null,
+            'current_streak' => 0,
             'total_chat_sessions' => 0,
-            'earned_badge_count'  => 0,
+            'earned_badge_count' => 0,
         ]);
 
     $this->actingAs($user)
@@ -130,8 +130,8 @@ it('returns 401 for unauthenticated analytics request', function () {
 });
 
 it('analytics total_users reflects only non-deleted users', function () {
-    $admin   = User::factory()->admin()->create();
-    $active  = User::factory()->count(3)->create();
+    $admin = User::factory()->admin()->create();
+    $active = User::factory()->count(3)->create();
     $deleted = User::factory()->create();
     $deleted->delete(); // soft delete
 

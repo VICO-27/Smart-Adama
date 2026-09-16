@@ -3,8 +3,11 @@
 namespace App\Http\Controllers\Api\V1\Health;
 
 use App\Http\Controllers\Controller;
+use App\Models\AdminSetting;
+use App\Models\ContentChunk;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 
 /**
@@ -54,13 +57,13 @@ class HealthController extends Controller
         }
 
         // Providers
-        $checks['gemini_llm'] = !empty(config('ai.gemini.api_key')) ? 'configured' : 'missing_key';
-        $checks['groq_llm'] = !empty(config('ai.groq.api_key')) ? 'configured' : 'missing_key';
-        $checks['voyage_embedding'] = !empty(config('ai.voyage.api_key')) ? 'configured' : 'missing_key';
-        $checks['gemini_embedding'] = !empty(config('ai.gemini.api_key')) ? 'configured' : 'missing_key';
+        $checks['gemini_llm'] = ! empty(config('ai.gemini.api_key')) ? 'configured' : 'missing_key';
+        $checks['groq_llm'] = ! empty(config('ai.groq.api_key')) ? 'configured' : 'missing_key';
+        $checks['voyage_embedding'] = ! empty(config('ai.voyage.api_key')) ? 'configured' : 'missing_key';
+        $checks['gemini_embedding'] = ! empty(config('ai.gemini.api_key')) ? 'configured' : 'missing_key';
 
         try {
-            $response = \Illuminate\Support\Facades\Http::timeout(2)->get(config('ai.ollama.llm_base_url'));
+            $response = Http::timeout(2)->get(config('ai.ollama.llm_base_url'));
             $checks['ollama_llm'] = $response->successful() ? 'available' : 'unavailable';
             $checks['ollama_embedding'] = $response->successful() ? 'available' : 'unavailable';
         } catch (\Throwable $e) {
@@ -69,10 +72,10 @@ class HealthController extends Controller
         }
 
         // Active State
-        $checks['active_llm_provider'] = \App\Models\AdminSetting::where('key', 'ai_llm_provider')->first()?->value ?: config('ai.llm_provider', 'gemini');
-        $checks['active_embedding_provider'] = \App\Models\AdminSetting::where('key', 'ai_embedding_provider')->first()?->value ?: config('ai.embedding_provider', 'voyage');
+        $checks['active_llm_provider'] = AdminSetting::where('key', 'ai_llm_provider')->first()?->value ?: config('ai.llm_provider', 'gemini');
+        $checks['active_embedding_provider'] = AdminSetting::where('key', 'ai_embedding_provider')->first()?->value ?: config('ai.embedding_provider', 'voyage');
 
-        $checks['active_vector_index'] = \App\Models\ContentChunk::whereNotNull('embedding')
+        $checks['active_vector_index'] = ContentChunk::whereNotNull('embedding')
             ->where('embedding_status', 'ready')
             ->first()?->embedding_provider ?? 'none';
 

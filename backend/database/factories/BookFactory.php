@@ -12,8 +12,8 @@ class BookFactory extends Factory
     public function definition(): array
     {
         return [
-            'title'            => fake()->sentence(4),
-            'status'           => 'draft',
+            'title' => fake()->sentence(4),
+            'status' => 'draft',
             'source_file_path' => null,
             'source_file_type' => null,
         ];

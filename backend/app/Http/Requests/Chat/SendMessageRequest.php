@@ -16,6 +16,9 @@ class SendMessageRequest extends FormRequest
         return [
             'content' => ['required', 'string', 'min:1', 'max:4000'],
             'context' => ['nullable', 'array'],
+            'context.chapter_id' => ['nullable', 'uuid'],
+            'context.client_request_id' => ['nullable', 'string', 'max:100'],
+            'context.request_id' => ['nullable', 'string', 'max:100'],
         ];
     }
 }

@@ -8,14 +8,14 @@ use App\Models\ChatSession;
 use App\Services\Chat\ChatOrchestrator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ChatMessageController extends Controller
 {
     public function __construct(
         private readonly ChatOrchestrator $orchestrator,
-    ) {
-    }
+    ) {}
 
     public function store(SendMessageRequest $request, ChatSession $session): StreamedResponse
     {
@@ -27,14 +27,14 @@ class ChatMessageController extends Controller
 
         // 1. Persist user message
         $userMessage = $session->messages()->create([
-            'role'    => 'user',
+            'role' => 'user',
             'content' => $userContent,
         ]);
 
         // Auto-title session from first message
         if ($session->title === 'New Chat') {
             $session->update([
-                'title'            => mb_substr($userContent, 0, 60),
+                'title' => mb_substr($userContent, 0, 60),
                 'last_activity_at' => now(),
             ]);
         } else {
@@ -45,7 +45,7 @@ class ChatMessageController extends Controller
         $assistantMessage = null;
         DB::transaction(function () use ($session, &$assistantMessage) {
             $assistantMessage = $session->messages()->create([
-                'role'    => 'assistant',
+                'role' => 'assistant',
                 'content' => '',
             ]);
         });
@@ -53,7 +53,7 @@ class ChatMessageController extends Controller
         $context = $request->context ?? [];
         $context['request_id'] = $request->header('X-Request-ID')
             ?? $context['client_request_id']
-            ?? (string) \Illuminate\Support\Str::uuid();
+            ?? (string) Str::uuid();
 
         return new StreamedResponse(function () use ($session, $userContent, $userMessage, $assistantMessage, $context) {
             ignore_user_abort(true);
@@ -65,8 +65,8 @@ class ChatMessageController extends Controller
             $emitActivity = function (string $stage, string $message) {
                 try {
                     $json = json_encode(['stage' => $stage, 'message' => $message], JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE);
-                    echo 'event: activity' . "\n";
-                    echo 'data: ' . $json . "\n\n";
+                    echo 'event: activity'."\n";
+                    echo 'data: '.$json."\n\n";
                     @ob_flush();
                     flush();
                 } catch (\Throwable $e) {
@@ -77,8 +77,8 @@ class ChatMessageController extends Controller
             $emitToken = function (string $token) {
                 try {
                     $json = json_encode(['content' => $token], JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE);
-                    echo 'event: token' . "\n";
-                    echo 'data: ' . $json . "\n\n";
+                    echo 'event: token'."\n";
+                    echo 'data: '.$json."\n\n";
                     @ob_flush();
                     flush();
                 } catch (\Throwable $e) {
@@ -89,8 +89,8 @@ class ChatMessageController extends Controller
             $emitError = function (string $code, string $message, bool $hasPartial = false) {
                 try {
                     $json = json_encode(['error' => ['code' => $code, 'message' => $message, 'has_partial' => $hasPartial]], JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE);
-                    echo 'event: error' . "\n";
-                    echo 'data: ' . $json . "\n\n";
+                    echo 'event: error'."\n";
+                    echo 'data: '.$json."\n\n";
                     @ob_flush();
                     flush();
                 } catch (\Throwable $e) {
@@ -101,13 +101,13 @@ class ChatMessageController extends Controller
             $emitComplete = function (string $messageId, bool $grounded, array $citations, string $finalHtml) {
                 try {
                     $json = json_encode([
-                        'message_id'   => $messageId,
-                        'grounded'     => $grounded,
-                        'citations'    => $citations,
+                        'message_id' => $messageId,
+                        'grounded' => $grounded,
+                        'citations' => $citations,
                         'html_content' => $finalHtml,
                     ], JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE);
-                    echo 'event: complete' . "\n";
-                    echo 'data: ' . $json . "\n\n";
+                    echo 'event: complete'."\n";
+                    echo 'data: '.$json."\n\n";
                     @ob_flush();
                     flush();
                 } catch (\Throwable $e) {
@@ -129,10 +129,10 @@ class ChatMessageController extends Controller
             );
 
         }, 200, [
-            'Content-Type'      => 'text/event-stream',
-            'Cache-Control'     => 'no-cache, no-transform',
+            'Content-Type' => 'text/event-stream',
+            'Cache-Control' => 'no-cache, no-transform',
             'X-Accel-Buffering' => 'no',
-            'Connection'        => 'keep-alive',
+            'Connection' => 'keep-alive',
         ]);
     }
 }

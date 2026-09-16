@@ -2,12 +2,12 @@
 
 namespace App\Jobs;
 
-use App\Models\IngestionJob;
+use App\Models\AdminSetting;
 use App\Models\Book;
-use App\Models\ContentChunk;
-use App\Models\IngestionJobTask;
-use App\Services\RAG\ChunkingService;
+use App\Models\IngestionJob;
+use App\Models\Section;
 use App\Services\AI\Contracts\EmbeddingProviderInterface;
+use App\Services\RAG\ChunkingService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -22,6 +22,7 @@ class ProcessManualIngestionJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public $timeout = 3600;
+
     public $tries = 3;
 
     public function __construct(
@@ -32,30 +33,37 @@ class ProcessManualIngestionJob implements ShouldQueue
     public function handle(ChunkingService $chunkService, EmbeddingProviderInterface $embeddingProvider): void
     {
         $job = IngestionJob::find($this->jobId);
-        if (!$job) return;
+        if (! $job) {
+            return;
+        }
 
         $book = Book::find($job->book_id);
-        if (!$book) {
-            $this->failJob($job, "Book not found.");
+        if (! $book) {
+            $this->failJob($job, 'Book not found.');
+
             return;
         }
 
         try {
-            $this->logTerminal("Initialization", "Starting manual ingestion job [ID: {$job->id}] in '{$this->mode}' mode.");
+            $this->logTerminal('Initialization', "Starting manual ingestion job [ID: {$job->id}] in '{$this->mode}' mode.");
             $job->update(['status' => 'processing', 'current_stage' => 'validation']);
 
             // 1. Validation & Chunking Preparation
-            $this->logTerminal("Validation", "Validating book content for UUID: {$book->id}");
+            $this->logTerminal('Validation', "Validating book content for UUID: {$book->id}");
             $chunksData = [];
 
             if ($this->mode === 'structured') {
-                $sections = \App\Models\Section::whereHas('chapter', fn($q) => $q->where('book_id', $book->id))
+                $sections = Section::whereHas('chapter', fn ($q) => $q->where('book_id', $book->id))
                     ->orderBy('order')->get();
 
-                if ($sections->isEmpty()) throw new \Exception("No sections found for structured mode.");
+                if ($sections->isEmpty()) {
+                    throw new \Exception('No sections found for structured mode.');
+                }
 
                 foreach ($sections as $section) {
-                    if (empty(trim($section->raw_text))) continue;
+                    if (empty(trim($section->raw_text))) {
+                        continue;
+                    }
 
                     $sectionChunks = $chunkService->chunk($section->raw_text, $section->id);
                     foreach ($sectionChunks as $c) {
@@ -64,14 +72,18 @@ class ProcessManualIngestionJob implements ShouldQueue
                 }
             } else {
                 $pages = $book->pages()->orderBy('page_number')->get();
-                if ($pages->isEmpty()) throw new \Exception("No pages found for page mode.");
+                if ($pages->isEmpty()) {
+                    throw new \Exception('No pages found for page mode.');
+                }
 
                 // Fallback chapter/section for page mode chunks
                 $chapter = $book->chapters()->firstOrCreate(['title' => 'Main Document', 'order' => 1]);
                 $section = $chapter->sections()->firstOrCreate(['title' => 'Pages', 'order' => 1]);
 
                 foreach ($pages as $page) {
-                    if (empty(trim($page->clean_text))) continue;
+                    if (empty(trim($page->clean_text))) {
+                        continue;
+                    }
 
                     $pageChunks = $chunkService->chunk($page->clean_text, $section->id);
                     foreach ($pageChunks as $c) {
@@ -81,11 +93,11 @@ class ProcessManualIngestionJob implements ShouldQueue
             }
 
             if (empty($chunksData)) {
-                throw new \Exception("No valid content found to chunk.");
+                throw new \Exception('No valid content found to chunk.');
             }
 
             $totalChunks = count($chunksData);
-            $this->logTerminal("Chunking", "Chunking completed. Generated {$totalChunks} chunks.");
+            $this->logTerminal('Chunking', "Chunking completed. Generated {$totalChunks} chunks.");
 
             $job->update([
                 'current_stage' => 'chunking',
@@ -101,7 +113,7 @@ class ProcessManualIngestionJob implements ShouldQueue
             $existingMap = [];
             foreach ($existingChunks as $chunk) {
                 $hash = md5($chunk->chunk_text);
-                if (!isset($existingMap[$hash])) {
+                if (! isset($existingMap[$hash])) {
                     $existingMap[$hash] = [];
                 }
                 $existingMap[$hash][] = $chunk->id;
@@ -140,7 +152,7 @@ class ProcessManualIngestionJob implements ShouldQueue
                 $deleted = DB::table('content_chunks')->where('book_id', $book->id)->delete();
             }
 
-            $this->logTerminal("Cleanup", "Smart sync: Reused {$reusedCount} existing chunks. Cleared {$deleted} orphaned chunks.");
+            $this->logTerminal('Cleanup', "Smart sync: Reused {$reusedCount} existing chunks. Cleared {$deleted} orphaned chunks.");
 
             $chunksData = $chunksToEmbed;
             $totalChunks = count($chunksData);
@@ -153,9 +165,9 @@ class ProcessManualIngestionJob implements ShouldQueue
             $totalBatches = count($batches);
 
             if ($totalChunks > 0) {
-                $this->logTerminal("Embedding", "Starting vector generation for {$totalChunks} new chunks in {$totalBatches} batches (size: {$batchSize}).");
+                $this->logTerminal('Embedding', "Starting vector generation for {$totalChunks} new chunks in {$totalBatches} batches (size: {$batchSize}).");
             } else {
-                $this->logTerminal("Embedding", "No new chunks require embedding.");
+                $this->logTerminal('Embedding', 'No new chunks require embedding.');
             }
 
             $completed = 0;
@@ -163,7 +175,7 @@ class ProcessManualIngestionJob implements ShouldQueue
 
             foreach ($batches as $batch) {
                 if ($job->fresh()->status === 'cancelled') {
-                    throw new \Exception("Job cancelled by admin.");
+                    throw new \Exception('Job cancelled by admin.');
                 }
 
                 $texts = array_column($batch, 'chunk_text');
@@ -172,19 +184,21 @@ class ProcessManualIngestionJob implements ShouldQueue
                     $embeddings = $embeddingProvider->embedBatch($texts, 'document');
 
                     $providerName = config('ai.embedding_provider', 'voyage');
-                    $setting = \App\Models\AdminSetting::where('key', 'ai_embedding_provider')->first();
-                    if ($setting) $providerName = $setting->value;
+                    $setting = AdminSetting::where('key', 'ai_embedding_provider')->first();
+                    if ($setting) {
+                        $providerName = $setting->value;
+                    }
                     $modelName = config("ai.{$providerName}.embedding_model", $providerName === 'voyage' ? 'voyage-4' : 'qwen3-embedding:0.6b');
 
                     foreach ($batch as $i => $chunkData) {
                         if (isset($embeddings[$i]) && count($embeddings[$i]) === 1024) {
-                            $vectorStr = '[' . implode(',', $embeddings[$i]) . ']';
+                            $vectorStr = '['.implode(',', $embeddings[$i]).']';
                             $chunkUuid = (string) Str::uuid();
 
                             DB::statement(
-                                "INSERT INTO content_chunks
+                                'INSERT INTO content_chunks
                                 (id, book_id, section_id, page_number, structural_context, chunk_text, chunk_index, token_count, embedding_status, embedding, embedding_provider, embedding_model, created_at, updated_at)
-                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?::vector, ?, ?, ?, ?)",
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?::vector, ?, ?, ?, ?)',
                                 [
                                     $chunkUuid,
                                     $book->id,
@@ -205,9 +219,9 @@ class ProcessManualIngestionJob implements ShouldQueue
 
                             if ($providerName === 'voyage') {
                                 DB::statement(
-                                    "INSERT INTO content_chunk_embeddings (id, chunk_id, provider, model, dimension, embedding, created_at, updated_at)
+                                    'INSERT INTO content_chunk_embeddings (id, chunk_id, provider, model, dimension, embedding, created_at, updated_at)
                                      VALUES (?, ?, ?, ?, ?, ?::vector, ?, ?)
-                                     ON CONFLICT (chunk_id, provider, model) DO UPDATE SET embedding = EXCLUDED.embedding, dimension = EXCLUDED.dimension, updated_at = EXCLUDED.updated_at",
+                                     ON CONFLICT (chunk_id, provider, model) DO UPDATE SET embedding = EXCLUDED.embedding, dimension = EXCLUDED.dimension, updated_at = EXCLUDED.updated_at',
                                     [
                                         (string) Str::uuid(),
                                         $chunkUuid,
@@ -216,7 +230,7 @@ class ProcessManualIngestionJob implements ShouldQueue
                                         1024,
                                         $vectorStr,
                                         now(),
-                                        now()
+                                        now(),
                                     ]
                                 );
                             }
@@ -228,11 +242,11 @@ class ProcessManualIngestionJob implements ShouldQueue
                     }
                 } catch (\Exception $e) {
                     $failed += count($batch);
-                    Log::error("Embedding batch failed", ['error' => $e->getMessage()]);
-                    $this->logTerminal("Error", "Embedding batch failed: " . $e->getMessage());
+                    Log::error('Embedding batch failed', ['error' => $e->getMessage()]);
+                    $this->logTerminal('Error', 'Embedding batch failed: '.$e->getMessage());
                 }
 
-                $this->logTerminal("Embedding", "Processed batch. Success: {$completed}, Failed: {$failed}.");
+                $this->logTerminal('Embedding', "Processed batch. Success: {$completed}, Failed: {$failed}.");
                 $job->update(['completed_items' => $completed, 'failed_items' => $failed]);
             }
 
@@ -252,8 +266,8 @@ class ProcessManualIngestionJob implements ShouldQueue
                 ]);
             });
 
-            $this->logTerminal("Indexing", "Database transaction committed successfully.");
-            $this->logTerminal("Success", "Ingestion job completed! Reused: {$reusedCount} | Embedded: {$completed}");
+            $this->logTerminal('Indexing', 'Database transaction committed successfully.');
+            $this->logTerminal('Success', "Ingestion job completed! Reused: {$reusedCount} | Embedded: {$completed}");
 
         } catch (\Exception $e) {
             $this->failJob($job, $e->getMessage());
@@ -267,17 +281,17 @@ class ProcessManualIngestionJob implements ShouldQueue
             'failed_at' => now(),
             'last_error' => $error,
         ]);
-        Log::error("Manual Ingestion Job Failed: " . $error);
-        $this->logTerminal("Failed", "Job aborted with error: " . $error);
+        Log::error('Manual Ingestion Job Failed: '.$error);
+        $this->logTerminal('Failed', 'Job aborted with error: '.$error);
     }
 
     private function logTerminal(string $stage, string $message): void
     {
         $timestamp = now()->format('Y-m-d H:i:s');
-        $logLine = "[{$timestamp}] [{$stage}] {$message}" . PHP_EOL;
+        $logLine = "[{$timestamp}] [{$stage}] {$message}".PHP_EOL;
 
-        $path = storage_path("logs/jobs");
-        if (!file_exists($path)) {
+        $path = storage_path('logs/jobs');
+        if (! file_exists($path)) {
             mkdir($path, 0755, true);
         }
 

@@ -8,6 +8,7 @@ use Illuminate\Console\Command;
 class TestSearchCommand extends Command
 {
     protected $signature = 'rag:test-search {query} {--limit=5 : Number of results to return}';
+
     protected $description = 'Test the Hybrid Retrieval Engine (RRF) for a given query.';
 
     public function handle(RetrievalService $retrievalService)
@@ -23,22 +24,23 @@ class TestSearchCommand extends Command
         $duration = microtime(true) - $startTime;
 
         if ($results->isEmpty()) {
-            $this->warn("No results found. (Duration: " . number_format($duration, 2) . "s)");
+            $this->warn('No results found. (Duration: '.number_format($duration, 2).'s)');
+
             return 0;
         }
 
-        $this->info("Found " . $results->count() . " results in " . number_format($duration, 2) . "s\n");
+        $this->info('Found '.$results->count().' results in '.number_format($duration, 2)."s\n");
 
         $tableData = [];
         foreach ($results as $index => $result) {
             $rank = $index + 1;
-            $preview = substr(str_replace("\n", ' ', $result['chunk_text']), 0, 60) . '...';
-            
+            $preview = substr(str_replace("\n", ' ', $result['chunk_text']), 0, 60).'...';
+
             $tableData[] = [
                 'Rank' => $rank,
                 'RRF Score' => number_format($result['rrf_score'], 4),
-                'Vector Score' => number_format($result['vector_score'], 4) . ' (#' . $result['vector_rank'] . ')',
-                'Keyword Score' => number_format($result['keyword_score'], 4) . ' (#' . $result['keyword_rank'] . ')',
+                'Vector Score' => number_format($result['vector_score'], 4).' (#'.$result['vector_rank'].')',
+                'Keyword Score' => number_format($result['keyword_score'], 4).' (#'.$result['keyword_rank'].')',
                 'Page' => $result['page_number'] ?? 'N/A',
                 'Preview' => $preview,
             ];

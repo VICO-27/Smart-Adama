@@ -7,7 +7,6 @@ use App\Models\Section;
 use App\Services\AI\Contracts\EmbeddingProviderInterface;
 use App\Services\RAG\ChunkingService;
 use App\Services\RAG\IngestionService;
-use Illuminate\Support\Facades\DB;
 
 // ── IngestionService with a faked embedding provider ────────────────────────
 // No live API calls in CI — the fake provider returns deterministic vectors.
@@ -17,7 +16,8 @@ use Illuminate\Support\Facades\DB;
  */
 function makeFakeEmbedder(int $dimension = 1024): EmbeddingProviderInterface
 {
-    return new class($dimension) implements EmbeddingProviderInterface {
+    return new class($dimension) implements EmbeddingProviderInterface
+    {
         public function __construct(private int $dim) {}
 
         public function embed(string $text, ?string $inputType = null): array
@@ -46,14 +46,14 @@ beforeEach(function () {
 });
 
 it('inserts content_chunks for a section with text', function () {
-    $book    = Book::factory()->create();
+    $book = Book::factory()->create();
     $chapter = Chapter::factory()->create(['book_id' => $book->id]);
     $section = Section::factory()->create([
         'chapter_id' => $chapter->id,
-        'raw_text'   => implode('. ', array_fill(0, 30, 'Smart Adama teaches civic excellence')),
+        'raw_text' => implode('. ', array_fill(0, 30, 'Smart Adama teaches civic excellence')),
     ]);
 
-    $service = new IngestionService(new ChunkingService(), makeFakeEmbedder());
+    $service = new IngestionService(new ChunkingService, makeFakeEmbedder());
     $service->ingestSection($section);
 
     $count = ContentChunk::where('section_id', $section->id)->count();
@@ -61,14 +61,14 @@ it('inserts content_chunks for a section with text', function () {
 });
 
 it('sets embedding_status to ready on successful ingestion', function () {
-    $book    = Book::factory()->create();
+    $book = Book::factory()->create();
     $chapter = Chapter::factory()->create(['book_id' => $book->id]);
     $section = Section::factory()->create([
         'chapter_id' => $chapter->id,
-        'raw_text'   => 'Smart Adama is a framework for civic wisdom and leadership.',
+        'raw_text' => 'Smart Adama is a framework for civic wisdom and leadership.',
     ]);
 
-    $service = new IngestionService(new ChunkingService(), makeFakeEmbedder());
+    $service = new IngestionService(new ChunkingService, makeFakeEmbedder());
     $service->ingestSection($section);
 
     $allReady = ContentChunk::where('section_id', $section->id)
@@ -79,14 +79,14 @@ it('sets embedding_status to ready on successful ingestion', function () {
 });
 
 it('deletes stale chunks before re-ingesting (idempotent, Req 4.5)', function () {
-    $book    = Book::factory()->create();
+    $book = Book::factory()->create();
     $chapter = Chapter::factory()->create(['book_id' => $book->id]);
     $section = Section::factory()->create([
         'chapter_id' => $chapter->id,
-        'raw_text'   => 'First version of the content.',
+        'raw_text' => 'First version of the content.',
     ]);
 
-    $service = new IngestionService(new ChunkingService(), makeFakeEmbedder());
+    $service = new IngestionService(new ChunkingService, makeFakeEmbedder());
 
     // First ingestion
     $service->ingestSection($section);
@@ -104,14 +104,14 @@ it('deletes stale chunks before re-ingesting (idempotent, Req 4.5)', function ()
 });
 
 it('skips ingestion for a section with empty text', function () {
-    $book    = Book::factory()->create();
+    $book = Book::factory()->create();
     $chapter = Chapter::factory()->create(['book_id' => $book->id]);
     $section = Section::factory()->create([
         'chapter_id' => $chapter->id,
-        'raw_text'   => null,
+        'raw_text' => null,
     ]);
 
-    $service = new IngestionService(new ChunkingService(), makeFakeEmbedder());
+    $service = new IngestionService(new ChunkingService, makeFakeEmbedder());
     $service->ingestSection($section);
 
     expect(ContentChunk::where('section_id', $section->id)->count())->toBe(0);

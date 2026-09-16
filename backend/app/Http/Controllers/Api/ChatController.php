@@ -17,7 +17,7 @@ class ChatController extends Controller
     {
         $session = ChatSession::create([
             'user_id' => $request->user()?->id, // Optional if using auth
-            'title'   => $request->input('title', 'New Chat'),
+            'title' => $request->input('title', 'New Chat'),
         ]);
 
         return response()->json([
@@ -38,8 +38,8 @@ class ChatController extends Controller
 
         return response()->json([
             'data' => [
-                'message'  => $result['message'],
-                'sources'  => $result['chunks'],
+                'message' => $result['message'],
+                'sources' => $result['chunks'],
                 'grounded' => $result['grounded'],
             ],
         ]);

@@ -21,7 +21,7 @@ class GameController extends Controller
                 $completed = $user->progress->where('is_completed', true)->count();
                 $quizzesPassed = $user->quizAttempts()->where('passed', true)->count();
                 $streak = $user->streak?->current_streak ?? 0;
-                
+
                 $xp = ($completed * 150) + ($quizzesPassed * 100) + ($streak * 20);
                 $level = floor($xp / 1000) + 1;
 
@@ -50,7 +50,7 @@ class GameController extends Controller
     {
         // Provide a structured daily challenge based on Smart Adama core pillars
         $challenge = [
-            'id' => 'daily-' . date('Y-m-d'),
+            'id' => 'daily-'.date('Y-m-d'),
             'question' => 'Which core pillar focuses on supporting startups and local digital economic growth?',
             'options' => ['e-Governance', 'Enterprise', 'Innovation'],
             'correct_index' => 1,

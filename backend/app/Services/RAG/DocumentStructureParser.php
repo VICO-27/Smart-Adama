@@ -2,11 +2,10 @@
 
 namespace App\Services\RAG;
 
-use App\Services\RAG\DTO\StructuredDocument;
 use App\Services\RAG\DTO\StructuredChapter;
+use App\Services\RAG\DTO\StructuredDocument;
 use App\Services\RAG\DTO\StructuredSection;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Log;
 
 class DocumentStructureParser
 {
@@ -15,8 +14,8 @@ class DocumentStructureParser
      */
     public function parse(Collection $pages): StructuredDocument
     {
-        $document = new StructuredDocument();
-        
+        $document = new StructuredDocument;
+
         if ($pages->isEmpty()) {
             return $document;
         }
@@ -46,6 +45,7 @@ class DocumentStructureParser
                     if ($currentSection) {
                         $currentSection->appendContent('', $pageNumber);
                     }
+
                     continue;
                 }
 
@@ -57,11 +57,11 @@ class DocumentStructureParser
                 // Check for Chapter header using TOC validation if TOC found chapters,
                 // OR fallback to dynamic if no TOC chapters found.
                 if (preg_match('/^(?:Chapter\s+)?(\d{1,2})[\s\.\:]+(.+?)\s*$/i', $line, $m)) {
-                    $chapterNum = (int)$m[1];
+                    $chapterNum = (int) $m[1];
                     $detectedTitle = trim($m[2]);
 
                     $isChapter = false;
-                    if (!empty($chapterMatches) && isset($chapterMatches[$chapterNum])) {
+                    if (! empty($chapterMatches) && isset($chapterMatches[$chapterNum])) {
                         $normalizedDetected = preg_replace('/\s+/', ' ', strtolower($detectedTitle));
                         $normalizedExpected = $normalizedTitles[$chapterNum];
                         if (strpos($normalizedDetected, $normalizedExpected) === 0 || strpos($normalizedExpected, $normalizedDetected) === 0) {
@@ -86,9 +86,10 @@ class DocumentStructureParser
 
                         $currentChapter = new StructuredChapter($chapterNum, $detectedTitle, $pageNumber);
                         $document->addChapter($currentChapter);
-                        
+
                         $sectionOrder = 1;
                         $currentSection = null;
+
                         continue;
                     }
                 }
@@ -101,16 +102,17 @@ class DocumentStructureParser
 
                     $currentSection = new StructuredSection($sectionOrder++, trim($m[2]), $pageNumber, $pageNumber);
                     $currentChapter->addSection($currentSection);
+
                     continue;
                 }
 
                 // Accumulate content
-                if (!$currentChapter) {
+                if (! $currentChapter) {
                     $currentChapter = new StructuredChapter(0, 'Preface', $pageNumber);
                     $document->addChapter($currentChapter);
                 }
 
-                if (!$currentSection) {
+                if (! $currentSection) {
                     $currentSection = new StructuredSection($sectionOrder++, 'Introduction', $pageNumber, $pageNumber);
                     $currentChapter->addSection($currentSection);
                 }
@@ -140,38 +142,40 @@ class DocumentStructureParser
     {
         $chapterMatches = [];
         $lastTocPage = 0;
-        
+
         // Scan the first 30 pages for TOC
         $headPages = $pages->take(30);
-        
+
         $inToc = false;
-        
+
         foreach ($headPages as $page) {
             $pageLines = explode("\n", $page->clean_text);
-            
+
             foreach ($pageLines as $line) {
                 $line = trim($line);
-                
-                if (!$inToc && stripos($line, 'contents') !== false) {
+
+                if (! $inToc && stripos($line, 'contents') !== false) {
                     $inToc = true;
                     $lastTocPage = $page->page_number;
+
                     continue;
                 }
-                
+
                 if ($inToc) {
                     // Update last TOC page as long as we are extracting entries
                     $lastTocPage = max($lastTocPage, $page->page_number);
-                    
+
                     // End TOC parsing when reaching lists of figures/tables
                     if (preg_match('/^List of (Figures|Tables|Acronyms)/i', $line)) {
                         $inToc = false;
                         break 2; // break both loops
                     }
-                    
+
                     // Match chapter entries like "1 Introduction"
                     if (preg_match('/^(?:Chapter\s+)?(\d{1,2})[\s\.\:]+(.+?)\s*$/i', $line, $m)) {
-                        $chapterNum = (int)$m[1];
+                        $chapterNum = (int) $m[1];
                         $chapterMatches[$chapterNum] = trim($m[2]);
+
                         continue;
                     }
 
@@ -202,7 +206,7 @@ class DocumentStructureParser
 
         return [
             'matches' => $chapterMatches,
-            'last_toc_page' => $lastTocPage
+            'last_toc_page' => $lastTocPage,
         ];
     }
 }

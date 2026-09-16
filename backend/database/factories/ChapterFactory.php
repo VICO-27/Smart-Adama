@@ -13,11 +13,11 @@ class ChapterFactory extends Factory
     public function definition(): array
     {
         return [
-            'book_id'          => Book::factory(),
-            'title'            => 'Chapter: ' . fake()->sentence(3),
-            'order'            => fake()->numberBetween(1, 20),
+            'book_id' => Book::factory(),
+            'title' => 'Chapter: '.fake()->sentence(3),
+            'order' => fake()->numberBetween(1, 20),
             'ingestion_status' => 'draft',
-            'ingested_at'      => null,
+            'ingested_at' => null,
         ];
     }
 
@@ -25,7 +25,7 @@ class ChapterFactory extends Factory
     {
         return $this->state([
             'ingestion_status' => 'ready',
-            'ingested_at'      => now(),
+            'ingested_at' => now(),
         ]);
     }
 }

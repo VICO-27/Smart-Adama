@@ -30,7 +30,7 @@ beforeEach(function () {
 it('throws AiProviderException when Gemini connection times out in chat', function () {
     Http::fake([
         'generativelanguage.googleapis.com/*' => function () {
-            throw new ConnectionException("Connection timed out after 1000ms");
+            throw new ConnectionException('Connection timed out after 1000ms');
         },
     ]);
 
@@ -40,14 +40,14 @@ it('throws AiProviderException when Gemini connection times out in chat', functi
         })
         ->atLeast()->once();
 
-    $gateway = new GeminiLLMGateway();
+    $gateway = new GeminiLLMGateway;
     $gateway->chat([['role' => 'user', 'content' => 'Hello']]);
 })->throws(AiProviderException::class);
 
 it('throws AiProviderException when Gemini returns 429 quota exhausted', function () {
     Http::fake([
         'generativelanguage.googleapis.com/*' => Http::response([
-            'error' => ['code' => 429, 'message' => 'Resource has been exhausted (e.g. check quota).']
+            'error' => ['code' => 429, 'message' => 'Resource has been exhausted (e.g. check quota).'],
         ], 429),
     ]);
 
@@ -57,7 +57,7 @@ it('throws AiProviderException when Gemini returns 429 quota exhausted', functio
         })
         ->atLeast()->once();
 
-    $gateway = new GeminiLLMGateway();
+    $gateway = new GeminiLLMGateway;
     $gateway->chat([['role' => 'user', 'content' => 'Hello']]);
 })->throws(AiProviderException::class, 'Gemini quota exhausted');
 
@@ -66,7 +66,7 @@ it('throws AiProviderException when Gemini returns 429 quota exhausted', functio
 it('throws AiProviderException when Groq connection times out in chat', function () {
     Http::fake([
         'api.groq.com/*' => function () {
-            throw new ConnectionException("Connection timed out after 1000ms");
+            throw new ConnectionException('Connection timed out after 1000ms');
         },
     ]);
 
@@ -76,14 +76,14 @@ it('throws AiProviderException when Groq connection times out in chat', function
         })
         ->atLeast()->once();
 
-    $gateway = new GroqLLMGateway();
+    $gateway = new GroqLLMGateway;
     $gateway->chat([['role' => 'user', 'content' => 'Hello']]);
 })->throws(AiProviderException::class);
 
 it('throws AiProviderException when Groq returns 429 rate limit', function () {
     Http::fake([
         'api.groq.com/*' => Http::response([
-            'error' => ['code' => 429, 'message' => 'Rate limit reached']
+            'error' => ['code' => 429, 'message' => 'Rate limit reached'],
         ], 429),
     ]);
 
@@ -93,7 +93,7 @@ it('throws AiProviderException when Groq returns 429 rate limit', function () {
         })
         ->atLeast()->once();
 
-    $gateway = new GroqLLMGateway();
+    $gateway = new GroqLLMGateway;
     $gateway->chat([['role' => 'user', 'content' => 'Hello']]);
 })->throws(AiProviderException::class, 'Groq quota exhausted');
 
@@ -184,15 +184,15 @@ it('falls back to next provider when current provider returns empty response or 
     // Gemini returns only unclosed think block that strips to empty
     $geminiMock->shouldReceive('chat')
         ->once()
-        ->andReturn("<think>Analyzing user question without closing tag");
+        ->andReturn('<think>Analyzing user question without closing tag');
 
     // Groq successfully provides a cleaned response
     $groqMock->shouldReceive('chat')
         ->once()
-        ->andReturn("Here is the answer from Groq.");
+        ->andReturn('Here is the answer from Groq.');
 
     $manager = new LLMProviderManager($geminiMock, $groqMock, $ollamaMock);
 
     $result = $manager->chat([['role' => 'user', 'content' => 'how take quizes']]);
-    expect($result)->toBe("Here is the answer from Groq.");
+    expect($result)->toBe('Here is the answer from Groq.');
 });

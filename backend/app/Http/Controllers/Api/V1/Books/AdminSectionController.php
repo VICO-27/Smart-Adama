@@ -41,9 +41,9 @@ class AdminSectionController extends Controller
 
         $section = $chapter->sections()->create([
             'section_number' => $request->section_number,
-            'title'          => $request->title,
-            'order'          => $order,
-            'raw_text'       => $request->raw_text,
+            'title' => $request->title,
+            'order' => $order,
+            'raw_text' => $request->raw_text,
         ]);
 
         return response()->json([
@@ -58,19 +58,19 @@ class AdminSectionController extends Controller
     public function update(UpdateSectionRequest $request, Section $section): JsonResponse
     {
         $validated = $request->validated();
-        
+
         // If raw_text changed, mark chapter as draft
         if ($request->has('raw_text') && $section->raw_text !== $request->raw_text) {
             $section->chapter()->update(['ingestion_status' => 'draft']);
         }
-        
+
         // If section_number changed, verify uniqueness within chapter
         if ($request->has('section_number')) {
             $existing = Section::where('chapter_id', $section->chapter_id)
                 ->where('section_number', $request->section_number)
                 ->where('id', '!=', $section->id)
                 ->first();
-            
+
             if ($existing) {
                 return response()->json([
                     'error' => [
@@ -80,7 +80,7 @@ class AdminSectionController extends Controller
                 ], 422);
             }
         }
-        
+
         $section->update($validated);
 
         return response()->json([
@@ -96,7 +96,7 @@ class AdminSectionController extends Controller
     public function destroy(Section $section): JsonResponse
     {
         $chapter = $section->chapter;
-        
+
         // Guard: chapter must have at least one section after deletion
         if ($chapter->sections()->count() <= 1) {
             return response()->json([
@@ -117,7 +117,7 @@ class AdminSectionController extends Controller
     /**
      * PATCH /admin/sections/{section}/reorder
      * Reorder a section within its chapter.
-     * 
+     *
      * Body: { "new_order": 2 }
      */
     public function reorder(Section $section, Request $request): JsonResponse

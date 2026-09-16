@@ -11,16 +11,20 @@ use App\Services\RAG\ChunkingService;
  */
 function makeFakeBookEmbedder(int $dimension = 1024): EmbeddingProviderInterface
 {
-    return new class($dimension) implements EmbeddingProviderInterface {
+    return new class($dimension) implements EmbeddingProviderInterface
+    {
         public function __construct(private int $dim) {}
+
         public function embed(string $text, ?string $inputType = null): array
         {
             return array_fill(0, $this->dim, 0.1);
         }
+
         public function embedBatch(array $texts, ?string $inputType = null): array
         {
             return array_map(fn () => array_fill(0, $this->dim, 0.1), $texts);
         }
+
         public function getDimension(): int
         {
             return $this->dim;
@@ -40,7 +44,7 @@ beforeEach(function () {
 describe('BookIngestionService Section Extraction', function () {
 
     it('extracts root-level section: "2 Smart Governance"', function () {
-        $service = new BookIngestionService(new ChunkingService(), makeFakeBookEmbedder());
+        $service = new BookIngestionService(new ChunkingService, makeFakeBookEmbedder());
 
         $content = <<<'TEXT'
 2 Smart Governance
@@ -59,7 +63,7 @@ TEXT;
     });
 
     it('extracts subsection: "2.1 Introduction"', function () {
-        $service = new BookIngestionService(new ChunkingService(), makeFakeBookEmbedder());
+        $service = new BookIngestionService(new ChunkingService, makeFakeBookEmbedder());
 
         $content = <<<'TEXT'
 2.1 Introduction
@@ -76,7 +80,7 @@ TEXT;
     });
 
     it('extracts nested subsection: "2.2.1 Major Activities"', function () {
-        $service = new BookIngestionService(new ChunkingService(), makeFakeBookEmbedder());
+        $service = new BookIngestionService(new ChunkingService, makeFakeBookEmbedder());
 
         $content = <<<'TEXT'
 2.2.1 Major Activities
@@ -93,7 +97,7 @@ TEXT;
     });
 
     it('extracts multiple sections: root + subsections', function () {
-        $service = new BookIngestionService(new ChunkingService(), makeFakeBookEmbedder());
+        $service = new BookIngestionService(new ChunkingService, makeFakeBookEmbedder());
 
         $content = <<<'TEXT'
 2 Smart Governance
@@ -130,7 +134,7 @@ TEXT;
     });
 
     it('does NOT treat ordinary numbered lines as section headings', function () {
-        $service = new BookIngestionService(new ChunkingService(), makeFakeBookEmbedder());
+        $service = new BookIngestionService(new ChunkingService, makeFakeBookEmbedder());
 
         $content = <<<'TEXT'
 2 Smart Governance
@@ -159,7 +163,7 @@ TEXT;
     });
 
     it('preserves all content: sum of sections ≈ source (ZERO LOSS)', function () {
-        $service = new BookIngestionService(new ChunkingService(), makeFakeBookEmbedder());
+        $service = new BookIngestionService(new ChunkingService, makeFakeBookEmbedder());
 
         $sourceContent = <<<'TEXT'
 2 Smart Governance
@@ -200,7 +204,7 @@ TEXT;
         // Join all section text and verify key content is preserved
         $allText = '';
         foreach ($preview['sections'] as $s) {
-            $allText .= $s['title'] . "\n" . $s['raw_text'] . "\n";
+            $allText .= $s['title']."\n".$s['raw_text']."\n";
         }
 
         // Check that key content is preserved
@@ -211,7 +215,7 @@ TEXT;
     });
 
     it('handles section number on own line followed by title', function () {
-        $service = new BookIngestionService(new ChunkingService(), makeFakeBookEmbedder());
+        $service = new BookIngestionService(new ChunkingService, makeFakeBookEmbedder());
 
         // This pattern: number on own line, then title on next line
         $content = <<<'TEXT'
@@ -231,7 +235,7 @@ TEXT;
     });
 
     it('validates chapter number in range 1-11', function () {
-        $service = new BookIngestionService(new ChunkingService(), makeFakeBookEmbedder());
+        $service = new BookIngestionService(new ChunkingService, makeFakeBookEmbedder());
 
         // Use content that meets minimum length requirement (100+ chars)
         $validContent = str_repeat('This is valid content for chapter validation testing. ', 3);
@@ -250,7 +254,7 @@ TEXT;
     });
 
     it('rejects content with System Context marker', function () {
-        $service = new BookIngestionService(new ChunkingService(), makeFakeBookEmbedder());
+        $service = new BookIngestionService(new ChunkingService, makeFakeBookEmbedder());
 
         $content = <<<'TEXT'
 2 Smart Governance
@@ -266,7 +270,7 @@ TEXT;
     });
 
     it('rejects content too short or too long', function () {
-        $service = new BookIngestionService(new ChunkingService(), makeFakeBookEmbedder());
+        $service = new BookIngestionService(new ChunkingService, makeFakeBookEmbedder());
 
         // Too short
         $validation = $service->validateChapterContent(2, 'Short');
@@ -279,7 +283,7 @@ TEXT;
     });
 
     it('handles uppercase section headings', function () {
-        $service = new BookIngestionService(new ChunkingService(), makeFakeBookEmbedder());
+        $service = new BookIngestionService(new ChunkingService, makeFakeBookEmbedder());
 
         $content = <<<'TEXT'
 2 SMART GOVERNANCE
@@ -299,7 +303,7 @@ TEXT;
     });
 
     it('handles mixed case section headings', function () {
-        $service = new BookIngestionService(new ChunkingService(), makeFakeBookEmbedder());
+        $service = new BookIngestionService(new ChunkingService, makeFakeBookEmbedder());
 
         $content = <<<'TEXT'
 2 Smart GOVERNANCE Overview
@@ -325,7 +329,7 @@ describe('BookIngestionService Ingest Flow', function () {
     it('creates a chapter with multiple sections and no embeddings yet', function () {
         $book = Book::factory()->create();
 
-        $service = new BookIngestionService(new ChunkingService(), makeFakeBookEmbedder());
+        $service = new BookIngestionService(new ChunkingService, makeFakeBookEmbedder());
 
         $content = <<<'TEXT'
 2 Smart Governance

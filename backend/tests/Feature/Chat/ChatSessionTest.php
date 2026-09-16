@@ -32,13 +32,13 @@ it('lists sessions ordered by most recent activity', function () {
     $user = User::factory()->create();
 
     ChatSession::factory()->create([
-        'user_id'          => $user->id,
-        'title'            => 'Older',
+        'user_id' => $user->id,
+        'title' => 'Older',
         'last_activity_at' => now()->subHour(),
     ]);
     ChatSession::factory()->create([
-        'user_id'          => $user->id,
-        'title'            => 'Newer',
+        'user_id' => $user->id,
+        'title' => 'Newer',
         'last_activity_at' => now(),
     ]);
 
@@ -50,7 +50,7 @@ it('lists sessions ordered by most recent activity', function () {
 });
 
 it('does not list sessions belonging to other users', function () {
-    $user  = User::factory()->create();
+    $user = User::factory()->create();
     $other = User::factory()->create();
     ChatSession::factory()->create(['user_id' => $other->id]);
 
@@ -63,7 +63,7 @@ it('does not list sessions belonging to other users', function () {
 // ── GET /api/v1/chat/sessions/{session} ──────────────────────────────────────
 
 it('returns a session with its message history', function () {
-    $user    = User::factory()->create();
+    $user = User::factory()->create();
     $session = ChatSession::factory()->create(['user_id' => $user->id]);
     $session->messages()->create(['role' => 'user',      'content' => 'Hello']);
     $session->messages()->create(['role' => 'assistant', 'content' => 'Hi there!']);
@@ -75,8 +75,8 @@ it('returns a session with its message history', function () {
 });
 
 it('returns 403 when accessing another user session', function () {
-    $user    = User::factory()->create();
-    $other   = User::factory()->create();
+    $user = User::factory()->create();
+    $other = User::factory()->create();
     $session = ChatSession::factory()->create(['user_id' => $other->id]);
 
     $this->actingAs($user)
@@ -87,7 +87,7 @@ it('returns 403 when accessing another user session', function () {
 // ── PATCH /api/v1/chat/sessions/{session} ────────────────────────────────────
 
 it('renames a session', function () {
-    $user    = User::factory()->create();
+    $user = User::factory()->create();
     $session = ChatSession::factory()->create(['user_id' => $user->id, 'title' => 'Old']);
 
     $this->actingAs($user)
@@ -99,7 +99,7 @@ it('renames a session', function () {
 // ── DELETE /api/v1/chat/sessions/{session} ───────────────────────────────────
 
 it('soft-deletes a session', function () {
-    $user    = User::factory()->create();
+    $user = User::factory()->create();
     $session = ChatSession::factory()->create(['user_id' => $user->id]);
 
     $this->actingAs($user)

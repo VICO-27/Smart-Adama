@@ -3,10 +3,13 @@
 namespace App\Http\Controllers\Api\V1\Books;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\IngestChapterJob;
 use App\Models\Book;
 use App\Models\Chapter;
 use App\Models\ContentChunk;
 use App\Services\RAG\BookIngestionService;
+use App\Services\RAG\ChunkingService;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -28,8 +31,7 @@ class AdminBookIngestionController extends Controller
 {
     public function __construct(
         private readonly BookIngestionService $ingestionService,
-    ) {
-    }
+    ) {}
 
     /**
      * GET /admin/book-ingestion
@@ -38,7 +40,7 @@ class AdminBookIngestionController extends Controller
     public function index(): JsonResponse
     {
         $book = Book::first();
-        if (!$book) {
+        if (! $book) {
             return response()->json([
                 'book' => null,
                 'canonical_chapters' => $this->ingestionService->getCanonicalChapters(),
@@ -56,10 +58,10 @@ class AdminBookIngestionController extends Controller
             ->get()
             ->map(function ($chapter) {
                 $sectionCount = $chapter->sections()->count();
-                $chunkCount = ContentChunk::whereHas('section', fn($q) => $q->where('chapter_id', $chapter->id))->count();
-                $readyChunks = ContentChunk::whereHas('section', fn($q) => $q->where('chapter_id', $chapter->id))
+                $chunkCount = ContentChunk::whereHas('section', fn ($q) => $q->where('chapter_id', $chapter->id))->count();
+                $readyChunks = ContentChunk::whereHas('section', fn ($q) => $q->where('chapter_id', $chapter->id))
                     ->where('embedding_status', 'ready')->count();
-                $failedChunks = ContentChunk::whereHas('section', fn($q) => $q->where('chapter_id', $chapter->id))
+                $failedChunks = ContentChunk::whereHas('section', fn ($q) => $q->where('chapter_id', $chapter->id))
                     ->where('embedding_status', 'failed')->count();
 
                 return [
@@ -67,7 +69,7 @@ class AdminBookIngestionController extends Controller
                     'number' => $chapter->order,
                     'title' => $chapter->title,
                     'status' => $chapter->ingestion_status,
-                    'has_content' => !empty($chapter->content),
+                    'has_content' => ! empty($chapter->content),
                     'section_count' => $sectionCount,
                     'chunk_count' => $chunkCount,
                     'ready_chunks' => $readyChunks,
@@ -96,7 +98,7 @@ class AdminBookIngestionController extends Controller
     {
         try {
             $chapter = Chapter::findOrFail($chapterId);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+        } catch (ModelNotFoundException $e) {
             return response()->json([
                 'error' => [
                     'code' => 'NOT_FOUND',
@@ -145,7 +147,7 @@ class AdminBookIngestionController extends Controller
     {
         $chapter = Chapter::find($chapterId);
 
-        if (!$chapter) {
+        if (! $chapter) {
             return response()->json([
                 'error' => [
                     'code' => 'NOT_FOUND',
@@ -178,7 +180,7 @@ class AdminBookIngestionController extends Controller
     {
         $chapter = Chapter::find($chapterId);
 
-        if (!$chapter) {
+        if (! $chapter) {
             return response()->json([
                 'error' => [
                     'code' => 'NOT_FOUND',
@@ -219,7 +221,7 @@ class AdminBookIngestionController extends Controller
         }
 
         $book = Book::first();
-        if (!$book) {
+        if (! $book) {
             return response()->json([
                 'error' => [
                     'code' => 'NO_BOOK',
@@ -230,7 +232,7 @@ class AdminBookIngestionController extends Controller
 
         $result = $this->ingestionService->ingestChapter($book, $chapter->order, $content);
 
-        if (!$result['success']) {
+        if (! $result['success']) {
             return response()->json([
                 'error' => [
                     'code' => 'VALIDATION_ERROR',
@@ -254,7 +256,7 @@ class AdminBookIngestionController extends Controller
     {
         $result = $this->ingestionService->retryFailedChunks($chapter);
 
-        if (!$result['success']) {
+        if (! $result['success']) {
             return response()->json([
                 'error' => [
                     'code' => 'NO_FAILURES',
@@ -320,7 +322,7 @@ class AdminBookIngestionController extends Controller
             $text = $section->raw_text ?: '';
             $charCount = strlen($text);
             $wordCount = str_word_count($text);
-            
+
             $totalCharacters += $charCount;
             $totalWords += $wordCount;
 
@@ -377,14 +379,14 @@ class AdminBookIngestionController extends Controller
         }
 
         // Clear existing chunks for this chapter (for re-ingestion)
-        \App\Models\ContentChunk::whereHas('section', fn($q) => $q->where('chapter_id', $chapter->id))->delete();
+        ContentChunk::whereHas('section', fn ($q) => $q->where('chapter_id', $chapter->id))->delete();
 
         // Create chunks for each section
-        $chunkService = app(\App\Services\RAG\ChunkingService::class);
-        $sectionService = app(\App\Services\RAG\BookIngestionService::class);
-        $book = \App\Models\Book::first();
+        $chunkService = app(ChunkingService::class);
+        $sectionService = app(BookIngestionService::class);
+        $book = Book::first();
 
-        if (!$book) {
+        if (! $book) {
             return response()->json([
                 'error' => [
                     'code' => 'NO_BOOK',
@@ -404,7 +406,7 @@ class AdminBookIngestionController extends Controller
         $chapter->update(['ingestion_status' => 'queued']);
 
         // Dispatch ingestion job
-        \App\Jobs\IngestChapterJob::dispatch($chapter->id);
+        IngestChapterJob::dispatch($chapter->id);
 
         return response()->json([
             'chapter' => $chapter->fresh(),

@@ -28,8 +28,8 @@ class SearchController extends Controller
             if (empty($chunks)) {
                 return response()->json([
                     'query' => $query,
-                    'ai_answer' => "I could not find grounded information about that in the Smart Adama content.",
-                    'results' => []
+                    'ai_answer' => 'I could not find grounded information about that in the Smart Adama content.',
+                    'results' => [],
                 ]);
             }
 
@@ -37,7 +37,7 @@ class SearchController extends Controller
             $bestMatch = $chunks[0];
             $aiAnswer = trim($bestMatch['chunk_text']);
             if (mb_strlen($aiAnswer) > 300) {
-                $aiAnswer = mb_substr($aiAnswer, 0, 300) . '...';
+                $aiAnswer = mb_substr($aiAnswer, 0, 300).'...';
             }
 
             $results = array_map(function ($chunk) {
@@ -45,7 +45,7 @@ class SearchController extends Controller
                     'id' => $chunk['id'],
                     'title' => $chunk['section_title'] ?? 'Section',
                     'chapter' => $chunk['chapter_title'] ?? 'Chapter',
-                    'snippet' => mb_substr($chunk['chunk_text'], 0, 140) . '...',
+                    'snippet' => mb_substr($chunk['chunk_text'], 0, 140).'...',
                     'similarity' => $chunk['similarity'],
                     'section_id' => $chunk['section_id'],
                     'chapter_id' => $chunk['chapter_id'],
@@ -56,14 +56,14 @@ class SearchController extends Controller
                 'query' => $query,
                 'grounded' => $retrievalResult['grounded'],
                 'ai_answer' => "According to {$bestMatch['chapter_title']} ({$bestMatch['section_title']}): \"{$aiAnswer}\"",
-                'results' => $results
+                'results' => $results,
             ]);
 
         } catch (\Exception $e) {
             return response()->json([
                 'error' => true,
                 'message' => $e->getMessage(),
-                'results' => []
+                'results' => [],
             ], 500);
         }
     }

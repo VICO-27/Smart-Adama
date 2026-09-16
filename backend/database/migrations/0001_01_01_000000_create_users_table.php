@@ -16,10 +16,10 @@ return new class extends Migration
             $table->string('name');
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
-            
+
             // Password must be nullable for OAuth users
-            $table->string('password')->nullable(); 
-            
+            $table->string('password')->nullable();
+
             // Socialite columns
             $table->string('provider')->nullable();
             $table->string('provider_id')->nullable();

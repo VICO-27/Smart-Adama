@@ -2,27 +2,29 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
 use App\Models\Chapter;
 use App\Models\ChapterSummary;
 use App\Services\AI\Contracts\LLMGatewayInterface;
+use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
 class GenerateSummaries extends Command
 {
     protected $signature = 'rag:generate-summaries';
+
     protected $description = 'Pre-compute chapter summaries using Ollama to bypass CPU context limits during real-time streaming.';
 
     public function handle(LLMGatewayInterface $llm)
     {
-        $this->info("Fetching chapters from the database...");
+        $this->info('Fetching chapters from the database...');
 
         $chapters = Chapter::with(['sections.contentChunks' => function ($query) {
             $query->orderBy('chunk_index');
         }])->orderBy('order')->get();
 
         if ($chapters->isEmpty()) {
-            $this->warn("No chapters found in the database.");
+            $this->warn('No chapters found in the database.');
+
             return Command::SUCCESS;
         }
 
@@ -34,6 +36,7 @@ class GenerateSummaries extends Command
             // Check if summary already exists
             if (ChapterSummary::where('chapter_number', $chapter->order)->exists()) {
                 $bar->advance();
+
                 continue;
             }
 
@@ -47,19 +50,20 @@ class GenerateSummaries extends Command
                     if ($tokenCount > $maxTokens) {
                         break 2;
                     }
-                    $content .= $chunk->chunk_text . "\n\n";
+                    $content .= $chunk->chunk_text."\n\n";
                     $tokenCount += str_word_count($chunk->chunk_text);
                 }
             }
 
             if (empty(trim($content))) {
                 $bar->advance();
+
                 continue;
             }
 
             $messages = [
                 ['role' => 'system', 'content' => 'You are an educational assistant. Summarize the following chapter content into a comprehensive, easy-to-read overview. Focus on the main educational points. Respond clearly and concisely.'],
-                ['role' => 'user', 'content' => "Chapter Title: {$chapter->title}\n\nContent:\n{$content}"]
+                ['role' => 'user', 'content' => "Chapter Title: {$chapter->title}\n\nContent:\n{$content}"],
             ];
 
             try {
@@ -68,8 +72,8 @@ class GenerateSummaries extends Command
 
                 ChapterSummary::create([
                     'chapter_number' => $chapter->order,
-                    'chapter_title'  => $chapter->title ?? 'Untitled Chapter',
-                    'summary_text'   => trim($summary),
+                    'chapter_title' => $chapter->title ?? 'Untitled Chapter',
+                    'summary_text' => trim($summary),
                 ]);
             } catch (\Exception $e) {
                 Log::error("Failed to summarize chapter {$chapter->order}", ['error' => $e->getMessage()]);
@@ -80,7 +84,7 @@ class GenerateSummaries extends Command
 
         $bar->finish();
         $this->newLine();
-        $this->info("Chapter summaries generated successfully!");
+        $this->info('Chapter summaries generated successfully!');
 
         return Command::SUCCESS;
     }

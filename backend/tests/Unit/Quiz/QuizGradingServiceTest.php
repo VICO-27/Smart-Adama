@@ -16,13 +16,13 @@ use App\Services\Quiz\QuizGradingService;
  */
 function buildGradableQuiz(int $questionCount = 1, string $type = 'single'): array
 {
-    $quiz      = Quiz::factory()->create(['passing_score_pct' => 70]);
+    $quiz = Quiz::factory()->create(['passing_score_pct' => 70]);
     $questions = [];
 
     for ($i = 0; $i < $questionCount; $i++) {
         $question = QuizQuestion::factory()->create(['quiz_id' => $quiz->id, 'type' => $type]);
-        $correct  = QuizOption::factory()->correct()->create(['quiz_question_id' => $question->id]);
-        $wrong    = QuizOption::factory()->create(['quiz_question_id' => $question->id, 'is_correct' => false]);
+        $correct = QuizOption::factory()->correct()->create(['quiz_question_id' => $question->id]);
+        $wrong = QuizOption::factory()->create(['quiz_question_id' => $question->id, 'is_correct' => false]);
         $questions[] = compact('question', 'correct', 'wrong');
     }
 
@@ -32,9 +32,10 @@ function buildGradableQuiz(int $questionCount = 1, string $type = 'single'): arr
 function makeAttempt(Quiz $quiz): QuizAttempt
 {
     $user = User::factory()->create();
+
     return QuizAttempt::factory()->create([
-        'user_id'    => $user->id,
-        'quiz_id'    => $quiz->id,
+        'user_id' => $user->id,
+        'quiz_id' => $quiz->id,
         'started_at' => now(),
     ]);
 }
@@ -42,13 +43,13 @@ function makeAttempt(Quiz $quiz): QuizAttempt
 // ── Single-choice grading ─────────────────────────────────────────────────────
 
 it('grades a fully correct single-choice attempt as 100%', function () {
-    $service = new QuizGradingService();
+    $service = new QuizGradingService;
     ['quiz' => $quiz, 'questions' => $questions] = buildGradableQuiz(questionCount: 1, type: 'single');
     $attempt = makeAttempt($quiz);
 
     $result = $service->grade($attempt, [
         [
-            'question_id'        => $questions[0]['question']->id,
+            'question_id' => $questions[0]['question']->id,
             'selected_option_ids' => [$questions[0]['correct']->id],
         ],
     ]);
@@ -60,13 +61,13 @@ it('grades a fully correct single-choice attempt as 100%', function () {
 });
 
 it('grades a fully wrong single-choice attempt as 0%', function () {
-    $service = new QuizGradingService();
+    $service = new QuizGradingService;
     ['quiz' => $quiz, 'questions' => $questions] = buildGradableQuiz(questionCount: 1, type: 'single');
     $attempt = makeAttempt($quiz);
 
     $result = $service->grade($attempt, [
         [
-            'question_id'        => $questions[0]['question']->id,
+            'question_id' => $questions[0]['question']->id,
             'selected_option_ids' => [$questions[0]['wrong']->id],
         ],
     ]);
@@ -77,7 +78,7 @@ it('grades a fully wrong single-choice attempt as 0%', function () {
 });
 
 it('computes partial score correctly across multiple questions', function () {
-    $service = new QuizGradingService();
+    $service = new QuizGradingService;
     ['quiz' => $quiz, 'questions' => $questions] = buildGradableQuiz(questionCount: 4, type: 'single');
     $attempt = makeAttempt($quiz);
 
@@ -99,13 +100,13 @@ it('computes partial score correctly across multiple questions', function () {
 // ── true_false grading ────────────────────────────────────────────────────────
 
 it('grades a correct true/false answer', function () {
-    $service = new QuizGradingService();
+    $service = new QuizGradingService;
     ['quiz' => $quiz, 'questions' => $questions] = buildGradableQuiz(questionCount: 1, type: 'true_false');
     $attempt = makeAttempt($quiz);
 
     $result = $service->grade($attempt, [
         [
-            'question_id'        => $questions[0]['question']->id,
+            'question_id' => $questions[0]['question']->id,
             'selected_option_ids' => [$questions[0]['correct']->id],
         ],
     ]);
@@ -115,13 +116,13 @@ it('grades a correct true/false answer', function () {
 });
 
 it('is_correct is false when two options selected for a single-choice question', function () {
-    $service  = new QuizGradingService();
+    $service = new QuizGradingService;
     ['quiz' => $quiz, 'questions' => $questions] = buildGradableQuiz(questionCount: 1, type: 'single');
-    $attempt  = makeAttempt($quiz);
+    $attempt = makeAttempt($quiz);
 
     $result = $service->grade($attempt, [
         [
-            'question_id'        => $questions[0]['question']->id,
+            'question_id' => $questions[0]['question']->id,
             'selected_option_ids' => [
                 $questions[0]['correct']->id,
                 $questions[0]['wrong']->id,
@@ -136,17 +137,17 @@ it('is_correct is false when two options selected for a single-choice question',
 // ── Multiple-choice grading ───────────────────────────────────────────────────
 
 it('grades multiple-choice correctly when all correct IDs are selected', function () {
-    $service  = new QuizGradingService();
-    $quiz     = Quiz::factory()->create(['passing_score_pct' => 70]);
+    $service = new QuizGradingService;
+    $quiz = Quiz::factory()->create(['passing_score_pct' => 70]);
     $question = QuizQuestion::factory()->create(['quiz_id' => $quiz->id, 'type' => 'multiple']);
-    $opt1     = QuizOption::factory()->correct()->create(['quiz_question_id' => $question->id]);
-    $opt2     = QuizOption::factory()->correct()->create(['quiz_question_id' => $question->id]);
-    $opt3     = QuizOption::factory()->create(['quiz_question_id' => $question->id, 'is_correct' => false]);
-    $attempt  = makeAttempt($quiz);
+    $opt1 = QuizOption::factory()->correct()->create(['quiz_question_id' => $question->id]);
+    $opt2 = QuizOption::factory()->correct()->create(['quiz_question_id' => $question->id]);
+    $opt3 = QuizOption::factory()->create(['quiz_question_id' => $question->id, 'is_correct' => false]);
+    $attempt = makeAttempt($quiz);
 
     $result = $service->grade($attempt, [
         [
-            'question_id'        => $question->id,
+            'question_id' => $question->id,
             'selected_option_ids' => [$opt1->id, $opt2->id],
         ],
     ]);
@@ -156,17 +157,17 @@ it('grades multiple-choice correctly when all correct IDs are selected', functio
 });
 
 it('grades multiple-choice as wrong when an extra wrong option is included', function () {
-    $service  = new QuizGradingService();
-    $quiz     = Quiz::factory()->create(['passing_score_pct' => 70]);
+    $service = new QuizGradingService;
+    $quiz = Quiz::factory()->create(['passing_score_pct' => 70]);
     $question = QuizQuestion::factory()->create(['quiz_id' => $quiz->id, 'type' => 'multiple']);
-    $opt1     = QuizOption::factory()->correct()->create(['quiz_question_id' => $question->id]);
-    $opt2     = QuizOption::factory()->correct()->create(['quiz_question_id' => $question->id]);
-    $opt3     = QuizOption::factory()->create(['quiz_question_id' => $question->id, 'is_correct' => false]);
-    $attempt  = makeAttempt($quiz);
+    $opt1 = QuizOption::factory()->correct()->create(['quiz_question_id' => $question->id]);
+    $opt2 = QuizOption::factory()->correct()->create(['quiz_question_id' => $question->id]);
+    $opt3 = QuizOption::factory()->create(['quiz_question_id' => $question->id, 'is_correct' => false]);
+    $attempt = makeAttempt($quiz);
 
     $result = $service->grade($attempt, [
         [
-            'question_id'        => $question->id,
+            'question_id' => $question->id,
             'selected_option_ids' => [$opt1->id, $opt2->id, $opt3->id], // extra wrong option
         ],
     ]);
@@ -177,7 +178,7 @@ it('grades multiple-choice as wrong when an extra wrong option is included', fun
 // ── Persistence ───────────────────────────────────────────────────────────────
 
 it('persists attempt answers to the database after grading (Req 9.3)', function () {
-    $service = new QuizGradingService();
+    $service = new QuizGradingService;
     ['quiz' => $quiz, 'questions' => $questions] = buildGradableQuiz(questionCount: 2, type: 'single');
     $attempt = makeAttempt($quiz);
 
@@ -189,20 +190,20 @@ it('persists attempt answers to the database after grading (Req 9.3)', function 
     expect(QuizAttemptAnswer::where('quiz_attempt_id', $attempt->id)->count())->toBe(2);
 
     expect(QuizAttemptAnswer::where([
-        'quiz_attempt_id'  => $attempt->id,
+        'quiz_attempt_id' => $attempt->id,
         'quiz_question_id' => $questions[0]['question']->id,
-        'is_correct'       => true,
+        'is_correct' => true,
     ])->exists())->toBeTrue();
 
     expect(QuizAttemptAnswer::where([
-        'quiz_attempt_id'  => $attempt->id,
+        'quiz_attempt_id' => $attempt->id,
         'quiz_question_id' => $questions[1]['question']->id,
-        'is_correct'       => false,
+        'is_correct' => false,
     ])->exists())->toBeTrue();
 });
 
 it('persists score_pct, passed, and submitted_at on the attempt (Req 9.3)', function () {
-    $service = new QuizGradingService();
+    $service = new QuizGradingService;
     ['quiz' => $quiz, 'questions' => $questions] = buildGradableQuiz(questionCount: 1, type: 'single');
     $attempt = makeAttempt($quiz);
 
@@ -219,15 +220,15 @@ it('persists score_pct, passed, and submitted_at on the attempt (Req 9.3)', func
 // ── Threshold boundary ────────────────────────────────────────────────────────
 
 it('marks as passed when score equals the passing threshold exactly', function () {
-    $service = new QuizGradingService();
+    $service = new QuizGradingService;
     // 70% threshold, 10 questions — answer exactly 7 correctly
-    $quiz     = Quiz::factory()->create(['passing_score_pct' => 70]);
+    $quiz = Quiz::factory()->create(['passing_score_pct' => 70]);
     $questions = [];
 
     for ($i = 0; $i < 10; $i++) {
-        $question    = QuizQuestion::factory()->create(['quiz_id' => $quiz->id, 'type' => 'single']);
-        $correct     = QuizOption::factory()->correct()->create(['quiz_question_id' => $question->id]);
-        $wrong       = QuizOption::factory()->create(['quiz_question_id' => $question->id, 'is_correct' => false]);
+        $question = QuizQuestion::factory()->create(['quiz_id' => $quiz->id, 'type' => 'single']);
+        $correct = QuizOption::factory()->correct()->create(['quiz_question_id' => $question->id]);
+        $wrong = QuizOption::factory()->create(['quiz_question_id' => $question->id, 'is_correct' => false]);
         $questions[] = compact('question', 'correct', 'wrong');
     }
 
@@ -236,7 +237,7 @@ it('marks as passed when score equals the passing threshold exactly', function (
     $answers = [];
     foreach ($questions as $idx => $q) {
         $answers[] = [
-            'question_id'        => $q['question']->id,
+            'question_id' => $q['question']->id,
             'selected_option_ids' => [$idx < 7 ? $q['correct']->id : $q['wrong']->id],
         ];
     }
@@ -248,15 +249,15 @@ it('marks as passed when score equals the passing threshold exactly', function (
 });
 
 it('marks as not passed when score is one point below the threshold', function () {
-    $service  = new QuizGradingService();
+    $service = new QuizGradingService;
     // 70% threshold, 10 questions — answer only 6 correctly (60%)
-    $quiz     = Quiz::factory()->create(['passing_score_pct' => 70]);
+    $quiz = Quiz::factory()->create(['passing_score_pct' => 70]);
     $questions = [];
 
     for ($i = 0; $i < 10; $i++) {
-        $question    = QuizQuestion::factory()->create(['quiz_id' => $quiz->id, 'type' => 'single']);
-        $correct     = QuizOption::factory()->correct()->create(['quiz_question_id' => $question->id]);
-        $wrong       = QuizOption::factory()->create(['quiz_question_id' => $question->id, 'is_correct' => false]);
+        $question = QuizQuestion::factory()->create(['quiz_id' => $quiz->id, 'type' => 'single']);
+        $correct = QuizOption::factory()->correct()->create(['quiz_question_id' => $question->id]);
+        $wrong = QuizOption::factory()->create(['quiz_question_id' => $question->id, 'is_correct' => false]);
         $questions[] = compact('question', 'correct', 'wrong');
     }
 
@@ -265,7 +266,7 @@ it('marks as not passed when score is one point below the threshold', function (
     $answers = [];
     foreach ($questions as $idx => $q) {
         $answers[] = [
-            'question_id'        => $q['question']->id,
+            'question_id' => $q['question']->id,
             'selected_option_ids' => [$idx < 6 ? $q['correct']->id : $q['wrong']->id],
         ];
     }
@@ -279,7 +280,7 @@ it('marks as not passed when score is one point below the threshold', function (
 // ── Unknown question IDs are silently skipped ─────────────────────────────────
 
 it('skips answers with unknown question IDs and does not throw', function () {
-    $service = new QuizGradingService();
+    $service = new QuizGradingService;
     ['quiz' => $quiz, 'questions' => $questions] = buildGradableQuiz(questionCount: 1, type: 'single');
     $attempt = makeAttempt($quiz);
 

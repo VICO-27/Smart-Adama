@@ -2,11 +2,14 @@
 
 namespace App\Services\RAG;
 
+use App\Exceptions\AiProviderException;
+use App\Models\AdminSetting;
 use App\Models\ContentChunk;
 use App\Models\Section;
 use App\Services\AI\Contracts\EmbeddingProviderInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 /**
  * Writes chunked + embedded content_chunks for a single section.
@@ -16,10 +19,9 @@ use Illuminate\Support\Facades\Log;
 class IngestionService
 {
     public function __construct(
-        private readonly ChunkingService        $chunker,
+        private readonly ChunkingService $chunker,
         private readonly EmbeddingProviderInterface $embedder,
-    ) {
-    }
+    ) {}
 
     /**
      * Ingest all chunks for a section:
@@ -29,7 +31,7 @@ class IngestionService
      *  4. Persist ContentChunk rows with the vector via raw SQL (pgvector).
      *  5. Sleep to respect API rate limits.
      *
-     * @throws \App\Exceptions\AiProviderException
+     * @throws AiProviderException
      */
     public function ingestSection(Section $section): void
     {
@@ -39,6 +41,7 @@ class IngestionService
             Log::info('IngestionService: section has no text, skipping', [
                 'section_id' => $section->id,
             ]);
+
             return;
         }
 
@@ -49,7 +52,7 @@ class IngestionService
         }
 
         // Batch embed all chunk texts in one API call with 'document' input_type
-        $texts      = array_column($chunks, 'chunk_text');
+        $texts = array_column($chunks, 'chunk_text');
         $embeddings = $this->embedder->embedBatch($texts, 'document');
 
         DB::transaction(function () use ($section, $chunks, $embeddings) {
@@ -61,28 +64,29 @@ class IngestionService
 
                 if ($vector === null) {
                     Log::warning('IngestionService: missing embedding for chunk', [
-                        'section_id'  => $section->id,
+                        'section_id' => $section->id,
                         'chunk_index' => $chunk['chunk_index'],
                     ]);
+
                     continue;
                 }
 
-                $activeProvider = \App\Models\AdminSetting::where('key', 'ai_embedding_provider')->first()?->value ?: config('ai.embedding_provider', 'voyage');
+                $activeProvider = AdminSetting::where('key', 'ai_embedding_provider')->first()?->value ?: config('ai.embedding_provider', 'voyage');
                 $activeModel = config("ai.{$activeProvider}.embedding_model", $activeProvider === 'voyage' ? 'voyage-4' : 'qwen3-embedding:0.6b');
 
                 // Insert the chunk first via Eloquent (no vector yet)
                 $contentChunk = ContentChunk::create([
-                    'section_id'         => $section->id,
-                    'chunk_text'         => $chunk['chunk_text'],
-                    'chunk_index'        => $chunk['chunk_index'],
-                    'token_count'        => $chunk['token_count'],
-                    'embedding_status'   => 'ready',
+                    'section_id' => $section->id,
+                    'chunk_text' => $chunk['chunk_text'],
+                    'chunk_index' => $chunk['chunk_index'],
+                    'token_count' => $chunk['token_count'],
+                    'embedding_status' => 'ready',
                     'embedding_provider' => $activeProvider,
-                    'embedding_model'    => $activeModel,
+                    'embedding_model' => $activeModel,
                 ]);
 
                 // Update the pgvector column via raw SQL
-                $vectorStr = '[' . implode(',', $vector) . ']';
+                $vectorStr = '['.implode(',', $vector).']';
 
                 DB::statement(
                     'UPDATE content_chunks SET embedding = ? WHERE id = ?',
@@ -91,18 +95,18 @@ class IngestionService
 
                 if ($activeProvider === 'voyage') {
                     DB::statement(
-                        "INSERT INTO content_chunk_embeddings (id, chunk_id, provider, model, dimension, embedding, created_at, updated_at)
+                        'INSERT INTO content_chunk_embeddings (id, chunk_id, provider, model, dimension, embedding, created_at, updated_at)
                          VALUES (?, ?, ?, ?, ?, ?::vector, ?, ?)
-                         ON CONFLICT (chunk_id, provider, model) DO UPDATE SET embedding = EXCLUDED.embedding, dimension = EXCLUDED.dimension, updated_at = EXCLUDED.updated_at",
+                         ON CONFLICT (chunk_id, provider, model) DO UPDATE SET embedding = EXCLUDED.embedding, dimension = EXCLUDED.dimension, updated_at = EXCLUDED.updated_at',
                         [
-                            (string) \Illuminate\Support\Str::uuid(),
+                            (string) Str::uuid(),
                             $contentChunk->id,
                             'voyage',
                             $activeModel,
                             1024,
                             $vectorStr,
                             now(),
-                            now()
+                            now(),
                         ]
                     );
                 }
@@ -110,7 +114,7 @@ class IngestionService
         });
 
         Log::info('IngestionService: section ingested, pausing to respect rate limits', [
-            'section_id'  => $section->id,
+            'section_id' => $section->id,
             'chunk_count' => count($chunks),
         ]);
 

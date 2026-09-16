@@ -27,16 +27,16 @@ class AdminBookController extends Controller
 
         // Handle both 'file' and 'manuscript' field names for compatibility
         $fileField = $request->hasFile('file') ? 'file' : 'manuscript';
-        
+
         if ($request->hasFile($fileField)) {
-            $file     = $request->file($fileField);
+            $file = $request->file($fileField);
             $filePath = $file->store('manuscripts', 'local');
             $fileType = $file->getClientOriginalExtension();
         }
 
         $book = Book::create([
-            'title'            => $request->title,
-            'status'           => $filePath ? 'uploading' : 'draft',
+            'title' => $request->title,
+            'status' => $filePath ? 'uploading' : 'draft',
             'source_file_path' => $filePath,
             'source_file_type' => $fileType,
         ]);
@@ -64,7 +64,7 @@ class AdminBookController extends Controller
                 [
                     'source_file_path' => $book->source_file_path,
                     'source_file_type' => $book->source_file_type,
-                    'chapters'         => ChapterResource::collection($book->chapters),
+                    'chapters' => ChapterResource::collection($book->chapters),
                 ]
             ),
         ]);
@@ -79,7 +79,7 @@ class AdminBookController extends Controller
         if ($book->source_file_path && Storage::disk('local')->exists($book->source_file_path)) {
             Storage::disk('local')->delete($book->source_file_path);
         }
-        
+
         $book->delete();
 
         return response()->json(['message' => 'Book deleted successfully.']);

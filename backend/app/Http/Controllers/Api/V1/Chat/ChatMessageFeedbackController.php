@@ -10,7 +10,7 @@ use Illuminate\Http\Request;
 
 /**
  * Chat message feedback (👍/👎)
- * 
+ *
  * Features:
  * - Like/dislike a specific assistant message
  * - One feedback per user per message
@@ -21,9 +21,9 @@ class ChatMessageFeedbackController extends Controller
 {
     /**
      * Store or update feedback for a chat message.
-     * 
+     *
      * POST /api/v1/messages/{message}/feedback
-     * 
+     *
      * Body: { "feedback": "like" | "dislike" }
      */
     public function store(Request $request, ChatMessage $message): JsonResponse
@@ -43,7 +43,7 @@ class ChatMessageFeedbackController extends Controller
         }
 
         $user = $request->user();
-        if (!$user) {
+        if (! $user) {
             return response()->json([
                 'error' => [
                     'code' => 'UNAUTHORIZED',
@@ -71,13 +71,13 @@ class ChatMessageFeedbackController extends Controller
 
     /**
      * Remove feedback for a chat message.
-     * 
+     *
      * DELETE /api/v1/messages/{message}/feedback
      */
     public function destroy(Request $request, ChatMessage $message): JsonResponse
     {
         $user = $request->user();
-        if (!$user) {
+        if (! $user) {
             return response()->json([
                 'error' => [
                     'code' => 'UNAUTHORIZED',
@@ -90,7 +90,7 @@ class ChatMessageFeedbackController extends Controller
             ->where('user_id', $user->id)
             ->first();
 
-        if (!$feedback) {
+        if (! $feedback) {
             return response()->json([
                 'error' => [
                     'code' => 'NOT_FOUND',
@@ -108,14 +108,14 @@ class ChatMessageFeedbackController extends Controller
 
     /**
      * Get feedback status for a chat message.
-     * 
+     *
      * GET /api/v1/messages/{message}/feedback
      */
     public function index(Request $request, ChatMessage $message): JsonResponse
     {
         $feedback = null;
         $user = $request->user();
-        
+
         if ($user) {
             $feedback = ChatMessageFeedback::where('chat_message_id', $message->id)
                 ->where('user_id', $user->id)

@@ -2,9 +2,9 @@
 
 namespace App\Services\AI;
 
-use App\Services\AI\Contracts\LLMGatewayInterface;
-use App\Models\AdminSetting;
 use App\Exceptions\AiProviderException;
+use App\Models\AdminSetting;
+use App\Services\AI\Contracts\LLMGatewayInterface;
 use Illuminate\Support\Facades\Log;
 
 class LLMProviderManager implements LLMGatewayInterface
@@ -30,6 +30,7 @@ class LLMProviderManager implements LLMGatewayInterface
         $envDefault = config('ai.llm_provider', 'gemini');
         try {
             $setting = AdminSetting::where('key', 'ai_llm_provider')->first();
+
             return $setting ? $setting->value : $envDefault;
         } catch (\Throwable) {
             return $envDefault;
@@ -43,13 +44,13 @@ class LLMProviderManager implements LLMGatewayInterface
         $totalStartTime = microtime(true);
 
         foreach ($fallbackSequence as $index => $providerName) {
-            if (!isset($this->gateways[$providerName])) {
+            if (! isset($this->gateways[$providerName])) {
                 continue;
             }
 
             $providerStartTime = microtime(true);
             try {
-                Log::info("Attempting LLM provider for chat", [
+                Log::info('Attempting LLM provider for chat', [
                     'provider' => $providerName,
                     'is_fallback' => $index > 0,
                 ]);
@@ -58,7 +59,7 @@ class LLMProviderManager implements LLMGatewayInterface
                 $providerElapsed = round((microtime(true) - $providerStartTime) * 1000);
                 $totalElapsed = round((microtime(true) - $totalStartTime) * 1000);
 
-                Log::info("[AI_TIMING] LLM chat completed", [
+                Log::info('[AI_TIMING] LLM chat completed', [
                     'provider' => $providerName,
                     'provider_elapsed_ms' => $providerElapsed,
                     'total_elapsed_ms' => $totalElapsed,
@@ -69,29 +70,30 @@ class LLMProviderManager implements LLMGatewayInterface
                 if (trim($cleaned) === '') {
                     throw new \RuntimeException("Provider {$providerName} returned empty response after stripping internal reasoning.");
                 }
+
                 return $cleaned;
             } catch (\Exception $e) {
                 $providerElapsed = round((microtime(true) - $providerStartTime) * 1000);
                 $isLast = ($providerName === end($fallbackSequence));
 
-                if (!$isLast) {
+                if (! $isLast) {
                     Log::warning("[PROVIDER_FALLBACK] Provider {$providerName} failed for chat after {$providerElapsed}ms, falling back immediately", [
                         'provider' => $providerName,
                         'elapsed_ms' => $providerElapsed,
                         'error' => $e->getMessage(),
                     ]);
                 } else {
-                    Log::error("All LLM providers failed for chat", [
+                    Log::error('All LLM providers failed for chat', [
                         'last_provider' => $providerName,
                         'elapsed_ms' => $providerElapsed,
                         'error' => $e->getMessage(),
                     ]);
-                    throw new AiProviderException("All LLM providers failed. Last error: " . $e->getMessage(), $activeProvider);
+                    throw new AiProviderException('All LLM providers failed. Last error: '.$e->getMessage(), $activeProvider);
                 }
             }
         }
 
-        throw new AiProviderException("No LLM provider available.", "system");
+        throw new AiProviderException('No LLM provider available.', 'system');
     }
 
     public function streamChat(array $messages, array $options = []): \Generator
@@ -101,7 +103,7 @@ class LLMProviderManager implements LLMGatewayInterface
         $totalStartTime = microtime(true);
 
         foreach ($fallbackSequence as $index => $providerName) {
-            if (!isset($this->gateways[$providerName])) {
+            if (! isset($this->gateways[$providerName])) {
                 continue;
             }
 
@@ -110,7 +112,7 @@ class LLMProviderManager implements LLMGatewayInterface
             $firstTokenLogged = false;
 
             try {
-                Log::info("Attempting LLM provider for stream", [
+                Log::info('Attempting LLM provider for stream', [
                     'provider' => $providerName,
                     'is_fallback' => $index > 0,
                 ]);
@@ -128,16 +130,16 @@ class LLMProviderManager implements LLMGatewayInterface
 
                         // Process the buffer
                         while (strlen($buffer) > 0) {
-                            if (!$inThinkBlock) {
+                            if (! $inThinkBlock) {
                                 $thinkPos = strpos($buffer, '<think>');
                                 if ($thinkPos !== false) {
                                     // Yield everything before <think>
                                     $yieldPart = substr($buffer, 0, $thinkPos);
                                     if ($yieldPart !== '') {
-                                        if (!$firstTokenLogged) {
+                                        if (! $firstTokenLogged) {
                                             $firstTokenLogged = true;
                                             $ttft = round((microtime(true) - $totalStartTime) * 1000);
-                                            Log::info("[AI_TIMING] TTFT (first token) reached", [
+                                            Log::info('[AI_TIMING] TTFT (first token) reached', [
                                                 'provider' => $providerName,
                                                 'ttft_ms' => $ttft,
                                             ]);
@@ -154,10 +156,10 @@ class LLMProviderManager implements LLMGatewayInterface
                                         break; // Wait for more data
                                     }
                                     $yieldPart = substr($buffer, 0, -6);
-                                    if (!$firstTokenLogged) {
+                                    if (! $firstTokenLogged) {
                                         $firstTokenLogged = true;
                                         $ttft = round((microtime(true) - $totalStartTime) * 1000);
-                                        Log::info("[AI_TIMING] TTFT (first token) reached", [
+                                        Log::info('[AI_TIMING] TTFT (first token) reached', [
                                             'provider' => $providerName,
                                             'ttft_ms' => $ttft,
                                         ]);
@@ -187,11 +189,11 @@ class LLMProviderManager implements LLMGatewayInterface
                     } while ($generator->valid());
 
                     // Flush remaining buffer
-                    if (!$inThinkBlock && $buffer !== '') {
-                        if (!$firstTokenLogged) {
+                    if (! $inThinkBlock && $buffer !== '') {
+                        if (! $firstTokenLogged) {
                             $firstTokenLogged = true;
                             $ttft = round((microtime(true) - $totalStartTime) * 1000);
-                            Log::info("[AI_TIMING] TTFT (first token) reached", [
+                            Log::info('[AI_TIMING] TTFT (first token) reached', [
                                 'provider' => $providerName,
                                 'ttft_ms' => $ttft,
                             ]);
@@ -201,7 +203,7 @@ class LLMProviderManager implements LLMGatewayInterface
                     }
 
                     $totalStreamTime = round((microtime(true) - $totalStartTime) * 1000);
-                    Log::info("[AI_TIMING] LLM stream finished successfully", [
+                    Log::info('[AI_TIMING] LLM stream finished successfully', [
                         'provider' => $providerName,
                         'total_ms' => $totalStreamTime,
                     ]);
@@ -215,7 +217,7 @@ class LLMProviderManager implements LLMGatewayInterface
 
                 if ($hasYieldedTokens) {
                     // Flush any remaining characters in the buffer so that partial output is 100% complete
-                    if (!$inThinkBlock && $buffer !== '') {
+                    if (! $inThinkBlock && $buffer !== '') {
                         yield $buffer;
                         $buffer = '';
                     }
@@ -231,25 +233,26 @@ class LLMProviderManager implements LLMGatewayInterface
                 }
 
                 $isLast = ($providerName === end($fallbackSequence));
-                if (!$isLast) {
+                if (! $isLast) {
                     Log::warning("[PROVIDER_FALLBACK] Provider {$providerName} failed before yielding tokens after {$elapsed}ms, falling back immediately", [
                         'failed_provider' => $providerName,
                         'elapsed_ms' => $elapsed,
                         'error' => $e->getMessage(),
                     ]);
+
                     continue;
                 }
 
-                Log::error("All LLM providers failed for streaming", [
+                Log::error('All LLM providers failed for streaming', [
                     'last_provider' => $providerName,
                     'elapsed_ms' => $elapsed,
                     'error' => $e->getMessage(),
                 ]);
-                throw new AiProviderException("All LLM providers failed. Last error: " . $e->getMessage(), $activeProvider);
+                throw new AiProviderException('All LLM providers failed. Last error: '.$e->getMessage(), $activeProvider);
             }
         }
 
-        throw new AiProviderException("No LLM provider available for streaming.", "system");
+        throw new AiProviderException('No LLM provider available for streaming.', 'system');
     }
 
     private function getFallbackSequence(string $activeProvider): array

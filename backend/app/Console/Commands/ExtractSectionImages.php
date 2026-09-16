@@ -9,12 +9,13 @@ use Illuminate\Support\Facades\File;
 class ExtractSectionImages extends Command
 {
     protected $signature = 'books:extract-section-images';
+
     protected $description = 'Extract embedded base64 images from section raw_text into static storage files.';
 
     public function handle(): int
     {
         $storageDir = storage_path('app/public/sections');
-        if (!File::isDirectory($storageDir)) {
+        if (! File::isDirectory($storageDir)) {
             File::makeDirectory($storageDir, 0755, true, true);
         }
 
@@ -37,7 +38,7 @@ class ExtractSectionImages extends Command
                     $suffix = $matches[5];
 
                     $decodedData = base64_decode($base64Data);
-                    if (!$decodedData) {
+                    if (! $decodedData) {
                         return $matches[0]; // fallback if decoding fails
                     }
 
@@ -49,6 +50,7 @@ class ExtractSectionImages extends Command
                     $totalImagesExtracted++;
 
                     $publicUrl = "/storage/sections/{$filename}";
+
                     return "{$prefix}{$publicUrl}{$suffix}";
                 },
                 $section->raw_text
@@ -64,7 +66,7 @@ class ExtractSectionImages extends Command
                     $suffix = $matches[5];
 
                     $decodedData = base64_decode($base64Data);
-                    if (!$decodedData) {
+                    if (! $decodedData) {
                         return $matches[0];
                     }
 
@@ -76,6 +78,7 @@ class ExtractSectionImages extends Command
                     $totalImagesExtracted++;
 
                     $publicUrl = "/storage/sections/{$filename}";
+
                     return "{$prefix}{$publicUrl}{$suffix}";
                 },
                 $updatedText

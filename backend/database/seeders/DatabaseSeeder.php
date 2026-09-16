@@ -18,20 +18,20 @@ class DatabaseSeeder extends Seeder
             User::firstOrCreate(
                 ['email' => 'admin@smartadama.com'],
                 [
-                    'id'       => (string) Str::uuid(),
-                    'name'     => 'Admin User',
+                    'id' => (string) Str::uuid(),
+                    'name' => 'Admin User',
                     'password' => Hash::make('password'),
-                    'role'     => 'admin',
+                    'role' => 'admin',
                 ]
             );
 
             User::firstOrCreate(
                 ['email' => 'learner@smartadama.com'],
                 [
-                    'id'       => (string) Str::uuid(),
-                    'name'     => 'Test Learner',
+                    'id' => (string) Str::uuid(),
+                    'name' => 'Test Learner',
                     'password' => Hash::make('password'),
-                    'role'     => 'learner',
+                    'role' => 'learner',
                 ]
             );
         }

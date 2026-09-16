@@ -15,9 +15,9 @@ class UpdateSectionRequest extends FormRequest
     {
         return [
             'section_number' => ['sometimes', 'string', 'regex:/^\d+(\.\d+)*$/'],
-            'title'          => ['sometimes', 'string', 'min:1', 'max:255'],
-            'order'          => ['sometimes', 'integer', 'min:0'],
-            'raw_text'       => ['sometimes', 'nullable', 'string'],
+            'title' => ['sometimes', 'string', 'min:1', 'max:255'],
+            'order' => ['sometimes', 'integer', 'min:0'],
+            'raw_text' => ['sometimes', 'nullable', 'string'],
         ];
     }
 }

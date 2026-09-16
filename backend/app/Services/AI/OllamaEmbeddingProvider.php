@@ -12,7 +12,9 @@ use Illuminate\Support\Facades\Log;
 class OllamaEmbeddingProvider implements EmbeddingProviderInterface
 {
     private Client $client;
+
     private string $model;
+
     private int $dimension;
 
     public function __construct()
@@ -20,16 +22,16 @@ class OllamaEmbeddingProvider implements EmbeddingProviderInterface
         $baseUrl = rtrim(config('ai.ollama.embedding_base_url', 'http://127.0.0.1:11434'), '/');
 
         $this->client = new Client([
-            'base_uri' => $baseUrl . '/',
-            'timeout'  => 600,
+            'base_uri' => $baseUrl.'/',
+            'timeout' => 600,
             'connect_timeout' => 30,
-            'headers'  => [
+            'headers' => [
                 'Content-Type' => 'application/json',
-                'Accept'       => 'application/json',
+                'Accept' => 'application/json',
             ],
         ]);
 
-        $this->model     = config('ai.ollama.embedding_model', 'qwen3-embedding:0.6b');
+        $this->model = config('ai.ollama.embedding_model', 'qwen3-embedding:0.6b');
         $this->dimension = (int) config('ai.ollama.embedding_dimension', 1024);
     }
 
@@ -45,7 +47,7 @@ class OllamaEmbeddingProvider implements EmbeddingProviderInterface
         }
 
         $attempts = config('ai.retry.times', 3);
-        $backoff  = config('ai.retry.backoff', [500, 1000, 2000]);
+        $backoff = config('ai.retry.backoff', [500, 1000, 2000]);
 
         for ($attempt = 0; $attempt < $attempts; $attempt++) {
             try {
@@ -59,8 +61,8 @@ class OllamaEmbeddingProvider implements EmbeddingProviderInterface
 
                 $body = json_decode((string) $response->getBody(), true);
 
-                if (!isset($body['embeddings']) || !is_array($body['embeddings'])) {
-                    throw new AiProviderException("Invalid response from Ollama embedding API.");
+                if (! isset($body['embeddings']) || ! is_array($body['embeddings'])) {
+                    throw new AiProviderException('Invalid response from Ollama embedding API.');
                 }
 
                 $embeddings = $body['embeddings'];
@@ -70,10 +72,10 @@ class OllamaEmbeddingProvider implements EmbeddingProviderInterface
                     if (count($vector) !== $this->dimension) {
                         Log::error('OllamaEmbeddingProvider: Dimension mismatch', [
                             'expected' => $this->dimension,
-                            'actual'   => count($vector),
-                            'index'    => $idx,
+                            'actual' => count($vector),
+                            'index' => $idx,
                         ]);
-                        throw new AiProviderException("Embedding dimension mismatch. Expected {$this->dimension}, got " . count($vector), 'ollama');
+                        throw new AiProviderException("Embedding dimension mismatch. Expected {$this->dimension}, got ".count($vector), 'ollama');
                     }
                 }
 
@@ -82,17 +84,19 @@ class OllamaEmbeddingProvider implements EmbeddingProviderInterface
             } catch (ServerException $e) {
                 if ($attempt < $attempts - 1) {
                     usleep(($backoff[$attempt] ?? 2000) * 1000);
+
                     continue;
                 }
-                throw new AiProviderException('Ollama Embedding API unavailable: ' . $e->getMessage(), 'ollama', $e);
+                throw new AiProviderException('Ollama Embedding API unavailable: '.$e->getMessage(), 'ollama', $e);
             } catch (ConnectException $e) {
                 if ($attempt < $attempts - 1) {
                     usleep(($backoff[$attempt] ?? 2000) * 1000);
+
                     continue;
                 }
                 throw new AiProviderException('Ollama Embedding connection failed. Is it running?', 'ollama', $e);
             } catch (\Throwable $e) {
-                throw new AiProviderException('Ollama Embedding API error: ' . $e->getMessage(), 'ollama', $e);
+                throw new AiProviderException('Ollama Embedding API error: '.$e->getMessage(), 'ollama', $e);
             }
         }
 

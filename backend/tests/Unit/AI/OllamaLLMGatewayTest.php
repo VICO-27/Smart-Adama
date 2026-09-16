@@ -2,6 +2,7 @@
 
 use App\Exceptions\AiProviderException;
 use App\Services\AI\OllamaLLMGateway;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
 
@@ -23,7 +24,7 @@ it('can preserve thinking tags correctly from streamed response', function () {
         '*' => Http::response($mockBody, 200, ['Content-Type' => 'application/x-ndjson']),
     ]);
 
-    $gateway = new OllamaLLMGateway();
+    $gateway = new OllamaLLMGateway;
 
     $messages = [['role' => 'user', 'content' => 'What is the answer?']];
     $result = $gateway->chat($messages);
@@ -33,13 +34,13 @@ it('can preserve thinking tags correctly from streamed response', function () {
 
 it('throws exception on connection failure', function () {
     Http::fake(function () {
-        throw new \Illuminate\Http\Client\ConnectionException('Error Communicating with Server');
+        throw new ConnectionException('Error Communicating with Server');
     });
 
-    $gateway = new OllamaLLMGateway();
+    $gateway = new OllamaLLMGateway;
     $messages = [['role' => 'user', 'content' => 'Hello']];
-    
+
     Config::set('ai.retry.times', 1);
-    
-    expect(fn() => $gateway->chat($messages))->toThrow(AiProviderException::class);
+
+    expect(fn () => $gateway->chat($messages))->toThrow(AiProviderException::class);
 });

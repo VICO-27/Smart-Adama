@@ -27,10 +27,10 @@ class ChatSessionController extends Controller
 
         return response()->json([
             'sessions' => ChatSessionResource::collection($sessions->items()),
-            'meta'     => [
+            'meta' => [
                 'current_page' => $sessions->currentPage(),
-                'last_page'    => $sessions->lastPage(),
-                'total'        => $sessions->total(),
+                'last_page' => $sessions->lastPage(),
+                'total' => $sessions->total(),
             ],
         ]);
     }
@@ -42,7 +42,7 @@ class ChatSessionController extends Controller
     public function store(StoreChatSessionRequest $request): JsonResponse
     {
         $session = $request->user()->chatSessions()->create([
-            'title'            => $request->title ?? 'New Chat',
+            'title' => $request->title ?? 'New Chat',
             'last_activity_at' => now(),
         ]);
 

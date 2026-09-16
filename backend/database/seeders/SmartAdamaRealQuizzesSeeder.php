@@ -2,10 +2,10 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\Chapter;
 use App\Models\Quiz;
 use App\Models\QuizQuestion;
+use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
 class SmartAdamaRealQuizzesSeeder extends Seeder
@@ -49,7 +49,7 @@ class SmartAdamaRealQuizzesSeeder extends Seeder
                         ['text' => 'Typewriters', 'correct' => false],
                         ['text' => 'Pneumatic tubes', 'correct' => false],
                     ]],
-                ]
+                ],
             ],
             2 => [ // e-Governance
                 'title' => 'e-Governance',
@@ -84,7 +84,7 @@ class SmartAdamaRealQuizzesSeeder extends Seeder
                         ['text' => 'Using open, unencrypted networks for all transactions.', 'correct' => false],
                         ['text' => 'Relying solely on paper backups.', 'correct' => false],
                     ]],
-                ]
+                ],
             ],
             3 => [ // Innovation
                 'title' => 'Innovation',
@@ -119,7 +119,7 @@ class SmartAdamaRealQuizzesSeeder extends Seeder
                         ['text' => 'Telegraphy', 'correct' => false],
                         ['text' => 'Microfiche', 'correct' => false],
                     ]],
-                ]
+                ],
             ],
             4 => [ // Enterprise
                 'title' => 'Enterprise',
@@ -154,7 +154,7 @@ class SmartAdamaRealQuizzesSeeder extends Seeder
                         ['text' => 'By isolating them from global competition.', 'correct' => false],
                         ['text' => 'By reducing the need for customer service.', 'correct' => false],
                     ]],
-                ]
+                ],
             ],
             5 => [ // Food Security
                 'title' => 'Food Security',
@@ -189,7 +189,7 @@ class SmartAdamaRealQuizzesSeeder extends Seeder
                         ['text' => 'It has no significant impact on food waste.', 'correct' => false],
                         ['text' => 'It is only used to calculate the cost of wasted food.', 'correct' => false],
                     ]],
-                ]
+                ],
             ],
             6 => [ // Digital Infrastructure
                 'title' => 'Digital Infrastructure',
@@ -224,7 +224,7 @@ class SmartAdamaRealQuizzesSeeder extends Seeder
                         ['text' => 'It only focuses on protecting individual citizen\'s personal computers.', 'correct' => false],
                         ['text' => 'It slows down infrastructure performance without significant benefits.', 'correct' => false],
                     ]],
-                ]
+                ],
             ],
             7 => [ // Smart Mobility
                 'title' => 'Smart Mobility',
@@ -259,7 +259,7 @@ class SmartAdamaRealQuizzesSeeder extends Seeder
                         ['text' => 'By eliminating the need for parking spaces entirely.', 'correct' => false],
                         ['text' => 'By reserving parking only for government officials.', 'correct' => false],
                     ]],
-                ]
+                ],
             ],
             8 => [ // Smart Health
                 'title' => 'Smart Health',
@@ -294,7 +294,7 @@ class SmartAdamaRealQuizzesSeeder extends Seeder
                         ['text' => 'It requires fewer medical personnel on board.', 'correct' => false],
                         ['text' => 'It is immune to traffic congestion.', 'correct' => false],
                     ]],
-                ]
+                ],
             ],
             9 => [ // Smart Education
                 'title' => 'Smart Education',
@@ -329,7 +329,7 @@ class SmartAdamaRealQuizzesSeeder extends Seeder
                         ['text' => 'By replacing all physical lab experiments.', 'correct' => false],
                         ['text' => 'By making learning less engaging.', 'correct' => false],
                     ]],
-                ]
+                ],
             ],
             10 => [ // Smart Environment
                 'title' => 'Smart Environment',
@@ -364,7 +364,7 @@ class SmartAdamaRealQuizzesSeeder extends Seeder
                         ['text' => 'They increase urban pollution.', 'correct' => false],
                         ['text' => 'They require excessive amounts of water to maintain.', 'correct' => false],
                     ]],
-                ]
+                ],
             ],
             11 => [ // Smart People
                 'title' => 'Smart People',
@@ -399,8 +399,8 @@ class SmartAdamaRealQuizzesSeeder extends Seeder
                         ['text' => 'By encouraging isolation through technology.', 'correct' => false],
                         ['text' => 'By prioritizing corporate interests over community needs.', 'correct' => false],
                     ]],
-                ]
-            ]
+                ],
+            ],
         ];
 
         DB::transaction(function () use ($quizData) {
@@ -416,12 +416,14 @@ class SmartAdamaRealQuizzesSeeder extends Seeder
                 $realChapterNum = $index + 1;
                 $data = $quizData[$realChapterNum] ?? null;
 
-                if (!$data) continue;
+                if (! $data) {
+                    continue;
+                }
 
                 // Create Quiz
                 $quiz = Quiz::create([
                     'chapter_id' => $chapter->id,
-                    'title' => 'Quiz: ' . $chapter->title,
+                    'title' => 'Quiz: '.$chapter->title,
                     'passing_score_pct' => 70,
                     'status' => 'published',
                 ]);
@@ -433,7 +435,7 @@ class SmartAdamaRealQuizzesSeeder extends Seeder
                         'order' => $qIndex + 1,
                         'question_text' => $qData['text'],
                         'type' => 'single',
-                        'explanation' => 'Detailed explanation of the concept based on the Smart Adama framework.'
+                        'explanation' => 'Detailed explanation of the concept based on the Smart Adama framework.',
                     ]);
 
                     foreach ($qData['options'] as $optIndex => $optData) {

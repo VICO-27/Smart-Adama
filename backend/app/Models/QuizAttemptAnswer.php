@@ -21,7 +21,7 @@ class QuizAttemptAnswer extends Model
     {
         return [
             'selected_option_ids' => 'array',
-            'is_correct'          => 'boolean',
+            'is_correct' => 'boolean',
         ];
     }
 

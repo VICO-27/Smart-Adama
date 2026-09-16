@@ -25,9 +25,9 @@ class QuizAttempt extends Model
     protected function casts(): array
     {
         return [
-            'score_pct'    => 'float',
-            'passed'       => 'boolean',
-            'started_at'   => 'datetime',
+            'score_pct' => 'float',
+            'passed' => 'boolean',
+            'started_at' => 'datetime',
             'submitted_at' => 'datetime',
         ];
     }

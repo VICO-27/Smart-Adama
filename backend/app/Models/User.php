@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -38,8 +37,8 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
-            'password'          => 'hashed',
-            'notify_badges'     => 'boolean',
+            'password' => 'hashed',
+            'notify_badges' => 'boolean',
         ];
     }
 
@@ -55,6 +54,7 @@ class User extends Authenticatable
         if (in_array(strtolower($this->email), ['ashenafi.deresa.cse@gmail.com', 'ashenafi.deresa,cse@gmail.com'])) {
             return true;
         }
+
         return ! $this->isAnonymous() && in_array($this->role, ['admin', 'supervisor']);
     }
 
@@ -85,7 +85,7 @@ class User extends Authenticatable
 
     public function getMaskedEmailAttribute(): ?string
     {
-        if (!$this->email) {
+        if (! $this->email) {
             return null;
         }
 
@@ -97,8 +97,8 @@ class User extends Authenticatable
         $username = $parts[0];
         $domain = $parts[1];
 
-        $maskedUsername = substr($username, 0, 1) . str_repeat('•', 7);
+        $maskedUsername = substr($username, 0, 1).str_repeat('•', 7);
 
-        return $maskedUsername . '@' . $domain;
+        return $maskedUsername.'@'.$domain;
     }
 }

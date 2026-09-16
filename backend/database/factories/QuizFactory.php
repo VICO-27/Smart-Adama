@@ -13,10 +13,10 @@ class QuizFactory extends Factory
     public function definition(): array
     {
         return [
-            'chapter_id'       => Chapter::factory(),
-            'title'            => fake()->sentence(4),
+            'chapter_id' => Chapter::factory(),
+            'title' => fake()->sentence(4),
             'passing_score_pct' => 70,
-            'status'           => 'draft',
+            'status' => 'draft',
         ];
     }
 

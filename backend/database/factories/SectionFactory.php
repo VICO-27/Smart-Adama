@@ -14,9 +14,9 @@ class SectionFactory extends Factory
     {
         return [
             'chapter_id' => Chapter::factory(),
-            'title'      => fake()->sentence(3),
-            'order'      => fake()->numberBetween(1, 10),
-            'raw_text'   => fake()->paragraphs(5, true),
+            'title' => fake()->sentence(3),
+            'order' => fake()->numberBetween(1, 10),
+            'raw_text' => fake()->paragraphs(5, true),
         ];
     }
 }

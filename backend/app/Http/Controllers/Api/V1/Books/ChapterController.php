@@ -14,9 +14,7 @@ use Illuminate\Http\Request;
  */
 class ChapterController extends Controller
 {
-    public function __construct(private readonly ProgressService $progressService)
-    {
-    }
+    public function __construct(private readonly ProgressService $progressService) {}
 
     /**
      * GET /chapters/{chapter}
@@ -35,13 +33,13 @@ class ChapterController extends Controller
             ->first();
 
         return response()->json([
-            'chapter'  => new ChapterResource($chapter),
+            'chapter' => new ChapterResource($chapter),
             'progress' => $progress ? [
-                'status'             => $progress->status,
-                'reading_progress'   => $progress->reading_progress,
+                'status' => $progress->status,
+                'reading_progress' => $progress->reading_progress,
                 'best_quiz_score_pct' => $progress->best_quiz_score_pct,
-                'last_read_at'       => $progress->last_read_at?->toISOString(),
-                'last_page'          => $progress->last_page,
+                'last_read_at' => $progress->last_read_at?->toISOString(),
+                'last_page' => $progress->last_page,
             ] : null,
         ]);
     }
@@ -55,7 +53,7 @@ class ChapterController extends Controller
         $readingProgress = $request->input('reading_progress', 100);
         $lastPage = $request->input('last_page');
 
-        $this->progressService->updateReadingProgress($request->user(), $chapter, (int)$readingProgress, $lastPage);
+        $this->progressService->updateReadingProgress($request->user(), $chapter, (int) $readingProgress, $lastPage);
 
         return response()->json(['message' => 'Reading progress updated.']);
     }

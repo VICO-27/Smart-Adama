@@ -5,7 +5,7 @@ use App\Models\User;
 // ── POST /api/v1/auth/logout ─────────────────────────────────────────────────
 
 it('logs out and revokes the current token', function () {
-    $user  = User::factory()->create();
+    $user = User::factory()->create();
     $token = $user->createToken('api-token')->plainTextToken;
 
     $this->withToken($token)
@@ -15,7 +15,7 @@ it('logs out and revokes the current token', function () {
 
     // Token row must be gone from the database
     $this->assertDatabaseMissing('personal_access_tokens', [
-        'tokenable_id'   => $user->id,
+        'tokenable_id' => $user->id,
         'tokenable_type' => get_class($user),
     ]);
 });

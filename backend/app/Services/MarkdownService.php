@@ -2,9 +2,9 @@
 
 namespace App\Services;
 
-use Parsedown;
 use HTMLPurifier;
 use HTMLPurifier_Config;
+use Parsedown;
 
 /**
  * Markdown processing service with HTML sanitization.
@@ -15,18 +15,19 @@ use HTMLPurifier_Config;
 class MarkdownService
 {
     private ?Parsedown $parsedown = null;
+
     private ?HTMLPurifier $purifier = null;
 
     public function __construct()
     {
-        $this->parsedown = new Parsedown();
+        $this->parsedown = new Parsedown;
         $this->purifier = new HTMLPurifier($this->getPurifierConfig());
     }
 
     /**
      * Convert markdown to sanitized HTML.
      *
-     * @param string $markdown The markdown text to convert
+     * @param  string  $markdown  The markdown text to convert
      * @return string The sanitized HTML
      */
     public function toHtml(string $markdown): string

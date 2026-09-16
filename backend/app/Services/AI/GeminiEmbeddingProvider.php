@@ -2,16 +2,19 @@
 
 namespace App\Services\AI;
 
-use App\Services\AI\Contracts\EmbeddingProviderInterface;
 use App\Exceptions\AiProviderException;
+use App\Services\AI\Contracts\EmbeddingProviderInterface;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class GeminiEmbeddingProvider implements EmbeddingProviderInterface
 {
     private string $apiKey;
+
     private string $model;
+
     private int $dimension;
+
     private string $baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models';
 
     public function __construct()
@@ -34,7 +37,7 @@ class GeminiEmbeddingProvider implements EmbeddingProviderInterface
     public function embedBatch(array $texts, ?string $inputType = null): array
     {
         if (empty($this->apiKey)) {
-            throw new AiProviderException("Gemini API key is not configured.", "gemini");
+            throw new AiProviderException('Gemini API key is not configured.', 'gemini');
         }
 
         $modelName = $this->getModelName();
@@ -43,9 +46,9 @@ class GeminiEmbeddingProvider implements EmbeddingProviderInterface
         $requests = [];
         foreach ($texts as $text) {
             $requests[] = [
-                'model' => 'models/' . $modelName,
+                'model' => 'models/'.$modelName,
                 'content' => [
-                    'parts' => [['text' => $text]]
+                    'parts' => [['text' => $text]],
                 ],
                 'outputDimensionality' => $this->dimension,
             ];
@@ -58,12 +61,12 @@ class GeminiEmbeddingProvider implements EmbeddingProviderInterface
         $latency = round((microtime(true) - $startTime) * 1000);
 
         if ($response->failed()) {
-            Log::error("Gemini batch embedding failed", [
+            Log::error('Gemini batch embedding failed', [
                 'status' => $response->status(),
                 'body' => $response->body(),
-                'latency' => $latency
+                'latency' => $latency,
             ]);
-            throw new AiProviderException("Gemini embedding request failed: " . $response->body(), "gemini");
+            throw new AiProviderException('Gemini embedding request failed: '.$response->body(), 'gemini');
         }
 
         $data = $response->json();
@@ -76,7 +79,7 @@ class GeminiEmbeddingProvider implements EmbeddingProviderInterface
         }
 
         if (count($embeddings) !== count($texts)) {
-            throw new AiProviderException("Gemini returned " . count($embeddings) . " embeddings for " . count($texts) . " texts.", "gemini");
+            throw new AiProviderException('Gemini returned '.count($embeddings).' embeddings for '.count($texts).' texts.', 'gemini');
         }
 
         return $embeddings;

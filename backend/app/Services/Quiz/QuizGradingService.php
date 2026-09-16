@@ -5,8 +5,6 @@ namespace App\Services\Quiz;
 use App\Models\Quiz;
 use App\Models\QuizAttempt;
 use App\Models\QuizAttemptAnswer;
-use App\Models\QuizOption;
-use Illuminate\Support\Collection;
 
 /**
  * Grades a quiz attempt server-side and persists per-question results.
@@ -17,7 +15,6 @@ class QuizGradingService
     /**
      * Grade the attempt.
      *
-     * @param  QuizAttempt  $attempt
      * @param  array<int, array{question_id: string, selected_option_ids: string[]}>  $answers
      * @return array{
      *     score_pct: float,
@@ -29,15 +26,15 @@ class QuizGradingService
      */
     public function grade(QuizAttempt $attempt, array $answers): array
     {
-        $quiz      = $attempt->quiz()->with('questions.options')->firstOrFail();
+        $quiz = $attempt->quiz()->with('questions.options')->firstOrFail();
         $questions = $quiz->questions->keyBy('id');
 
-        $correctCount   = 0;
+        $correctCount = 0;
         $totalQuestions = $questions->count();
-        $perQuestion    = [];
+        $perQuestion = [];
 
         foreach ($answers as $answer) {
-            $questionId        = $answer['question_id'];
+            $questionId = $answer['question_id'];
             $selectedOptionIds = $answer['selected_option_ids'] ?? [];
 
             $question = $questions->get($questionId);
@@ -62,7 +59,7 @@ class QuizGradingService
                 'single', 'true_false' => count($selectedSorted) === 1
                     && $selectedSorted[0] === ($correctOptionIds[0] ?? null),
                 'multiple' => $selectedSorted === $correctOptionIds,
-                default    => false,
+                default => false,
             };
 
             if ($isCorrect) {
@@ -71,19 +68,19 @@ class QuizGradingService
 
             // Persist the answer (Req 9.3)
             QuizAttemptAnswer::create([
-                'quiz_attempt_id'    => $attempt->id,
-                'quiz_question_id'   => $questionId,
+                'quiz_attempt_id' => $attempt->id,
+                'quiz_question_id' => $questionId,
                 'selected_option_ids' => $selectedOptionIds,
-                'is_correct'         => $isCorrect,
+                'is_correct' => $isCorrect,
             ]);
 
             $perQuestion[] = [
-                'question_id'        => $questionId,
-                'question_text'      => $question->question_text,
-                'is_correct'         => $isCorrect,
+                'question_id' => $questionId,
+                'question_text' => $question->question_text,
+                'is_correct' => $isCorrect,
                 'selected_option_ids' => $selectedOptionIds,
                 'correct_option_ids' => $correctOptionIds,
-                'explanation'        => $question->explanation,
+                'explanation' => $question->explanation,
             ];
         }
 
@@ -95,17 +92,17 @@ class QuizGradingService
 
         // Persist score on the attempt
         $attempt->update([
-            'score_pct'    => $scorePct,
-            'passed'       => $passed,
+            'score_pct' => $scorePct,
+            'passed' => $passed,
             'submitted_at' => now(),
         ]);
 
         return [
-            'score_pct'       => $scorePct,
-            'passed'          => $passed,
+            'score_pct' => $scorePct,
+            'passed' => $passed,
             'total_questions' => $totalQuestions,
-            'correct_count'   => $correctCount,
-            'per_question'    => $perQuestion,
+            'correct_count' => $correctCount,
+            'per_question' => $perQuestion,
         ];
     }
 }

@@ -18,7 +18,7 @@ class DocumentNormalizationService
         $text = mb_convert_encoding($text, 'UTF-8', 'UTF-8');
 
         // 1. Remove null bytes and control characters explicitly
-        $text = str_replace("\0", "", $text);
+        $text = str_replace("\0", '', $text);
         $text = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $text);
 
         // 2. Unicode Normalization (NFC)
@@ -65,7 +65,7 @@ class DocumentNormalizationService
                 if (strlen($firstLine) > 0) {
                     $firstLinesCount[$firstLine] = ($firstLinesCount[$firstLine] ?? 0) + 1;
                 }
-                
+
                 $lastLine = trim($lines[count($lines) - 1]);
                 if (strlen($lastLine) > 0) {
                     $lastLinesCount[$lastLine] = ($lastLinesCount[$lastLine] ?? 0) + 1;
@@ -75,30 +75,31 @@ class DocumentNormalizationService
 
         $threshold = max(3, floor(count($pages) * 0.3)); // If it appears on 30% of pages, it's a header/footer
 
-        $commonHeaders = array_filter($firstLinesCount, fn($count) => $count >= $threshold);
-        $commonFooters = array_filter($lastLinesCount, fn($count) => $count >= $threshold);
+        $commonHeaders = array_filter($firstLinesCount, fn ($count) => $count >= $threshold);
+        $commonFooters = array_filter($lastLinesCount, fn ($count) => $count >= $threshold);
 
         $cleanedPages = [];
         foreach ($pages as $page) {
             $lines = explode("\n", trim($page));
-            
+
             // Remove matching header
             if (count($lines) > 0 && isset($commonHeaders[trim($lines[0])])) {
                 array_shift($lines);
             }
-            
+
             // Remove matching footer
             if (count($lines) > 0 && isset($commonFooters[trim($lines[count($lines) - 1])])) {
                 array_pop($lines);
             }
 
             // Remove standalone page numbers (e.g., "Page 12", "- 12 -", "12")
-            $lines = array_filter($lines, function($line) {
+            $lines = array_filter($lines, function ($line) {
                 $line = trim($line);
                 // Matches "12", "- 12 -", "Page 12", "12 / 50"
                 if (preg_match('/^[-–\s]*(?:Page\s*)?\d+(?:\s*\/\s*\d+)?[-–\s]*$/i', $line)) {
                     return false;
                 }
+
                 return true;
             });
 

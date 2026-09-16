@@ -16,19 +16,19 @@ class ThrottleChat
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $maxAttempts  = (int) config('ai.chat_rate_limit.max_attempts', 20);
+        $maxAttempts = (int) config('ai.chat_rate_limit.max_attempts', 20);
         $decayMinutes = (int) config('ai.chat_rate_limit.decay_minutes', 5);
         $decaySeconds = $decayMinutes * 60;
 
         $user = $request->user('sanctum') ?? $request->user();
-        $key = 'chat:' . ($user ? 'user:' . $user->id : 'ip:' . $request->ip());
+        $key = 'chat:'.($user ? 'user:'.$user->id : 'ip:'.$request->ip());
 
         if (RateLimiter::tooManyAttempts($key, $maxAttempts)) {
             $retryAfter = RateLimiter::availableIn($key);
 
             return response()->json([
                 'error' => [
-                    'code'    => 'TOO_MANY_REQUESTS',
+                    'code' => 'TOO_MANY_REQUESTS',
                     'message' => "Chat rate limit exceeded. You can send another message in {$retryAfter} seconds.",
                 ],
             ], 429, ['Retry-After' => $retryAfter]);

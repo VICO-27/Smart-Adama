@@ -3,14 +3,14 @@
 namespace App\Services\RAG;
 
 use App\Services\AI\Contracts\LLMGatewayInterface;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class FollowUpResolutionService
 {
     public function __construct(
         private readonly LLMGatewayInterface $llm
-    ) {
-    }
+    ) {}
 
     /**
      * Resolves an ambiguous follow-up query into a standalone query.
@@ -20,14 +20,14 @@ class FollowUpResolutionService
     {
         $isAffirmative = $this->isAffirmative($currentQuery);
 
-        if (!$lastUserMessage) {
+        if (! $lastUserMessage) {
             return $isAffirmative ? null : $currentQuery;
         }
 
         // Fast-path deterministic extraction for affirmative responses:
         // E.g. Assistant asked: "Would you like to dive deeper into how Smart Health specifically integrates with the other components?"
         // User answered: "yes"
-        if ($isAffirmative && !empty($lastAssistantMessage)) {
+        if ($isAffirmative && ! empty($lastAssistantMessage)) {
             $extracted = $this->extractAssistantOffer($lastAssistantMessage);
             if ($extracted) {
                 return $extracted;
@@ -35,10 +35,10 @@ class FollowUpResolutionService
         }
 
         $activeContextStr = '';
-        if (!empty($context['chapter_id'])) {
-            $chapter = \Illuminate\Support\Facades\DB::table('chapters')->where('id', $context['chapter_id'])->first();
+        if (! empty($context['chapter_id'])) {
+            $chapter = DB::table('chapters')->where('id', $context['chapter_id'])->first();
             if ($chapter) {
-                $pageStr = !empty($context['page']) ? " Page {$context['page']}" : "";
+                $pageStr = ! empty($context['page']) ? " Page {$context['page']}" : '';
                 $activeContextStr = "The user is currently reading: {$chapter->title}{$pageStr}\n";
             }
         }
@@ -67,7 +67,7 @@ PROMPT;
         try {
             $response = $this->llm->chat([
                 ['role' => 'system', 'content' => 'Rewrite the query directly. Do not include quotes, conversational filler, or introductory text. Output only the rewritten query.'],
-                ['role' => 'user', 'content' => $prompt]
+                ['role' => 'user', 'content' => $prompt],
             ]);
 
             $response = trim($response);
@@ -79,7 +79,8 @@ PROMPT;
             return $response;
 
         } catch (\Exception $e) {
-            Log::warning('FollowUpResolutionService failed: ' . $e->getMessage());
+            Log::warning('FollowUpResolutionService failed: '.$e->getMessage());
+
             return null;
         }
     }
@@ -93,7 +94,7 @@ PROMPT;
             'continue', 'tell me', 'tell me more', 'let\'s do it', 'lets do it',
             'i would', 'i\'d like that', 'definitely', 'certainly', 'absolutely',
             'dive deeper', 'yes dive deeper', 'explore', 'yes explore', 'yes tell me',
-            'eyyee', 'ishi', 'eyye', 'yes do it', 'yes i do', 'yes i would'
+            'eyyee', 'ishi', 'eyye', 'yes do it', 'yes i do', 'yes i would',
         ];
 
         return in_array($clean, $affirmatives, true);
@@ -108,12 +109,14 @@ PROMPT;
 
         if (preg_match('/(?:would you like to|do you want to|should we|shall we|can we|do you wish to)\s+(?:dive\s+(?:deeper\s+into|in(?:to)?)|explore|learn\s+(?:more\s+about)?|look\s+(?:at|into)|discuss|know\s+more\s+about|hear\s+about|examine|review|cover)\s+([^?]+)\?/i', $tail, $matches)) {
             $topic = trim($matches[1]);
-            return 'Explain ' . $topic;
+
+            return 'Explain '.$topic;
         }
 
         if (preg_match('/(?:would you like to|do you want to)\s+([^?]+)\?/i', $tail, $matches)) {
             $topic = trim($matches[1]);
-            return 'Tell me more about ' . $topic;
+
+            return 'Tell me more about '.$topic;
         }
 
         if (preg_match('/([A-Z][^.!?\n\r]*\?)\s*$/s', $tail, $matches)) {

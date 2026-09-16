@@ -5,10 +5,10 @@ namespace App\Services\RAG;
 class QueryUnderstandingService
 {
     private const ABBREVIATIONS = [
-        'bg'  => 'background',
+        'bg' => 'background',
         'abt' => 'about',
-        'info'=> 'information',
-        'adma'=> 'Adama',
+        'info' => 'information',
+        'adma' => 'Adama',
     ];
 
     public function analyze(string $query): array
@@ -23,23 +23,23 @@ class QueryUnderstandingService
         $isAffirmative = $this->isAffirmative($normalized);
         $isFollowUp = $this->isFollowUp($normalized);
 
-        $searchQuery = ($excerptInfo['is_excerpt'] && !empty($excerptInfo['excerpt_text']))
+        $searchQuery = ($excerptInfo['is_excerpt'] && ! empty($excerptInfo['excerpt_text']))
             ? $excerptInfo['excerpt_text']
             : $this->cleanForSearch($normalized, $chapterNumber);
 
         return [
-            'original_query'    => $query,
-            'normalized_query'  => $searchQuery,
+            'original_query' => $query,
+            'normalized_query' => $searchQuery,
             'is_conversational' => $isConversational,
-            'is_entity_lookup'  => $isEntityLookup,
-            'is_affirmative'    => $isAffirmative,
-            'response_mode'     => $responseMode,
-            'is_follow_up'      => $isFollowUp,
-            'chapter_number'    => $chapterNumber ?? $excerptInfo['chapter_number'],
-            'page_number'       => $excerptInfo['page_number'],
-            'is_excerpt'        => $excerptInfo['is_excerpt'],
-            'excerpt_text'      => $excerptInfo['excerpt_text'],
-            'confidence'        => $normalized === $query ? 1.0 : 0.8,
+            'is_entity_lookup' => $isEntityLookup,
+            'is_affirmative' => $isAffirmative,
+            'response_mode' => $responseMode,
+            'is_follow_up' => $isFollowUp,
+            'chapter_number' => $chapterNumber ?? $excerptInfo['chapter_number'],
+            'page_number' => $excerptInfo['page_number'],
+            'is_excerpt' => $excerptInfo['is_excerpt'],
+            'excerpt_text' => $excerptInfo['excerpt_text'],
+            'confidence' => $normalized === $query ? 1.0 : 0.8,
         ];
     }
 
@@ -59,21 +59,22 @@ class QueryUnderstandingService
         // If nothing substantial remains but we know the chapter number, provide the canonical English title
         if (empty($clean) || strlen($clean) < 3) {
             $chapterTopics = [
-                1  => 'introduction smart city',
-                2  => 'smart governance',
-                3  => 'digital adama',
-                4  => 'smart security',
-                5  => 'smart urban design land use management',
-                6  => 'smart environment organic production',
-                7  => 'smart mobility',
-                8  => 'smart social services',
-                9  => 'smart tourism and culture',
+                1 => 'introduction smart city',
+                2 => 'smart governance',
+                3 => 'digital adama',
+                4 => 'smart security',
+                5 => 'smart urban design land use management',
+                6 => 'smart environment organic production',
+                7 => 'smart mobility',
+                8 => 'smart social services',
+                9 => 'smart tourism and culture',
                 10 => 'smart public relation knowledge management',
                 11 => 'smart people',
             ];
             if ($chapterNumber !== null && isset($chapterTopics[$chapterNumber])) {
                 return $chapterTopics[$chapterNumber];
             }
+
             return $query;
         }
 
@@ -103,7 +104,9 @@ class QueryUnderstandingService
         // Must be very short and purely conversational.
         // It should NOT catch factual queries like "mayor" or "Adama".
         $query = trim(mb_strtolower($query));
-        if (mb_strlen($query) > 50) return false;
+        if (mb_strlen($query) > 50) {
+            return false;
+        }
 
         $greetings = ['hi', 'hello', 'hey', 'good morning', 'good afternoon', 'good evening', 'thanks', 'thank you', 'hi there', 'hello there', 'selam', 'akkam', 'tena yistelegn', 'tadias'];
         $meta = ['who are you', 'summarize yourself', 'what can you do', 'help'];
@@ -151,6 +154,7 @@ class QueryUnderstandingService
             if (preg_match('/^(?:can you\s+)?(?:please\s+)?(?:give me|generate|make|create|start)?\s*(?:a\s+)?(?:quiz|test|trivia)\s*$/i', $query)) {
                 return 'CHAPTER_QUIZ_UNKNOWN';
             }
+
             return 'QUIZ';
         }
 
@@ -158,7 +162,7 @@ class QueryUnderstandingService
         $hasExcerptKeyword = preg_match('/\b(excerpt|quote)\b/i', $query);
         $chapterNum = $chapterNumber ?? $this->extractChapterNumber($query);
 
-        if ($chapterNum !== null && !$hasExcerptKeyword) {
+        if ($chapterNum !== null && ! $hasExcerptKeyword) {
             // If explicit chapter keyword is used (e.g. "chapter 11", "boqonnaa 7", "Smart Mobility (Boqonnaa 7)", "summarize chapter 11")
             if ($hasChapterKeyword) {
                 if (preg_match('/\b(summarize|summary|about|explain|tell me about|dive into|dive in|explore|read|teach|learn|start|discuss|overview|review|cover|what is in|what is|wa\'ee|waaye|waan|nati\s+himi|naaf\s+himi|naaf\s+ibsi|maalidha|maali|ibsa|ስለ|ንገረኝ|አስረዳኝ|ምንድን\s*ነው|ምንድነው)\b/iu', $query)
@@ -179,7 +183,7 @@ class QueryUnderstandingService
                     'smart people', 'smart mobility', 'smart transportation', 'smart security', 'smart governance',
                     'digital adama', 'smart environment', 'organic production', 'smart urban design', 'land use management',
                     'smart social services', 'smart social service', 'smart tourism and culture', 'smart tourism',
-                    'smart public relation', 'smart public relations', 'knowledge management'
+                    'smart public relation', 'smart public relations', 'knowledge management',
                 ];
                 foreach ($initiativePhrases as $ip) {
                     if (strcasecmp($stripped, $ip) === 0) {
@@ -192,7 +196,7 @@ class QueryUnderstandingService
                     return 'CHAPTER_SUMMARY';
                 }
             }
-        } elseif ($hasChapterKeyword && !$hasExcerptKeyword) {
+        } elseif ($hasChapterKeyword && ! $hasExcerptKeyword) {
             if (preg_match('/\b(summarize|summary|about|explain|tell me about|dive into|explore|read)\b/iu', $query)) {
                 return 'CHAPTER_SUMMARY_UNKNOWN';
             }
@@ -253,7 +257,7 @@ class QueryUnderstandingService
                     $excerptText = trim(end($quotes));
                 } elseif (count($quotes) === 1) {
                     $q = trim($quotes[0]);
-                    if (!preg_match('/^(?:chapter|ch)[-.\s]*\d+/i', $q)) {
+                    if (! preg_match('/^(?:chapter|ch)[-.\s]*\d+/i', $q)) {
                         $excerptText = $q;
                     }
                 }
@@ -269,10 +273,10 @@ class QueryUnderstandingService
         }
 
         return [
-            'is_excerpt'     => $isExcerpt,
-            'excerpt_text'   => $excerptText,
+            'is_excerpt' => $isExcerpt,
+            'excerpt_text' => $excerptText,
             'chapter_number' => $chapterNumber,
-            'page_number'    => $pageNumber,
+            'page_number' => $pageNumber,
         ];
     }
 
@@ -299,22 +303,22 @@ class QueryUnderstandingService
         }
 
         foreach ($map as $word => $num) {
-            if (preg_match('/\b(?:chapter|ch)[-.\s]*' . $word . '\b/i', $query) ||
-                preg_match('/\b' . $word . '\s*(?:chapter|ch\.?)\b/i', $query)) {
+            if (preg_match('/\b(?:chapter|ch)[-.\s]*'.$word.'\b/i', $query) ||
+                preg_match('/\b'.$word.'\s*(?:chapter|ch\.?)\b/i', $query)) {
                 return $num;
             }
         }
 
         // Match known Smart Adama initiative / chapter topics
         $initiativeMap = [
-            8  => ['smart social services', 'smart social service', 'social services', 'social service', 'smart health', 'smart education', 'smart utilities', 'smart utility'],
-            7  => ['smart mobility', 'smart transportation'],
-            6  => ['smart environment', 'organic production'],
-            5  => ['smart urban design', 'land use management'],
-            4  => ['smart security'],
-            3  => ['digital adama'],
-            2  => ['smart governance'],
-            9  => ['smart tourism and culture', 'smart tourism'],
+            8 => ['smart social services', 'smart social service', 'social services', 'social service', 'smart health', 'smart education', 'smart utilities', 'smart utility'],
+            7 => ['smart mobility', 'smart transportation'],
+            6 => ['smart environment', 'organic production'],
+            5 => ['smart urban design', 'land use management'],
+            4 => ['smart security'],
+            3 => ['digital adama'],
+            2 => ['smart governance'],
+            9 => ['smart tourism and culture', 'smart tourism'],
             10 => ['smart public relation', 'smart public relations', 'knowledge management'],
             11 => ['smart people'],
         ];
@@ -338,7 +342,7 @@ class QueryUnderstandingService
             'please', 'yes please', 'sure thing', 'go ahead', 'proceed',
             'continue', 'tell me', 'tell me more', 'let\'s do it', 'lets do it',
             'i would', 'i\'d like that', 'definitely', 'certainly', 'absolutely',
-            'dive deeper', 'yes dive deeper', 'explore', 'yes explore', 'yes tell me'
+            'dive deeper', 'yes dive deeper', 'explore', 'yes explore', 'yes tell me',
         ];
 
         return in_array($clean, $affirmatives, true);
@@ -366,7 +370,7 @@ class QueryUnderstandingService
             'go deeper', 'elaborate', 'elaborate please', 'can you elaborate',
             'what about it', 'what about that', 'what about this',
             'what does that mean', 'what does it mean', 'what do you mean',
-            'and then', 'and why', 'what else', 'more details please'
+            'and then', 'and why', 'what else', 'more details please',
         ];
 
         if (in_array($stripped, $pureFollowUps, true)) {

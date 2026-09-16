@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Api\V1\Users;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class AdminUserController extends Controller
 {
@@ -13,11 +13,11 @@ class AdminUserController extends Controller
     {
         $query = User::query()->withCount('quizAttempts');
 
-        if ($request->has('search') && !empty($request->search)) {
+        if ($request->has('search') && ! empty($request->search)) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('name', 'ilike', "%{$search}%")
-                  ->orWhere('email', 'ilike', "%{$search}%");
+                    ->orWhere('email', 'ilike', "%{$search}%");
             });
         }
 
@@ -35,12 +35,12 @@ class AdminUserController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $user->role,
-                'avatar' => $user->avatar_url ?: "https://ui-avatars.com/api/?name=" . urlencode($user->name) . "&background=F0F3FA&color=395886",
+                'avatar' => $user->avatar_url ?: 'https://ui-avatars.com/api/?name='.urlencode($user->name).'&background=F0F3FA&color=395886',
                 'registered' => $user->created_at->format('M j, Y'),
-                'progress' => $progress . '%',
+                'progress' => $progress.'%',
                 'status' => ucfirst($user->status ?? 'Active'),
                 'level' => $user->level,
-                'xp' => $user->xp
+                'xp' => $user->xp,
             ];
         });
 
@@ -50,7 +50,7 @@ class AdminUserController extends Controller
                 'current_page' => $users->currentPage(),
                 'last_page' => $users->lastPage(),
                 'total' => $users->total(),
-            ]
+            ],
         ]);
     }
 
@@ -66,7 +66,7 @@ class AdminUserController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $user->role,
-                'avatar' => $user->avatar_url ?: "https://ui-avatars.com/api/?name=" . urlencode($user->name) . "&background=F0F3FA&color=395886",
+                'avatar' => $user->avatar_url ?: 'https://ui-avatars.com/api/?name='.urlencode($user->name).'&background=F0F3FA&color=395886',
                 'registered' => $user->created_at->format('M j, Y'),
                 'status' => ucfirst($user->status ?? 'Active'),
                 'level' => $user->level,
@@ -74,7 +74,7 @@ class AdminUserController extends Controller
                 'overall_progress' => $progress,
                 'quiz_attempts' => $user->quizAttempts,
                 'chapter_progress' => $user->progress,
-            ]
+            ],
         ]);
     }
 
@@ -83,7 +83,7 @@ class AdminUserController extends Controller
         $request->validate([
             'email' => 'required|email|unique:users,email',
             'name' => 'required|string|max:255',
-            'role' => 'nullable|string'
+            'role' => 'nullable|string',
         ]);
 
         $user = User::create([
@@ -91,12 +91,12 @@ class AdminUserController extends Controller
             'email' => $request->email,
             'role' => $request->role ?? 'user',
             'password' => bcrypt(str()->random(16)),
-            'status' => 'active'
+            'status' => 'active',
         ]);
 
         return response()->json([
             'message' => 'User invited successfully.',
-            'user' => $user
+            'user' => $user,
         ], 201);
     }
 }

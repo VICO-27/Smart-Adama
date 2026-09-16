@@ -1,7 +1,6 @@
 <?php
 
 use App\Models\PersonalAccessToken;
-use App\Models\User;
 use Tests\TestCase;
 
 uses(TestCase::class);
@@ -20,7 +19,7 @@ it('returns null for an expired Supabase JWT', function () {
         'aud' => 'authenticated',
         'exp' => time() - 3600,
     ]));
-    $jwt = $header . '.' . $payload . '.dummy_signature';
+    $jwt = $header.'.'.$payload.'.dummy_signature';
 
     $token = PersonalAccessToken::findToken($jwt);
 

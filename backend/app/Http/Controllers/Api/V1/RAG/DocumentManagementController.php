@@ -33,7 +33,7 @@ class DocumentManagementController extends Controller
             });
 
         return response()->json([
-            'documents' => $books
+            'documents' => $books,
         ]);
     }
 

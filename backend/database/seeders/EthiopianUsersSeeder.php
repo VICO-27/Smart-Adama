@@ -2,12 +2,12 @@
 
 namespace Database\Seeders;
 
+use App\Models\Chapter;
+use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
-use App\Models\Chapter;
-use Carbon\Carbon;
 
 class EthiopianUsersSeeder extends Seeder
 {
@@ -18,13 +18,13 @@ class EthiopianUsersSeeder extends Seeder
             'Lidetu', 'Mulugeta', 'Nigussie', 'Oumer', 'Paulos', 'Qasim', 'Robel', 'Solomon', 'Tadesse', 'Yonas',
             'Zelalem', 'Ayantu', 'Birtukan', 'Chaltu', 'Desta', 'Emebet', 'Fasika', 'Genet', 'Hirut', 'Kalkidan',
             'Lemlem', 'Makda', 'Netsanet', 'Rahel', 'Selam', 'Tigist', 'Wubit', 'Yordanos', 'Zinash', 'Gadaa',
-            'Tolosa', 'Ibsa', 'Caalaa', 'Bonsa', 'Gutama', 'Kuma', 'Lensa', 'Urge', 'Ifa', 'Hawii'
+            'Tolosa', 'Ibsa', 'Caalaa', 'Bonsa', 'Gutama', 'Kuma', 'Lensa', 'Urge', 'Ifa', 'Hawii',
         ];
 
         $lastNames = [
             'Alemu', 'Balcha', 'Chala', 'Demissie', 'Endale', 'Feleke', 'Gessesse', 'Haile', 'Kebede', 'Lema',
             'Mekonnen', 'Nida', 'Oljira', 'Petros', 'Regassa', 'Samuel', 'Tesfaye', 'Urgessa', 'Wakjira', 'Yilma',
-            'Zewde', 'Assefa', 'Bogale', 'Derese', 'Fikadu', 'Gudina', 'Hundessa', 'Jiru', 'Kifle', 'Tulu'
+            'Zewde', 'Assefa', 'Bogale', 'Derese', 'Fikadu', 'Gudina', 'Hundessa', 'Jiru', 'Kifle', 'Tulu',
         ];
 
         $users = [];
@@ -41,7 +41,7 @@ class EthiopianUsersSeeder extends Seeder
             $l = $lastNames[array_rand($lastNames)];
             $name = "$f $l";
             // Randomly unique email
-            $email = strtolower($f . '.' . $l . '_' . Str::random(6) . '@example.com');
+            $email = strtolower($f.'.'.$l.'_'.Str::random(6).'@example.com');
 
             $status = $statuses[array_rand($statuses)];
             $userId = Str::uuid()->toString();
@@ -53,13 +53,13 @@ class EthiopianUsersSeeder extends Seeder
                 'password' => $password,
                 'role' => 'learner',
                 'status' => $status,
-                'avatar_url' => 'https://ui-avatars.com/api/?name=' . urlencode($name) . '&background=random',
+                'avatar_url' => 'https://ui-avatars.com/api/?name='.urlencode($name).'&background=random',
                 'created_at' => $now->clone()->subDays(mt_rand(1, 100)),
                 'updated_at' => $now,
             ];
 
             // Create progress for a random number of chapters
-            if (!empty($chapters)) {
+            if (! empty($chapters)) {
                 $completedCount = mt_rand(0, $totalChapters);
                 $chaptersCopy = $chapters;
                 shuffle($chaptersCopy);

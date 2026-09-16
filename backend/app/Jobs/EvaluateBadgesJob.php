@@ -19,12 +19,11 @@ class EvaluateBadgesJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries   = 3;
+    public int $tries = 3;
+
     public int $timeout = 60;
 
-    public function __construct(public readonly string $userId)
-    {
-    }
+    public function __construct(public readonly string $userId) {}
 
     public function handle(BadgeEvaluationService $service): void
     {
@@ -32,6 +31,7 @@ class EvaluateBadgesJob implements ShouldQueue
 
         if (! $user) {
             Log::warning('EvaluateBadgesJob: user not found', ['user_id' => $this->userId]);
+
             return;
         }
 
@@ -40,7 +40,7 @@ class EvaluateBadgesJob implements ShouldQueue
         if ($awarded->isNotEmpty()) {
             Log::info('EvaluateBadgesJob: awarded badges', [
                 'user_id' => $this->userId,
-                'badges'  => $awarded->pluck('code')->toArray(),
+                'badges' => $awarded->pluck('code')->toArray(),
             ]);
         }
     }
@@ -49,7 +49,7 @@ class EvaluateBadgesJob implements ShouldQueue
     {
         Log::error('EvaluateBadgesJob failed permanently', [
             'user_id' => $this->userId,
-            'error'   => $e->getMessage(),
+            'error' => $e->getMessage(),
         ]);
     }
 }

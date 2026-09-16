@@ -14,11 +14,11 @@ class QuizAttemptFactory extends Factory
     public function definition(): array
     {
         return [
-            'user_id'      => User::factory(),
-            'quiz_id'      => Quiz::factory(),
-            'score_pct'    => null,
-            'passed'       => false,
-            'started_at'   => now(),
+            'user_id' => User::factory(),
+            'quiz_id' => Quiz::factory(),
+            'score_pct' => null,
+            'passed' => false,
+            'started_at' => now(),
             'submitted_at' => null,
         ];
     }
@@ -29,8 +29,8 @@ class QuizAttemptFactory extends Factory
     public function submitted(float $scorePct = 100.0, bool $passed = true): static
     {
         return $this->state([
-            'score_pct'    => $scorePct,
-            'passed'       => $passed,
+            'score_pct' => $scorePct,
+            'passed' => $passed,
             'submitted_at' => now(),
         ]);
     }

@@ -18,11 +18,11 @@ use Illuminate\Support\Facades\Queue;
  */
 function publishedQuizWithSingleQuestion(?Chapter $chapter = null): array
 {
-    $chapter  = $chapter ?? Chapter::factory()->create();
-    $quiz     = Quiz::factory()->published()->create(['chapter_id' => $chapter->id, 'passing_score_pct' => 70]);
+    $chapter = $chapter ?? Chapter::factory()->create();
+    $quiz = Quiz::factory()->published()->create(['chapter_id' => $chapter->id, 'passing_score_pct' => 70]);
     $question = QuizQuestion::factory()->create(['quiz_id' => $quiz->id, 'type' => 'single']);
-    $correct  = QuizOption::factory()->correct()->create(['quiz_question_id' => $question->id]);
-    $wrong    = QuizOption::factory()->create(['quiz_question_id' => $question->id, 'is_correct' => false]);
+    $correct = QuizOption::factory()->correct()->create(['quiz_question_id' => $question->id]);
+    $wrong = QuizOption::factory()->create(['quiz_question_id' => $question->id, 'is_correct' => false]);
 
     return compact('quiz', 'question', 'correct', 'wrong', 'chapter');
 }
@@ -30,7 +30,7 @@ function publishedQuizWithSingleQuestion(?Chapter $chapter = null): array
 // ── GET /api/v1/chapters/{chapter}/quiz ───────────────────────────────────────
 
 it('learner can fetch a published quiz for a chapter without correct-answer flags', function () {
-    $user    = User::factory()->create();
+    $user = User::factory()->create();
     ['quiz' => $quiz, 'chapter' => $chapter] = publishedQuizWithSingleQuestion();
 
     $response = $this->actingAs($user)
@@ -47,7 +47,7 @@ it('learner can fetch a published quiz for a chapter without correct-answer flag
 });
 
 it('returns null quiz when chapter has no published quiz', function () {
-    $user    = User::factory()->create();
+    $user = User::factory()->create();
     $chapter = Chapter::factory()->create();
     // Draft quiz — should not be visible to learner
     Quiz::factory()->create(['chapter_id' => $chapter->id, 'status' => 'draft']);
@@ -59,14 +59,14 @@ it('returns null quiz when chapter has no published quiz', function () {
 });
 
 it('returns best_attempt when user has a prior submission', function () {
-    $user    = User::factory()->create();
+    $user = User::factory()->create();
     ['quiz' => $quiz, 'chapter' => $chapter] = publishedQuizWithSingleQuestion();
 
     QuizAttempt::factory()->create([
-        'user_id'      => $user->id,
-        'quiz_id'      => $quiz->id,
-        'score_pct'    => 80,
-        'passed'       => true,
+        'user_id' => $user->id,
+        'quiz_id' => $quiz->id,
+        'score_pct' => 80,
+        'passed' => true,
         'submitted_at' => now(),
     ]);
 
@@ -128,8 +128,8 @@ it('learner can submit an attempt and receives graded results', function () {
     ['quiz' => $quiz, 'question' => $q, 'correct' => $correct] = publishedQuizWithSingleQuestion();
 
     $attempt = QuizAttempt::factory()->create([
-        'user_id'    => $user->id,
-        'quiz_id'    => $quiz->id,
+        'user_id' => $user->id,
+        'quiz_id' => $quiz->id,
         'started_at' => now(),
     ]);
 
@@ -153,8 +153,8 @@ it('graded results include per-question correctness and explanation', function (
     ['quiz' => $quiz, 'question' => $q, 'correct' => $correct] = publishedQuizWithSingleQuestion();
 
     $attempt = QuizAttempt::factory()->create([
-        'user_id'    => $user->id,
-        'quiz_id'    => $quiz->id,
+        'user_id' => $user->id,
+        'quiz_id' => $quiz->id,
         'started_at' => now(),
     ]);
 
@@ -180,8 +180,8 @@ it('score is 0 and not passed when all answers are wrong', function () {
     ['quiz' => $quiz, 'question' => $q, 'wrong' => $wrong] = publishedQuizWithSingleQuestion();
 
     $attempt = QuizAttempt::factory()->create([
-        'user_id'    => $user->id,
-        'quiz_id'    => $quiz->id,
+        'user_id' => $user->id,
+        'quiz_id' => $quiz->id,
         'started_at' => now(),
     ]);
 
@@ -200,13 +200,13 @@ it('score is 0 and not passed when all answers are wrong', function () {
 it('passing triggers chapter completion and EvaluateBadgesJob (Req 9.5, 11.1)', function () {
     Queue::fake();
 
-    $user    = User::factory()->create();
+    $user = User::factory()->create();
     $chapter = Chapter::factory()->create();
     ['quiz' => $quiz, 'question' => $q, 'correct' => $correct] = publishedQuizWithSingleQuestion($chapter);
 
     $attempt = QuizAttempt::factory()->create([
-        'user_id'    => $user->id,
-        'quiz_id'    => $quiz->id,
+        'user_id' => $user->id,
+        'quiz_id' => $quiz->id,
         'started_at' => now(),
     ]);
 
@@ -221,8 +221,8 @@ it('passing triggers chapter completion and EvaluateBadgesJob (Req 9.5, 11.1)', 
 
     // Chapter marked complete in user_progress (Req 10.1)
     $this->assertDatabaseHas('user_progress', [
-        'user_id'      => $user->id,
-        'chapter_id'   => $chapter->id,
+        'user_id' => $user->id,
+        'chapter_id' => $chapter->id,
         'is_completed' => true,
     ]);
 
@@ -233,13 +233,13 @@ it('passing triggers chapter completion and EvaluateBadgesJob (Req 9.5, 11.1)', 
 it('failing does not trigger chapter completion or badge evaluation', function () {
     Queue::fake();
 
-    $user    = User::factory()->create();
+    $user = User::factory()->create();
     $chapter = Chapter::factory()->create();
     ['quiz' => $quiz, 'question' => $q, 'wrong' => $wrong] = publishedQuizWithSingleQuestion($chapter);
 
     $attempt = QuizAttempt::factory()->create([
-        'user_id'    => $user->id,
-        'quiz_id'    => $quiz->id,
+        'user_id' => $user->id,
+        'quiz_id' => $quiz->id,
         'started_at' => now(),
     ]);
 
@@ -253,7 +253,7 @@ it('failing does not trigger chapter completion or badge evaluation', function (
         ->assertJsonPath('attempt.passed', false);
 
     $this->assertDatabaseMissing('user_progress', [
-        'user_id'    => $user->id,
+        'user_id' => $user->id,
         'chapter_id' => $chapter->id,
     ]);
 
@@ -263,7 +263,7 @@ it('failing does not trigger chapter completion or badge evaluation', function (
 it('retaking a quiz stores best score in user_progress (Req 9.4)', function () {
     Queue::fake();
 
-    $user    = User::factory()->create();
+    $user = User::factory()->create();
     $chapter = Chapter::factory()->create();
     ['quiz' => $quiz, 'question' => $q, 'correct' => $correct] = publishedQuizWithSingleQuestion($chapter);
 
@@ -293,9 +293,9 @@ it('cannot submit an already-submitted attempt', function () {
     ['quiz' => $quiz, 'question' => $q, 'correct' => $correct] = publishedQuizWithSingleQuestion();
 
     $attempt = QuizAttempt::factory()->create([
-        'user_id'      => $user->id,
-        'quiz_id'      => $quiz->id,
-        'started_at'   => now(),
+        'user_id' => $user->id,
+        'quiz_id' => $quiz->id,
+        'started_at' => now(),
         'submitted_at' => now(), // already submitted
     ]);
 
@@ -312,13 +312,13 @@ it('cannot submit an already-submitted attempt', function () {
 it('cannot submit another user\'s attempt', function () {
     Queue::fake();
 
-    $user  = User::factory()->create();
+    $user = User::factory()->create();
     $other = User::factory()->create();
     ['quiz' => $quiz, 'question' => $q, 'correct' => $correct] = publishedQuizWithSingleQuestion();
 
     $attempt = QuizAttempt::factory()->create([
-        'user_id'    => $other->id,
-        'quiz_id'    => $quiz->id,
+        'user_id' => $other->id,
+        'quiz_id' => $quiz->id,
         'started_at' => now(),
     ]);
 
@@ -344,8 +344,8 @@ it('lists all quiz attempts for the authenticated user', function () {
     ['quiz' => $quiz] = publishedQuizWithSingleQuestion();
 
     QuizAttempt::factory()->count(3)->create([
-        'user_id'      => $user->id,
-        'quiz_id'      => $quiz->id,
+        'user_id' => $user->id,
+        'quiz_id' => $quiz->id,
         'submitted_at' => now(),
     ]);
 
@@ -355,12 +355,12 @@ it('lists all quiz attempts for the authenticated user', function () {
         ->assertJsonCount(3, 'attempts')
         ->assertJsonStructure([
             'attempts' => [['id', 'quiz_id', 'quiz_title', 'score_pct', 'passed', 'submitted_at']],
-            'meta'     => ['current_page', 'last_page', 'total'],
+            'meta' => ['current_page', 'last_page', 'total'],
         ]);
 });
 
 it('does not list quiz attempts belonging to other users', function () {
-    $user  = User::factory()->create();
+    $user = User::factory()->create();
     $other = User::factory()->create();
     ['quiz' => $quiz] = publishedQuizWithSingleQuestion();
 

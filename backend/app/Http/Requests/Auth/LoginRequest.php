@@ -15,9 +15,9 @@ class LoginRequest extends FormRequest
     {
         return [
             'identifier' => ['required_without:email', 'string'],
-            'email'      => ['required_without:identifier', 'string'],
+            'email' => ['required_without:identifier', 'string'],
             'credential' => ['required_without:password', 'string'],
-            'password'   => ['required_without:credential', 'string'],
+            'password' => ['required_without:credential', 'string'],
         ];
     }
 }

@@ -10,7 +10,7 @@ return new class extends Migration
     {
         // Safely recreate the table with uuidMorphs to fix the bigint crash
         Schema::dropIfExists('personal_access_tokens');
-        
+
         Schema::create('personal_access_tokens', function (Blueprint $table) {
             $table->id();
             $table->uuidMorphs('tokenable');

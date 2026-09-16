@@ -17,11 +17,11 @@ return new class extends Migration
         ");
 
         // Add a GIN index on the new column
-        DB::statement("
+        DB::statement('
             CREATE INDEX content_chunks_search_vector_gin_idx 
             ON content_chunks 
             USING GIN (search_vector)
-        ");
+        ');
     }
 
     public function down(): void

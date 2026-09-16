@@ -4,9 +4,9 @@ namespace App\Services\Progress;
 
 use App\Models\Book;
 use App\Models\Chapter;
+use App\Models\QuizAttempt;
 use App\Models\User;
 use App\Models\UserProgress;
-use App\Models\QuizAttempt;
 use Illuminate\Support\Facades\Cache;
 
 class ProgressService
@@ -35,11 +35,11 @@ class ProgressService
 
         $progress->update([
             'reading_progress' => $readingProgress,
-            'last_page'        => $lastPage ?? $progress->last_page,
-            'status'           => $status,
-            'started_at'       => $progress->started_at ?? now(),
-            'last_read_at'     => now(),
-            'completed_at'     => $status === 'COMPLETED' ? ($progress->completed_at ?? now()) : null,
+            'last_page' => $lastPage ?? $progress->last_page,
+            'status' => $status,
+            'started_at' => $progress->started_at ?? now(),
+            'last_read_at' => now(),
+            'completed_at' => $status === 'COMPLETED' ? ($progress->completed_at ?? now()) : null,
         ]);
 
         $this->invalidateDashboardCache($user->id);
@@ -67,15 +67,15 @@ class ProgressService
 
         if ($readingProgress >= 100) {
             $status = 'COMPLETED';
-        } else if ($status === 'NOT_STARTED') {
+        } elseif ($status === 'NOT_STARTED') {
             $status = 'IN_PROGRESS';
         }
 
         $progress->update([
             'best_quiz_score_pct' => $bestScore,
-            'status'              => $status,
-            'completed_at'        => $status === 'COMPLETED' ? ($progress->completed_at ?? now()) : null,
-            'last_read_at'        => now(),
+            'status' => $status,
+            'completed_at' => $status === 'COMPLETED' ? ($progress->completed_at ?? now()) : null,
+            'last_read_at' => now(),
         ]);
 
         $this->invalidateDashboardCache($user->id);
@@ -127,6 +127,7 @@ class ProgressService
             // Chapter-by-chapter progress
             $chapterProgress = $canonicalChapterIds->map(function ($chapterId) use ($progressRecords) {
                 $record = $progressRecords->firstWhere('chapter_id', $chapterId);
+
                 return [
                     'chapter_id' => $chapterId,
                     'status' => $record ? $record->status : 'NOT_STARTED',
@@ -138,12 +139,12 @@ class ProgressService
             return [
                 'overallPercentage' => $overallPercentage,
                 'completedChapters' => $completedChapters,
-                'totalChapters'     => $totalChapters,
-                'currentChapter'    => $currentChapter ? $currentChapter->toArray() : null,
-                'currentPosition'   => $currentPosition,
-                'chapterProgress'   => $chapterProgress,
-                'averageQuizScore'  => $avgScore ? round($avgScore, 1) : null,
-                'quizzesCompleted'  => $quizzesCompleted,
+                'totalChapters' => $totalChapters,
+                'currentChapter' => $currentChapter ? $currentChapter->toArray() : null,
+                'currentPosition' => $currentPosition,
+                'chapterProgress' => $chapterProgress,
+                'averageQuizScore' => $avgScore ? round($avgScore, 1) : null,
+                'quizzesCompleted' => $quizzesCompleted,
             ];
         });
     }

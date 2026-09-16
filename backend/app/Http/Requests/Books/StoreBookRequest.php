@@ -14,7 +14,7 @@ class StoreBookRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'title'    => ['required', 'string', 'min:2', 'max:255'],
+            'title' => ['required', 'string', 'min:2', 'max:255'],
             'manuscript' => [
                 'nullable',
                 'file',

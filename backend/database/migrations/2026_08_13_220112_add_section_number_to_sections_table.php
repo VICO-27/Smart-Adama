@@ -16,7 +16,7 @@ return new class extends Migration
             // Add section_number column - nullable initially for backward compatibility
             $table->string('section_number')->nullable()->after('title');
         });
-        
+
         // Create unique index on chapter_id + section_number
         // In PostgreSQL, NULL values are not considered equal, so multiple rows can have NULL
         DB::statement('

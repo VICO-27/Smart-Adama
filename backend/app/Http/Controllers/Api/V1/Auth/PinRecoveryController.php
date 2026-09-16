@@ -21,19 +21,19 @@ class PinRecoveryController extends Controller
 
         $normalizedPhone = PhoneNormalizer::normalize($request->phone_number);
 
-        if (!$normalizedPhone) {
+        if (! $normalizedPhone) {
             return response()->json(['fallback' => 'help_center']);
         }
 
         $user = User::where('phone_number', $normalizedPhone)->first();
 
-        if (!$user) {
+        if (! $user) {
             // Do not reveal if phone exists or not to prevent enumeration,
             // but for a UX requiring explicit fallback, we can return the fallback.
             return response()->json(['fallback' => 'help_center']);
         }
 
-        if (!$user->email) {
+        if (! $user->email) {
             return response()->json(['fallback' => 'help_center']);
         }
 
@@ -49,12 +49,12 @@ class PinRecoveryController extends Controller
         // Send email
         Mail::raw("Your Smart Adama PIN reset code is: {$code}", function ($message) use ($user) {
             $message->to($user->email)
-                    ->subject('Smart Adama - PIN Reset Code');
+                ->subject('Smart Adama - PIN Reset Code');
         });
 
         return response()->json([
             'masked_email' => $user->masked_email,
-            'message' => 'Code sent successfully.'
+            'message' => 'Code sent successfully.',
         ]);
     }
 
@@ -62,14 +62,14 @@ class PinRecoveryController extends Controller
     {
         $request->validate([
             'phone_number' => 'required|string',
-            'code' => 'required|digits:6'
+            'code' => 'required|digits:6',
         ]);
 
         $normalizedPhone = PhoneNormalizer::normalize($request->phone_number);
 
-        if (!$normalizedPhone) {
+        if (! $normalizedPhone) {
             throw ValidationException::withMessages([
-                'code' => ['The provided reset code is incorrect or expired.']
+                'code' => ['The provided reset code is incorrect or expired.'],
             ]);
         }
 
@@ -77,20 +77,20 @@ class PinRecoveryController extends Controller
             ->where('phone_number', $normalizedPhone)
             ->first();
 
-        if (!$record || !Hash::check($request->code, $record->token)) {
+        if (! $record || ! Hash::check($request->code, $record->token)) {
             throw ValidationException::withMessages([
-                'code' => ['The provided reset code is incorrect or expired.']
+                'code' => ['The provided reset code is incorrect or expired.'],
             ]);
         }
 
         // Generate a temporary signature for the final step
         $signature = Str::random(60);
-        
+
         // Cache the signature for 15 minutes
-        cache()->put('pin_reset_sig_' . $normalizedPhone, $signature, now()->addMinutes(15));
+        cache()->put('pin_reset_sig_'.$normalizedPhone, $signature, now()->addMinutes(15));
 
         return response()->json([
-            'signature' => $signature
+            'signature' => $signature,
         ]);
     }
 
@@ -101,34 +101,34 @@ class PinRecoveryController extends Controller
             'signature' => 'required|string',
             'pin' => 'required|digits:6|confirmed|not_in:000000,111111,222222,333333,444444,555555,666666,777777,888888,999999,123456,654321,987654',
         ], [
-            'pin.not_in' => 'This PIN is too common. Please choose a more secure PIN.'
+            'pin.not_in' => 'This PIN is too common. Please choose a more secure PIN.',
         ]);
 
         $normalizedPhone = PhoneNormalizer::normalize($request->phone_number);
-        
-        if (!$normalizedPhone) {
+
+        if (! $normalizedPhone) {
             throw ValidationException::withMessages([
-                'signature' => ['Invalid or expired reset session.']
+                'signature' => ['Invalid or expired reset session.'],
             ]);
         }
 
-        $cachedSignature = cache()->get('pin_reset_sig_' . $normalizedPhone);
+        $cachedSignature = cache()->get('pin_reset_sig_'.$normalizedPhone);
 
-        if (!$cachedSignature || $cachedSignature !== $request->signature) {
+        if (! $cachedSignature || $cachedSignature !== $request->signature) {
             throw ValidationException::withMessages([
-                'signature' => ['Invalid or expired reset session.']
+                'signature' => ['Invalid or expired reset session.'],
             ]);
         }
 
         $user = User::where('phone_number', $normalizedPhone)->firstOrFail();
-        
+
         $user->password = Hash::make($request->pin);
         $user->save();
 
         // Clear tokens and signature
         DB::table('pin_reset_tokens')->where('phone_number', $normalizedPhone)->delete();
-        cache()->forget('pin_reset_sig_' . $normalizedPhone);
-        
+        cache()->forget('pin_reset_sig_'.$normalizedPhone);
+
         // Clear all current user sessions/tokens
         $user->tokens()->delete();
 

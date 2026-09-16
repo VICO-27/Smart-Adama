@@ -21,7 +21,7 @@ it('keys rate limiting by user id when authenticated', function () {
     $user = new User(['name' => 'Alice', 'email' => 'alice@test.com']);
     $user->id = 1;
 
-    $middleware = new ThrottleChat();
+    $middleware = new ThrottleChat;
 
     $request = Request::create('/api/global-chat', 'POST');
     $request->setUserResolver(fn () => $user);
@@ -43,7 +43,7 @@ it('keys rate limiting by user id when authenticated', function () {
 });
 
 it('keys rate limiting by client IP when unauthenticated (guest)', function () {
-    $middleware = new ThrottleChat();
+    $middleware = new ThrottleChat;
 
     $request = Request::create('/api/global-chat', 'POST', [], [], [], ['REMOTE_ADDR' => '127.0.0.1']);
     $request->setUserResolver(fn () => null);

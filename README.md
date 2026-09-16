@@ -35,6 +35,9 @@ Built for students, urban planners, municipal administrators, and citizens of Ad
 
 ---
 
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/1ae1a9dc-c90d-413d-a41a-8ca85de39963" />
+
+
 ## ✨ Key Features
 
 - **📚 Digital Book & Chapter Reader** — non-linear navigation, markdown rendering, live reading-progress sync (0–100%)
@@ -99,6 +102,9 @@ rrf_score = (chapter_match ? 0.35 : 0)
 
 ---
 
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/4e3f5bc3-b7ba-4fe3-bd0e-ed88e2c8710c" />
+
+
 ## 🚀 Getting Started
 
 ### Prerequisites
@@ -142,6 +148,9 @@ npm run dev -- --port=5173
 Full variable reference lives in `docs/` — no secrets are committed to this repository.
 
 ---
+
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/bfed13ac-c049-4041-81ba-19aa6c6ebe2f" />
+
 
 ## 📡 API Documentation
 
@@ -191,6 +200,10 @@ See [`docs/API.md`](docs/API.md) for the complete route reference.
 
 ---
 
+
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/b12af6c0-8b76-4118-90a7-6b5c72003bb7" />
+
+
 ## 🔐 Security
 
 - Dual-layer auth: Supabase JWT (RS256) ↔ Laravel Sanctum bridge with auto-provisioning
@@ -216,6 +229,9 @@ Mobile-first with swipe-dismiss chat drawers, shrink-wrapped assistant panels, a
 
 ---
 
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/85bdc77a-5d90-4439-8cfc-322fd79b58f6" />
+
+
 ## 👥 Team
 
 | Name | Role |
@@ -237,3 +253,6 @@ This project is developed as part of a university engineering internship in part
 **Built with ❤️ for Adama City**
 
 </div>
+
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/ab30b421-59b8-4ff1-b71a-259dc204d2d8" />
+

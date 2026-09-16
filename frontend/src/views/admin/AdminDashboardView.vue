@@ -10,7 +10,7 @@ const chartFill = ref('')
 const chartLineBlue = ref('')
 const chartLinePurple = ref('')
 const chartLineEmerald = ref('')
-const loaded = ref(false)
+const loaded = ref(true)
 
 // Real Data State
 const dataEmerald = ref<number[]>([]) // Users
@@ -69,9 +69,9 @@ const fetchAnalytics = async () => {
     }
 
     generateChartData()
-    setTimeout(() => {
-      loaded.value = true
-    }, 100)
+    
+      
+    
 
   } catch (e) {
     console.error('Failed to load dashboard stats', e)
@@ -149,7 +149,7 @@ const getHoverY = (val: number) => {
   <div class="space-y-8 pb-12 w-full max-w-7xl mx-auto">
     <!-- 1. The Global Command Hero Section -->
     <div
-      class="bg-white/60 dark:bg-slate-900/80 backdrop-blur-2xl border border-white/40 dark:border-slate-800/80 shadow-[0_12px_40px_rgba(0,0,0,0.06)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.4)] rounded-[40px] p-8 lg:p-10 w-full mb-8 relative overflow-hidden transition-all duration-700 transform"
+      class="bg-white/60 dark:bg-slate-900/80 backdrop-blur-2xl border border-white/40 dark:border-slate-800/80 shadow-[0_12px_40px_rgba(0,0,0,0.06)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.4)] rounded-[40px] p-8 lg:p-10 w-full mb-8 relative overflow-hidden transition-all duration-300 transform"
       :class="loaded ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'"
     >
       <!-- Header -->
@@ -208,7 +208,7 @@ const getHoverY = (val: number) => {
           <path
             :d="chartFill"
             fill="url(#blueGradient)"
-            class="transition-all duration-700 ease-in-out origin-bottom pointer-events-none"
+            class="transition-all duration-300 ease-in-out origin-bottom pointer-events-none"
             :class="loaded ? 'scale-y-100 opacity-100' : 'scale-y-0 opacity-0'"
           />
 
@@ -219,7 +219,7 @@ const getHoverY = (val: number) => {
             stroke="#8B5CF6"
             stroke-width="3"
             stroke-linecap="round"
-            class="transition-all duration-700 ease-in-out drop-shadow-[0_4px_12px_rgba(139,92,246,0.3)] pointer-events-none"
+            class="transition-all duration-300 ease-in-out drop-shadow-[0_4px_12px_rgba(139,92,246,0.3)] pointer-events-none"
           />
 
           <!-- Emerald Line (Users) -->
@@ -229,7 +229,7 @@ const getHoverY = (val: number) => {
             stroke="#10B981"
             stroke-width="3"
             stroke-linecap="round"
-            class="transition-all duration-700 ease-in-out drop-shadow-[0_4px_12px_rgba(16,185,129,0.3)] pointer-events-none"
+            class="transition-all duration-300 ease-in-out drop-shadow-[0_4px_12px_rgba(16,185,129,0.3)] pointer-events-none"
           />
 
           <!-- Blue Line (Queries) -->
@@ -239,7 +239,7 @@ const getHoverY = (val: number) => {
             stroke="#3B82F6"
             stroke-width="4"
             stroke-linecap="round"
-            class="transition-all duration-700 ease-in-out drop-shadow-[0_6px_16px_rgba(59,130,246,0.4)] pointer-events-none"
+            class="transition-all duration-300 ease-in-out drop-shadow-[0_6px_16px_rgba(59,130,246,0.4)] pointer-events-none"
           />
 
           <!-- Hover Target Zones (Invisible but catch mouse events) -->
@@ -330,7 +330,7 @@ const getHoverY = (val: number) => {
 
       <!-- Card 1 -->
       <div
-        class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-white/60 dark:border-slate-800/80 rounded-[32px] p-6 shadow-sm transition-all duration-700 transform delay-100 hover:-translate-y-1 hover:shadow-md"
+        class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-white/60 dark:border-slate-800/80 rounded-[32px] p-6 shadow-sm transition-all duration-300 transform  hover:-translate-y-1 hover:shadow-md"
         :class="loaded ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'"
       >
         <div class="flex items-center justify-between mb-4">
@@ -350,7 +350,7 @@ const getHoverY = (val: number) => {
 
       <!-- Card 2 -->
       <div
-        class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-white/60 dark:border-slate-800/80 rounded-[32px] p-6 shadow-sm transition-all duration-700 transform delay-200 hover:-translate-y-1 hover:shadow-md"
+        class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-white/60 dark:border-slate-800/80 rounded-[32px] p-6 shadow-sm transition-all duration-300 transform  hover:-translate-y-1 hover:shadow-md"
         :class="loaded ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'"
       >
         <div class="flex items-center justify-between mb-4">
@@ -365,7 +365,7 @@ const getHoverY = (val: number) => {
 
       <!-- Card 3 -->
       <div
-        class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-white/60 dark:border-slate-800/80 rounded-[32px] p-6 shadow-sm transition-all duration-700 transform delay-300 hover:-translate-y-1 hover:shadow-md"
+        class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-white/60 dark:border-slate-800/80 rounded-[32px] p-6 shadow-sm transition-all duration-300 transform  hover:-translate-y-1 hover:shadow-md"
         :class="loaded ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'"
       >
         <div class="flex items-center justify-between mb-4">
@@ -380,7 +380,7 @@ const getHoverY = (val: number) => {
 
       <!-- Card 4 -->
       <div
-        class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-white/60 dark:border-slate-800/80 rounded-[32px] p-6 shadow-sm transition-all duration-700 transform delay-400 hover:-translate-y-1 hover:shadow-md relative overflow-hidden"
+        class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-white/60 dark:border-slate-800/80 rounded-[32px] p-6 shadow-sm transition-all duration-300 transform  hover:-translate-y-1 hover:shadow-md relative overflow-hidden"
         :class="loaded ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'"
       >
         <div class="absolute inset-0 bg-gradient-to-br from-amber-500/5 to-red-500/5 dark:from-amber-500/10 dark:to-red-500/10 pointer-events-none"></div>

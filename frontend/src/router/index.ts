@@ -3,24 +3,24 @@ import { useAuthStore } from '@/stores/auth'
 
 import LandingView from '@/views/LandingView.vue'
 import OAuthCallbackView from '@/views/auth/OAuthCallbackView.vue'
-import DashboardView from '@/views/DashboardView.vue'
-import ProfileView from '@/views/ProfileView.vue'
-import ChatView from '@/views/ChatView.vue'
-import ChapterView from '@/views/ChapterView.vue'
-import QuizView from '@/views/QuizView.vue'
-import QuizzesView from '@/views/QuizzesView.vue'
-import AboutView from '@/views/AboutView.vue'
-import AdminDocumentManager from '@/views/admin/AdminDocumentManager.vue'
-import AdminQuizView from '@/views/admin/AdminQuizView.vue'
-import AdminChapterEditor from '@/views/admin/AdminChapterEditor.vue'
-import AdminRetrievalDebugger from '@/views/admin/AdminRetrievalDebugger.vue'
-import AdminLayout from '@/views/admin/AdminLayout.vue'
-import AdminDashboardView from '@/views/admin/AdminDashboardView.vue'
-import AdminSystemHealthView from '@/views/admin/AdminSystemHealthView.vue'
-import AdminUsersView from '@/views/admin/AdminUsersView.vue'
-import AdminAiSettingsView from '@/views/admin/AdminAiSettingsView.vue'
-import NotFoundView from '@/views/NotFoundView.vue'
-import GameView from '@/views/GameView.vue'
+const DashboardView = () => import('@/views/DashboardView.vue')
+const ProfileView = () => import('@/views/ProfileView.vue')
+const ChatView = () => import('@/views/ChatView.vue')
+const ChapterView = () => import('@/views/ChapterView.vue')
+const QuizView = () => import('@/views/QuizView.vue')
+const QuizzesView = () => import('@/views/QuizzesView.vue')
+const AboutView = () => import('@/views/AboutView.vue')
+const AdminDocumentManager = () => import("@/views/admin/AdminDocumentManager.vue")
+const AdminQuizView = () => import('@/views/admin/AdminQuizView.vue')
+const AdminChapterEditor = () => import('@/views/admin/AdminChapterEditor.vue')
+const AdminRetrievalDebugger = () => import('@/views/admin/AdminRetrievalDebugger.vue')
+const AdminLayout = () => import('@/views/admin/AdminLayout.vue')
+const AdminDashboardView = () => import('@/views/admin/AdminDashboardView.vue')
+const AdminSystemHealthView = () => import('@/views/admin/AdminSystemHealthView.vue')
+const AdminUsersView = () => import('@/views/admin/AdminUsersView.vue')
+const AdminAiSettingsView = () => import('@/views/admin/AdminAiSettingsView.vue')
+const NotFoundView = () => import('@/views/NotFoundView.vue')
+const GameView = () => import('@/views/GameView.vue')
 
 const routes: RouteRecordRaw[] = [
   {

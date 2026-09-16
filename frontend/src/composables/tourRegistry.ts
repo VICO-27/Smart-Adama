@@ -7,117 +7,102 @@ export const homeTour: TourDefinition = {
       target: 'body',
       title: 'tour.home.step1.title',
       content: 'tour.home.step1.content',
-      placement: 'center'
+      placement: 'center',
     },
     {
-      target: '.smart-navbar',
+      target: '[data-tour="nav"]',
       title: 'tour.home.step2.title',
       content: 'tour.home.step2.content',
-      placement: 'bottom'
+      placement: 'bottom',
     },
     {
-      target: 'a.app-nav-link[href="/study"], .mobile-menu-button',
+      target: '[data-tour="study-link"]',
       title: 'tour.home.step3.title',
       content: 'tour.home.step3.content',
-      placement: 'bottom'
+      placement: 'bottom',
+      gesture: 'tap',
     },
     {
-      target: '.assistant-toggle',
+      target: '[data-tour="ai-toggle"]',
       title: 'tour.home.step4.title',
       content: 'tour.home.step4.content',
-      placement: 'left'
+      placement: 'left',
+      gesture: 'tap',
     },
     {
-      target: '.momentum-section',
+      target: '[data-tour="momentum"]',
       title: 'tour.home.step5.title',
       content: 'tour.home.step5.content',
-      placement: 'top'
-    }
-  ]
+      placement: 'top',
+    },
+  ],
 }
 
 export const studyTour: TourDefinition = {
   id: 'study',
   steps: [
     {
-      target: '.reader-main',
+      target: '[data-tour="reader"]',
       title: 'tour.study.step1.title',
       content: 'tour.study.step1.content',
-      placement: 'left'
+      placement: 'center',
     },
     {
-      target: '.sidebar-tab-switcher button:nth-child(2), .rail-button[title="Chapters"]',
+      target: '[data-tour="chapters"]',
       title: 'tour.study.step2.title',
       content: 'tour.study.step2.content',
       placement: 'right',
+      gesture: 'tap',
       onBeforeShow: async () => {
-        const chaptersTab = document.querySelectorAll('.sidebar-tab-switcher button')[1] as HTMLButtonElement
-        if (chaptersTab) chaptersTab.click()
-
-        const chaptersRailBtn = document.querySelector('.rail-button[title="Chapters"]') as HTMLButtonElement
-        if (chaptersRailBtn) chaptersRailBtn.click()
-
+        const chaptersBtn = document.querySelector<HTMLButtonElement>('[data-tour="chapters"]')
+        if (chaptersBtn) chaptersBtn.click()
         if (window.innerWidth < 768) {
-          const btn = document.querySelector('.mobile-sidebar-toggle[title="Open sidebar"]') as HTMLButtonElement
-          if (btn) btn.click()
+          const mobileToggle = document.querySelector<HTMLButtonElement>('.mobile-sidebar-toggle[title="Open sidebar"]')
+          if (mobileToggle) mobileToggle.click()
         }
-      }
+      },
     },
     {
-      target: '.reader-scroll',
+      target: '[data-tour="reader"]',
       title: 'tour.study.step3.title',
       content: 'tour.study.step3.content',
       placement: 'center',
+      gesture: 'scroll',
       onBeforeShow: async () => {
         if (window.innerWidth < 768) {
-          const backdrop = document.querySelector('.mobile-backdrop') as HTMLButtonElement
+          const backdrop = document.querySelector<HTMLButtonElement>('.mobile-backdrop')
           if (backdrop) backdrop.click()
         }
-      }
+      },
     },
     {
-      target: '.ai-fab-ring',
+      target: '[data-tour="study-ai"]',
       title: 'tour.study.step4.title',
       content: 'tour.study.step4.content',
       placement: 'left',
-      onBeforeShow: async () => {
-        if (window.innerWidth < 768) {
-          const aiToggle = document.querySelector('button[title="Open AI assistant"]') as HTMLButtonElement
-          if (aiToggle) aiToggle.click()
-        }
-      }
+      gesture: 'tap',
     },
     {
-      target: '.ai-composer',
+      target: '[data-tour="ai-composer"]',
       title: 'tour.study.step5.title',
       content: 'tour.study.step5.content',
       placement: 'top',
-      onBeforeShow: async () => {
-        const chatsTab = document.querySelector('.sidebar-tab-switcher button:first-child') as HTMLButtonElement
-        if (chatsTab) chatsTab.click()
-        if (window.innerWidth < 768) {
-          const aiToggle = document.querySelector('button[title="Open AI assistant"]') as HTMLButtonElement
-          if (aiToggle) aiToggle.click()
-        }
-      }
     },
     {
-      target: '.chapter-quiz-link, .take-quiz-btn',
+      target: '[data-tour="quiz"]',
       title: 'tour.study.step6.title',
       content: 'tour.study.step6.content',
       placement: 'right',
+      gesture: 'tap',
       onBeforeShow: async () => {
-        const chaptersTab = document.querySelectorAll('.sidebar-tab-switcher button')[1] as HTMLButtonElement
-        if (chaptersTab) chaptersTab.click()
-
-        const chaptersRailBtn = document.querySelector('.rail-button[title="Chapters"]') as HTMLButtonElement
-        if (chaptersRailBtn) chaptersRailBtn.click()
-
+        const chaptersBtn = document.querySelector<HTMLButtonElement>('[data-tour="chapters"]')
+        if (chaptersBtn) chaptersBtn.click()
         if (window.innerWidth < 768) {
-          const btn = document.querySelector('.mobile-sidebar-toggle[title="Open sidebar"]') as HTMLButtonElement
-          if (btn) btn.click()
+          const mobileToggle = document.querySelector<HTMLButtonElement>('.mobile-sidebar-toggle[title="Open sidebar"]')
+          if (mobileToggle) mobileToggle.click()
         }
-      }
-    }
-  ]
+      },
+    },
+  ],
 }
+

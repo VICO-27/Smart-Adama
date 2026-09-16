@@ -13,6 +13,7 @@
 
   <div
     class="smart-navbar fixed inset-x-0 top-3 md:top-4 z-40 flex flex-col items-center px-3 md:px-5 pointer-events-none"
+    data-tour="nav"
   >
 
     <!-- =======================================================
@@ -375,6 +376,7 @@
           <router-link
             to="/study"
             class="app-nav-link"
+            data-tour="study-link"
             :class="{
               active:
                 isRouteActive('/study')
@@ -764,6 +766,7 @@
           <router-link
             to="/study"
             class="mobile-app-link"
+            data-tour="study-link"
             :class="{
               active:
                 isRouteActive('/study')

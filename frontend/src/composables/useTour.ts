@@ -1,11 +1,13 @@
-import { reactive, ref, nextTick } from 'vue'
+import { reactive, nextTick, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { useRouter } from 'vue-router'
 
 export interface TourStep {
-  target: string // CSS selector
+  target: string // CSS selector — prefer [data-tour="..."]
   title: string
   content: string
   placement?: 'top' | 'bottom' | 'left' | 'right' | 'center'
+  gesture?: 'tap' | 'swipe-right' | 'swipe-left' | 'scroll' | null
   onBeforeShow?: () => Promise<void> | void
 }
 
@@ -23,6 +25,29 @@ const state = reactive({
 
 const tours: Record<string, TourDefinition> = {}
 
+// Scrollbar width compensation (prevents layout shift on overflow:hidden)
+let _scrollbarWidth = 0
+function getScrollbarWidth(): number {
+  if (_scrollbarWidth) return _scrollbarWidth
+  const div = document.createElement('div')
+  div.style.cssText = 'width:100px;height:100px;overflow:scroll;position:absolute;top:-9999px'
+  document.body.appendChild(div)
+  _scrollbarWidth = div.offsetWidth - div.clientWidth
+  document.body.removeChild(div)
+  return _scrollbarWidth
+}
+
+function lockScroll() {
+  const scrollbarWidth = getScrollbarWidth()
+  document.body.style.paddingRight = `${scrollbarWidth}px`
+  document.body.style.overflow = 'hidden'
+}
+
+function unlockScroll() {
+  document.body.style.paddingRight = ''
+  document.body.style.overflow = ''
+}
+
 export function useTour() {
   const registerTour = (tour: TourDefinition) => {
     tours[tour.id] = tour
@@ -33,7 +58,7 @@ export function useTour() {
       const authStore = useAuthStore()
       const userId = authStore.user?.id || 'guest'
       return `sa_tour_${id}_completed_${userId}`
-    } catch (e) {
+    } catch {
       return `sa_tour_${id}_completed_guest`
     }
   }
@@ -43,24 +68,45 @@ export function useTour() {
     try {
       const isCompleted = localStorage.getItem(getStorageKey(tourId)) === 'true'
       if (isCompleted) return
-    } catch (e) {
-      // Ignore storage errors and just show the tour
+    } catch {
+      // Ignore storage errors — just show the tour
     }
+
+    // Store the element that was focused before opening the tour
+    ;(state as any)._previousFocus = document.activeElement
 
     state.currentTourId = tourId
     state.steps = tours[tourId].steps
     state.currentStepIndex = 0
     state.isActive = true
 
+    lockScroll()
+
+    // Watch for route change and teardown
+    try {
+      const router = useRouter()
+      const stop = watch(
+        () => router.currentRoute.value.fullPath,
+        () => {
+          closeTour()
+          stop()
+        },
+      )
+      ;(state as any)._routeWatchStop = stop
+    } catch {
+      // Not inside a component context — skip route watch
+    }
+
     await prepareCurrentStep()
   }
 
   const prepareCurrentStep = async () => {
     const step = state.steps[state.currentStepIndex]
-    if (step && step.onBeforeShow) {
+    if (step?.onBeforeShow) {
       await step.onBeforeShow()
       await nextTick()
-      await new Promise(r => setTimeout(r, 300))
+      // Give transitions time to settle before ProductTour measures
+      await new Promise(r => setTimeout(r, 350))
     }
   }
 
@@ -82,14 +128,18 @@ export function useTour() {
 
   const skipTour = () => {
     if (state.currentTourId) {
-      try { localStorage.setItem(getStorageKey(state.currentTourId), 'true') } catch (e) {}
+      try {
+        localStorage.setItem(getStorageKey(state.currentTourId), 'true')
+      } catch {}
     }
     closeTour()
   }
 
   const finishTour = () => {
     if (state.currentTourId) {
-      try { localStorage.setItem(getStorageKey(state.currentTourId), 'true') } catch (e) {}
+      try {
+        localStorage.setItem(getStorageKey(state.currentTourId), 'true')
+      } catch {}
     }
     closeTour()
   }
@@ -99,10 +149,29 @@ export function useTour() {
     state.currentTourId = null
     state.steps = []
     state.currentStepIndex = 0
+    unlockScroll()
+
+    // Restore focus
+    const prev = (state as any)._previousFocus
+    if (prev && typeof prev.focus === 'function') {
+      try {
+        prev.focus()
+      } catch {}
+    }
+    ;(state as any)._previousFocus = null
+
+    // Stop route watcher if active
+    const stop = (state as any)._routeWatchStop
+    if (typeof stop === 'function') {
+      stop()
+      ;(state as any)._routeWatchStop = null
+    }
   }
-  
+
   const resetTour = (tourId: string) => {
-    try { localStorage.removeItem(getStorageKey(tourId)) } catch (e) {}
+    try {
+      localStorage.removeItem(getStorageKey(tourId))
+    } catch {}
   }
 
   return {
@@ -114,6 +183,7 @@ export function useTour() {
     skipTour,
     finishTour,
     closeTour,
-    resetTour
+    resetTour,
   }
 }
+

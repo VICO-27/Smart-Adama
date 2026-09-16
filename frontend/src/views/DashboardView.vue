@@ -824,7 +824,7 @@ onMounted(() => {
              MOMENTUM
         ===================================================== -->
 
-        <section class="momentum-section">
+        <section class="momentum-section" data-tour="momentum">
 
           <div class="section-heading">
 

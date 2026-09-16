@@ -69,7 +69,7 @@
         </button>
 
         <!-- Chapters -->
-        <button class="rail-button" type="button" title="Chapters" @click="activeSidebarTab = 'chapters'; isSidebarOpen = true;">
+        <button class="rail-button" type="button" title="Chapters" data-tour="chapters" @click="activeSidebarTab = 'chapters'; isSidebarOpen = true;">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round"/>
           </svg>
@@ -355,7 +355,7 @@
                       <span>{{ section.title }}</span>
                     </button>
 
-                    <RouterLink :to="`/chapters/${chapter.id}/quiz`" class="chapter-quiz-link">
+                    <RouterLink :to="`/chapters/${chapter.id}/quiz`" class="chapter-quiz-link" data-tour="quiz">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="m9 12 2 2 4-4M7.8 4.7a3.4 3.4 0 0 0 1.9-.8 3.4 3.4 0 0 1 4.4 0 3.4 3.4 0 0 0 1.9.8 3.4 3.4 0 0 1 3.1 3.1 3.4 3.4 0 0 0 .8 1.9 3.4 3.4 0 0 1 0 4.4 3.4 3.4 0 0 0-.8 1.9 3.4 3.4 0 0 1-3.1 3.1 3.4 3.4 0 0 0-1.9.8 3.4 3.4 0 0 1-4.4 0 3.4 3.4 0 0 0-1.9-.8 3.4 3.4 0 0 1-3.1-3.1 3.4 3.4 0 0 0-.8-1.9 3.4 3.4 0 0 1 0-4.4 3.4 3.4 0 0 0 .8-1.9 3.4 3.4 0 0 1 3.1-3.1Z" />
                       </svg>
@@ -757,6 +757,7 @@
         <main
           v-show="isReaderOpen"
           class="reader-main"
+          data-tour="reader"
           style="flex: 1; min-width: 0; position: relative;"
           :style="{ borderRight: isReaderOpen && isAiSidebarOpen && !isMobile ? '1px solid var(--reader-border)' : 'none' }"
         >
@@ -1016,7 +1017,7 @@
         </div>
 
         <!-- Floating AI FAB with spinning glow border + Smart AI label -->
-        <div class="ai-fab-wrap" :class="{ 'ai-fab-wrap--label': aiLabelVisible }">
+        <div class="ai-fab-wrap" data-tour="study-ai" :class="{ 'ai-fab-wrap--label': aiLabelVisible }">
           <!-- Spinning conic-gradient glow ring -->
           <div class="ai-fab-ring" aria-hidden="true"></div>
           <!-- Animated "Smart AI" label pill -->
@@ -1279,7 +1280,7 @@
           {{ feedbackToastMessage }}
         </div>
 
-        <form class="ai-composer" @submit.prevent="sendMessage">
+        <form class="ai-composer" data-tour="ai-composer" @submit.prevent="sendMessage">
           <div class="ai-composer__field">
             <textarea
               ref="chatInputRef"

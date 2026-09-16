@@ -415,6 +415,7 @@
         ref="toggleButtonRef"
         type="button"
         class="assistant-toggle"
+        data-tour="ai-toggle"
         :class="{
           'assistant-toggle--dragging': isDragging,
         }"

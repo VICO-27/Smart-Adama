@@ -791,7 +791,7 @@ watch(
 
     if (
       isAuthenticated &&
-      router.currentRoute.value.path === '/'
+      router?.currentRoute?.value?.path === '/'
     ) {
       router.push('/dashboard')
     }

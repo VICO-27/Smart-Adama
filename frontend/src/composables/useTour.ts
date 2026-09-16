@@ -86,7 +86,7 @@ export function useTour() {
     try {
       if (router) {
         const stop = watch(
-          () => router.currentRoute.value.fullPath,
+          () => router?.currentRoute?.value?.fullPath,
           () => {
             closeTour()
             stop()

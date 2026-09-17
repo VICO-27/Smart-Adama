@@ -82,7 +82,7 @@ const handleInvite = async () => {
     inviteForm.value = { name: '', email: '', role: 'user' }
     loadUsers()
   } catch (err: any) {
-    alert(err.response?.data?.message || 'Failed to invite user')
+    alert(err.userMessage || err.response?.data?.error?.message || 'Failed to invite user')
   } finally {
     isInviting.value = false
   }

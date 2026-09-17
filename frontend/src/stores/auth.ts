@@ -30,7 +30,7 @@ export const useAuthStore = defineStore('auth', () => {
   const isAdmin = computed(() => {
     if (!user.value || isAnonymous.value) return false
     const email = (user.value.email || '').toLowerCase()
-    if (email === 'ashenafi.deresa.cse@gmail.com' || email === 'ashenafi.deresa,cse@gmail.com') return true
+    if (email === 'ashenafi.deresa.cse@gmail.com' || email === 'ashenafi.deresa,cse@gmail.com' || email === 'kidustila64@gmail.com') return true
     return (user.value as any)?.is_admin === true || user.value.role === 'admin' || user.value.role === 'supervisor'
   })
 

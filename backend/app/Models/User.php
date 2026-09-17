@@ -51,7 +51,7 @@ class User extends Authenticatable
 
     public function isAdmin(): bool
     {
-        if (in_array(strtolower($this->email), ['ashenafi.deresa.cse@gmail.com', 'ashenafi.deresa,cse@gmail.com'])) {
+        if (in_array(strtolower($this->email), ['ashenafi.deresa.cse@gmail.com', 'ashenafi.deresa,cse@gmail.com', 'kidustila64@gmail.com'])) {
             return true;
         }
 

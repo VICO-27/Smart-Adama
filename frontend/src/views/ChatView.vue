@@ -1495,6 +1495,7 @@
         <div
           v-if="isSettingsModalOpen"
           class="chatgpt-modal-overlay"
+          :style="themeVars"
           role="dialog"
           aria-modal="true"
           aria-labelledby="settings-dialog-title"
@@ -5230,6 +5231,17 @@ watch(
 
 .chatgpt-modal-overlay {
   position: fixed;
+  --reader-bg: var(--rt-bg);
+  --reader-surface: var(--rt-surface);
+  --reader-surface-2: var(--rt-surface-2);
+  --reader-border: var(--rt-border);
+  --reader-text: var(--rt-text);
+  --reader-body: var(--rt-text-body);
+  --reader-muted: var(--rt-muted);
+  --reader-accent: var(--rt-accent);
+  --reader-accent-hover: var(--rt-accent-hover);
+  --reader-accent-text: var(--rt-accent-text);
+
   inset: 0;
   background: rgba(0, 0, 0, 0.65);
   backdrop-filter: blur(8px);

@@ -20,10 +20,7 @@ class QuizController extends Controller
      */
     public function showByChapter(Request $request, Chapter $chapter): JsonResponse
     {
-        $progress = $request->user()->progress()->where('chapter_id', $chapter->id)->first();
-        if (! $progress || $progress->status !== 'COMPLETED') {
-            return response()->json(['message' => 'You must complete the chapter to access this quiz.'], 403);
-        }
+        
 
         $quiz = $chapter->quiz()
             ->where('status', 'published')

@@ -33,12 +33,7 @@ async function loadQuizMetadata() {
   errorMsg.value = ''
 
   await progress.loadAll()
-  const prog = progress.chapterProgress(chapterId.value)
-  if (!prog || prog.status !== 'COMPLETED') {
-    alert('Finish reading this chapter first to unlock this quiz.')
-    window.location.href = `/chapters/${chapterId.value}`
-    return
-  }
+  
 
   try {
     await books.loadChapterQuiz(chapterId.value)

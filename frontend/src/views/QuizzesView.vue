@@ -57,8 +57,7 @@ const availableChapters = computed(() => {
 })
 
 const isChapterCompleted = (chapterId: string) => {
-  const prog = progressStore.chapterProgress(chapterId)
-  return prog?.status === 'COMPLETED'
+  return true
 }
 
 const formatDate = (dateString: string) => {

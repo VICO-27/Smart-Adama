@@ -356,7 +356,7 @@
                       <span>{{ section.title }}</span>
                     </button>
 
-                    <RouterLink :to="`/chapters/${chapter.id}/quiz`" class="chapter-quiz-link" data-tour="quiz">
+                    <RouterLink v-if="chapter.title !== 'Introduction & Preface'" :to="`/chapters/${chapter.id}/quiz`" class="chapter-quiz-link" data-tour="quiz">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="m9 12 2 2 4-4M7.8 4.7a3.4 3.4 0 0 0 1.9-.8 3.4 3.4 0 0 1 4.4 0 3.4 3.4 0 0 0 1.9.8 3.4 3.4 0 0 1 3.1 3.1 3.4 3.4 0 0 0 .8 1.9 3.4 3.4 0 0 1 0 4.4 3.4 3.4 0 0 0-.8 1.9 3.4 3.4 0 0 1-3.1 3.1 3.4 3.4 0 0 0-1.9.8 3.4 3.4 0 0 1-4.4 0 3.4 3.4 0 0 0-1.9-.8 3.4 3.4 0 0 1-3.1-3.1 3.4 3.4 0 0 0-.8-1.9 3.4 3.4 0 0 1 0-4.4 3.4 3.4 0 0 0 .8-1.9 3.4 3.4 0 0 1 3.1-3.1Z" />
                       </svg>
@@ -686,9 +686,10 @@
                       <!-- Mode Switching Dropdown -->
                       <div class="mobile-settings-section">
                         <button
+                          v-if="booksStore.currentChapter?.title !== 'Introduction & Preface'"
                           type="button"
                           class="mobile-menu-item"
-                          @click="viewMode = 'quiz'; isMobileSettingsOpen = false"
+                          @click="isMobileSettingsOpen = false; takeChapterQuiz()" 
                         >
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4 mr-2">
                             <path d="m9 11 3 3L22 4" stroke-linecap="round" stroke-linejoin="round"/>

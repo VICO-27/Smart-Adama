@@ -63,10 +63,7 @@ class QuizAttemptController extends Controller
             return response()->json(['message' => 'This quiz is not available.'], 404);
         }
 
-        $progress = $request->user()->progress()->where('chapter_id', $quiz->chapter_id)->first();
-        if (! $progress || $progress->status !== 'COMPLETED') {
-            return response()->json(['message' => 'You must complete the chapter to access this quiz.'], 403);
-        }
+        
 
         $attempt = QuizAttempt::create([
             'user_id' => $request->user()->id,

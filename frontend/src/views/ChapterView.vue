@@ -13,7 +13,7 @@ const chapterId = computed(() => route.params.chapterId as string)
 
 onMounted(async () => {
   await books.loadChapter(chapterId.value)
-  await books.loadChapterQuiz(chapterId.value)
+  try { await books.loadChapterQuiz(chapterId.value) } catch (e) { console.warn("Could not load quiz for chapter") }
 })
 
 const chapter  = computed(() => books.currentChapter)

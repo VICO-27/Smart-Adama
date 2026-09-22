@@ -168,6 +168,7 @@ export const useBooksStore = defineStore('books', () => {
     } catch (error) {
       currentQuiz.value = null
       bestAttempt.value = null
+      throw error
     }
   }
 

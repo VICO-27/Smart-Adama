@@ -46,7 +46,7 @@ async function loadQuizMetadata() {
   } catch(e: any) {
     if (e.response && e.response.status === 403) {
       alert('Finish reading this chapter first to unlock this quiz.')
-      window.location.href = `/chapters/${chapterId.value}`
+      window.location.href = `/study`
       return
     }
     errorMsg.value = 'We couldn\'t load this quiz right now. Please try again.'
@@ -191,7 +191,7 @@ function getReviewOptionIconStyle(pq: any, optId: string) {
       <h2 class="text-2xl font-bold text-(--sa-dark) mb-2">Quiz Error</h2>
       <p class="text-(--sa-taupe) mb-8">{{ errorMsg }}</p>
       <div class="flex justify-center gap-4">
-        <RouterLink :to="`/study/${chapterId}`">
+        <RouterLink :to="`/study`">
           <SaButton variant="secondary">Back to Study</SaButton>
         </RouterLink>
         <SaButton @click="loadQuizMetadata">Retry</SaButton>
@@ -227,7 +227,7 @@ function getReviewOptionIconStyle(pq: any, optId: string) {
         <button @click="beginQuiz" class="w-full sm:w-auto px-10 py-4 bg-(--sa-dark) text-white dark:text-[#0f172a] font-bold text-lg rounded-xl shadow-md hover:bg-[#2B4266] dark:hover:bg-[#E2E8F0] hover:-translate-y-0.5 transition-all">
           Start Quiz ❯
         </button>
-        <RouterLink :to="`/study/${chapterId}`" class="w-full sm:w-auto px-8 py-4 text-(--sa-taupe) font-bold hover:text-(--sa-dark) transition-colors">
+        <RouterLink :to="`/study`" class="w-full sm:w-auto px-8 py-4 text-(--sa-taupe) font-bold hover:text-(--sa-dark) transition-colors">
           Back to Study
         </RouterLink>
       </div>
@@ -242,7 +242,7 @@ function getReviewOptionIconStyle(pq: any, optId: string) {
           <p class="text-[0.65rem] text-(--sa-taupe) font-bold uppercase tracking-wider mb-1">{{ books.currentQuiz?.title }}</p>
           <h2 class="font-display text-xl font-bold text-(--sa-dark)">Question {{ currentQuestionIndex + 1 }} of {{ currentQ.length }}</h2>
         </div>
-        <RouterLink :to="`/study/${chapterId}`" class="text-xs font-bold text-(--sa-taupe) hover:text-(--sa-dark) uppercase tracking-wider bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-md transition-colors">
+        <RouterLink :to="`/study`" class="text-xs font-bold text-(--sa-taupe) hover:text-(--sa-dark) uppercase tracking-wider bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-md transition-colors">
           Exit
         </RouterLink>
       </div>
@@ -351,7 +351,7 @@ function getReviewOptionIconStyle(pq: any, optId: string) {
           <button @click="beginQuiz" class="w-full sm:w-auto px-8 py-4 bg-white border-2 border-(--sa-gray) text-(--sa-dark) font-bold rounded-xl hover:bg-gray-50 transition-colors">
             Try Again
           </button>
-          <RouterLink :to="`/study/${chapterId}`" class="w-full sm:w-auto px-8 py-4 text-(--sa-taupe) font-bold hover:text-(--sa-dark) transition-colors flex items-center justify-center">
+          <RouterLink :to="`/study`" class="w-full sm:w-auto px-8 py-4 text-(--sa-taupe) font-bold hover:text-(--sa-dark) transition-colors flex items-center justify-center">
             Back to Study
           </RouterLink>
         </div>

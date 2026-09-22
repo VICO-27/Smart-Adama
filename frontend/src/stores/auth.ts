@@ -195,24 +195,6 @@ export const useAuthStore = defineStore('auth', () => {
 
     if (!token.value) return
 
-    // 2. Fetch full backend user profile asynchronously if we already have user.value
-    if (user.value) {
-      // Sync detailed backend profile in the background so route navigation is instant (<100ms)!
-      authApi.me().then(({ data }) => {
-        if (data?.user) {
-          user.value = {
-            ...user.value,
-            ...data.user,
-          }
-        }
-      }).catch((err) => {
-        if (err?.response?.status === 401 && !user.value?.is_anonymous) {
-          clearAuth()
-        }
-      })
-      return
-    }
-
     try {
       const { data } = await authApi.me()
       if (data?.user) {

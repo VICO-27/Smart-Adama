@@ -175,7 +175,7 @@ let sessionHydrated = false
 router.beforeEach(async (to, from) => {
   const auth = useAuthStore()
 
-  if (!sessionHydrated && auth.token && !auth.user) {
+  if (!sessionHydrated && auth.token) {
     await auth.fetchMe()
   }
   sessionHydrated = true

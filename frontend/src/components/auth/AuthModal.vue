@@ -111,7 +111,7 @@ async function handleVerifyOtp(code?: string) {
         auth.user = mapSupabaseUserToProfile(result.data.session.user)
       }
       // Sync backend profile in background
-      auth.fetchMe().catch(() => {})
+      await auth.fetchMe().catch(() => {})
     }
     const redirect =
       auth.authRedirectUrl && auth.authRedirectUrl !== '/login'
@@ -134,7 +134,7 @@ async function handleContinueAsGuest() {
           auth.user = mapSupabaseUserToProfile(result.data.session.user)
         }
         // Sync backend profile in background
-        auth.fetchMe().catch(() => {})
+        await auth.fetchMe().catch(() => {})
       }
       const redirect =
         auth.authRedirectUrl && auth.authRedirectUrl !== '/login'

@@ -50,7 +50,7 @@ onMounted(async () => {
   const token = route.query.token as string
   if (token) {
     auth.setToken(token)
-    auth.fetchMe().catch(() => {})
+    await auth.fetchMe().catch(() => {})
     finishAuthentication()
     return
   }
@@ -67,7 +67,7 @@ onMounted(async () => {
           if (session.user) {
             auth.user = mapSupabaseUserToProfile(session.user)
           }
-          auth.fetchMe().catch(() => {})
+          await auth.fetchMe().catch(() => {})
           finishAuthentication()
           return
         }
@@ -83,7 +83,7 @@ onMounted(async () => {
           if (session.user) {
             auth.user = mapSupabaseUserToProfile(session.user)
           }
-          auth.fetchMe().catch(() => {})
+          await auth.fetchMe().catch(() => {})
           finishAuthentication()
           return
         }
@@ -105,7 +105,7 @@ onMounted(async () => {
               if (session.user) {
                 auth.user = mapSupabaseUserToProfile(session.user)
               }
-              auth.fetchMe().catch(() => {})
+              await auth.fetchMe().catch(() => {})
               finishAuthentication()
               return
             }
@@ -122,7 +122,7 @@ onMounted(async () => {
         if (existingSession.user) {
           auth.user = mapSupabaseUserToProfile(existingSession.user)
         }
-        auth.fetchMe().catch(() => {})
+        await auth.fetchMe().catch(() => {})
         finishAuthentication()
         return
       }
@@ -138,7 +138,7 @@ onMounted(async () => {
             if (newSession.user) {
               auth.user = mapSupabaseUserToProfile(newSession.user)
             }
-            auth.fetchMe().catch(() => {})
+            await auth.fetchMe().catch(() => {})
             finishAuthentication()
           }
         }
